@@ -1,0 +1,206 @@
+name: Android Release
+run-name: Android Release ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag, for example v3.19.23-rc.4'
+        required: true
+        type: string
+        default: 'v3.19.23-rc.4'
+      prerelease:
+        description: 'Publish as a GitHub pre-release'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            RELEASE_TAG='${{ inputs.release_tag }}'
+            IS_PRERELEASE='${{ inputs.prerelease }}'
+          else
+            RELEASE_TAG="$GITHUB_REF_NAME"
+            if [[ "$RELEASE_TAG" == *-* ]]; then
+              IS_PRERELEASE=true
+            else
+              IS_PRERELEASE=false
+            fi
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            EXISTING_TAG_SHA="$(git rev-list -n 1 "$RELEASE_TAG")"
+            if [[ "$EXISTING_TAG_SHA" != "$GITHUB_SHA" ]]; then
+              echo "Tag $RELEASE_TAG already points to $EXISTING_TAG_SHA, not this workflow commit $GITHUB_SHA." >&2
+              echo "Use a new version tag instead of replacing an existing release." >&2
+              exit 1
+            fi
+          fi
+
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "APP_VERSION_NAME=${RELEASE_TAG#v}" >> "$GITHUB_ENV"
+          echo "APP_VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install mobile packaging dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Prepare web assets
+        run: npm run prepare:web
+
+      - name: Generate Capacitor Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Restore optional production signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$KEYSTORE_B64" && -n "$KEYSTORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
+            KEYSTORE_PATH="$RUNNER_TEMP/sudoku-release.jks"
+            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE_PATH"
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+            echo "HAS_RELEASE_SIGNING=true" >> "$GITHUB_ENV"
+          else
+            echo "HAS_RELEASE_SIGNING=false" >> "$GITHUB_ENV"
+            echo "Production signing secrets are not configured; validation APK/AAB will still be published."
+          fi
+
+      - name: Configure Android version and signing
+        run: npm run configure:android
+
+      - name: Build Android packages
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew assembleDebug bundleDebug
+          if [[ "$HAS_RELEASE_SIGNING" == "true" ]]; then
+            ./gradlew assembleRelease bundleRelease
+          fi
+
+      - name: Collect release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+            "dist/Sudoku-${RELEASE_TAG}-android-test.apk"
+          cp android/app/build/outputs/bundle/debug/app-debug.aab \
+            "dist/Sudoku-${RELEASE_TAG}-android-test.aab"
+
+          if [[ "$HAS_RELEASE_SIGNING" == "true" ]]; then
+            cp android/app/build/outputs/apk/release/app-release.apk \
+              "dist/Sudoku-${RELEASE_TAG}-android.apk"
+            cp android/app/build/outputs/bundle/release/app-release.aab \
+              "dist/Sudoku-${RELEASE_TAG}-android.aab"
+          fi
+
+          (cd dist && sha256sum *.apk *.aab > SHA256SUMS.txt)
+
+          cat > dist/RELEASE_NOTES.md <<EOF
+          Android packaging for **${RELEASE_TAG}**.
+
+          - **Sudoku-${RELEASE_TAG}-android-test.apk**: always generated, directly installable validation build.
+          - **Sudoku-${RELEASE_TAG}-android-test.aab**: validation App Bundle from the same source.
+          - **SHA256SUMS.txt**: checksums for all Android packages.
+          EOF
+
+          if [[ "$HAS_RELEASE_SIGNING" == "true" ]]; then
+            cat >> dist/RELEASE_NOTES.md <<EOF
+          - **Sudoku-${RELEASE_TAG}-android.apk**: production-signed APK.
+          - **Sudoku-${RELEASE_TAG}-android.aab**: production-signed App Bundle.
+          EOF
+          else
+            cat >> dist/RELEASE_NOTES.md <<'EOF'
+
+          Production signing secrets are not configured for this repository yet. The `-android-test.apk` is intentionally published so the app can still be installed on a phone and verified. Because CI debug signing is not a stable production identity, uninstall an older test build before installing a later test build if Android reports a signature mismatch.
+          EOF
+          fi
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-${{ env.RELEASE_TAG }}-android
+          path: |
+            dist/*.apk
+            dist/*.aab
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/*.apk dist/*.aab dist/SHA256SUMS.txt --clobber
+          else
+            args=(
+              "$RELEASE_TAG"
+              --target "$GITHUB_SHA"
+              --title "Sudoku $RELEASE_TAG"
+              --notes-file dist/RELEASE_NOTES.md
+            )
+            if [[ "$IS_PRERELEASE" == "true" ]]; then
+              args+=(--prerelease)
+            fi
+            gh release create "${args[@]}" dist/*.apk dist/*.aab dist/SHA256SUMS.txt
+          fi
+
+      - name: Verify published release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --json url,assets --jq '.url, (.assets[] | .name)'
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -F "Sudoku-${RELEASE_TAG}-android-test.apk"
