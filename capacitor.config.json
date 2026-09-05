@@ -1,0 +1,8 @@
+{
+  "appId": "io.github.serpenshbc672.sudoku",
+  "appName": "Sudoku",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#E7ECEA"
+  }
+}
