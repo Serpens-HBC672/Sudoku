@@ -12069,6 +12069,161 @@ function renderStringPanels() {
   }
 }
 
+/* -------------------- WASM迁移差分测试钩子 --------------------
+   只提供机器可读的只读/离线测试入口,不参与UI行为。迁移测试通过它把
+   当前JS实现固定成oracle:逐步记录first-match finding和候选掩码;
+   需要技巧覆盖率时,再用enumerateAvailableFromMasks()调用现成的
+   findAllAvailableSteps(),对某个已记录状态完整扫描53技巧。把“完整
+   扫描”与“正常逐步求解”分开,避免Golden Nugget/Platinum Blonde
+   这类重盘每一步都额外跑53个技巧而把基准时间放大到失去意义。
+   ------------------------------------------------------------ */
+(function installWasmMigrationTestHooks() {
+  if (typeof globalThis === "undefined") return;
+
+  function normalizeOracleValue(value, seen = new WeakSet()) {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== "object") return value;
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    if (value instanceof Set) {
+      const out = { __type: "Set", values: [...value].map((v) => normalizeOracleValue(v, seen)) };
+      seen.delete(value);
+      return out;
+    }
+    if (value instanceof Map) {
+      const out = {
+        __type: "Map",
+        entries: [...value.entries()].map(([k, v]) => [normalizeOracleValue(k, seen), normalizeOracleValue(v, seen)]),
+      };
+      seen.delete(value);
+      return out;
+    }
+    if (Array.isArray(value)) {
+      const out = value.map((v) => normalizeOracleValue(v, seen));
+      seen.delete(value);
+      return out;
+    }
+    const out = {};
+    for (const key of Object.keys(value)) out[key] = normalizeOracleValue(value[key], seen);
+    seen.delete(value);
+    return out;
+  }
+
+  function candidateMasksSnapshot(grid, getCands) {
+    const masks = new Array(81).fill(0);
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (grid[r][c] !== 0) continue;
+        masks[r * 9 + c] = candMaskAt(getCands, r, c) & 0x1ff;
+      }
+    }
+    return masks;
+  }
+
+  function getCandsFromMasks(grid, masks) {
+    return (r, c) => {
+      const out = [];
+      if (grid[r][c] !== 0) {
+        out.mask = 0;
+        return out;
+      }
+      const mask = masks[r * 9 + c] & 0x1ff;
+      for (let d = 1; d <= 9; d++) if (mask & (1 << (d - 1))) out.push(d);
+      out.mask = mask;
+      return out;
+    };
+  }
+
+  function tracePuzzle(startGrid, solution, maxSteps = 512) {
+    const givenGrid = cloneGrid(startGrid);
+    const g = cloneGrid(startGrid);
+    const tracker = makeEliminationTracker();
+    const getCands = (r, c) => trackedCandidatesAt(g, tracker, r, c);
+    const trace = [];
+    let stalled = false;
+    let soundnessProblem = null;
+
+    // 迁移oracle不记录“为展示而重算”的chain detail;它会改变finding的
+    // 附带说明数据但不改变技巧判定。真正迁chain detail时再单独做契约
+    // 测试,这里先固定求解核心本身。
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
+        if (!g.some((row) => row.some((v) => v === 0))) break;
+        const beforeGrid = gridToPuzzleString(g);
+        const beforeMasks = candidateMasksSnapshot(g, getCands);
+        const finding = findNextStep(g, getCands, undefined, givenGrid, (f) => exocetFindingMatchesSolution(f, solution));
+        if (!finding) {
+          stalled = true;
+          break;
+        }
+
+        if (finding.actionType === "fill") {
+          g[finding.r][finding.c] = finding.digit;
+        } else if (finding.actionType === "eliminate") {
+          for (const { r, c, digit } of finding.eliminations) tracker.markErased(r, c, digit);
+        } else {
+          throw new Error("oracle trace encountered unsupported actionType: " + finding.actionType);
+        }
+
+        const problem = verifySoundnessAfterApply(finding, solution, g, getCands);
+        const afterGrid = gridToPuzzleString(g);
+        const afterMasks = candidateMasksSnapshot(g, getCands);
+        trace.push({
+          step: stepIndex,
+          beforeGrid,
+          beforeMasks,
+          finding: normalizeOracleValue(finding),
+          afterGrid,
+          afterMasks,
+          soundnessProblem: normalizeOracleValue(problem),
+        });
+        if (problem) {
+          soundnessProblem = problem;
+          break;
+        }
+      }
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+
+    return {
+      techniqueKeys: TECHNIQUE_CHAIN.map((entry) => entry.key),
+      givenGrid: gridToPuzzleString(givenGrid),
+      finalGrid: gridToPuzzleString(g),
+      complete: !g.some((row) => row.some((v) => v === 0)),
+      stalled,
+      soundnessProblem: normalizeOracleValue(soundnessProblem),
+      trace,
+    };
+  }
+
+  function enumerateAvailableFromMasks(grid, masks, givenGrid, solution) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      const findings = findAllAvailableSteps(
+        grid,
+        getCands,
+        givenGrid,
+        (f) => exocetFindingMatchesSolution(f, solution)
+      );
+      return findings.map((finding) => normalizeOracleValue(finding));
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
+  globalThis.__SUDOKU_WASM_MIGRATION_TEST_HOOKS__ = Object.freeze({
+    version: 1,
+    techniqueKeys: () => TECHNIQUE_CHAIN.map((entry) => entry.key),
+    tracePuzzle,
+    enumerateAvailableFromMasks,
+  });
+})();
+
 /* ------------------------------ 事件绑定(只绑一次,靠事件委托应对每次 render 重建的子节点) ------------------------------ */
 
 // 这个判断是专门为Web Worker复用这份脚本准备的:Worker环境没有
