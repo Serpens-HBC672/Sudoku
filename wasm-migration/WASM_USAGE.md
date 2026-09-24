@@ -110,7 +110,7 @@ Input state is copied into module-owned fixed buffers through explicit setters. 
 
 Returned Finding objects are ordinary JS objects reconstructed from scalar exports and result buffers; they do not borrow pointers into WASM memory.
 
-The AssemblyScript module uses the minimal runtime so temporary managed allocations can be reclaimed during long solver sessions. Application code must not retain raw pointers into module memory.
+The AssemblyScript module uses the incremental runtime. In the controlled shared-instance #1→#22 comparison, it preserved exact 1867/1867 selected-Finding parity while holding peak/final linear memory to 524288 bytes (8 pages) without explicit boundary collection. Application code must not retain raw pointers into module memory.
 
 ## Worker
 
