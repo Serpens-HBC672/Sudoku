@@ -1,4 +1,20 @@
 import {
+  alsAdvResetInput,
+  alsAdvSetInputCell,
+  alsAdvSetInputMask,
+  alsChainFind,
+  deathBlossomFind,
+  alsAdvResultKind,
+  alsAdvResultPatternCount,
+  alsAdvResultPatternAt,
+  alsAdvResultEliminationCount,
+  alsAdvResultEliminationAt,
+  alsAdvResultExtraDigitCount,
+  alsAdvResultExtraDigitAt,
+  alsAdvResultMeta,
+} from "./als-advanced";
+
+import {
   medusaResetInput,
   medusaSetInputCell,
   medusaSetInputMask,
@@ -333,6 +349,7 @@ export function resetInput(): void {
   aicResetInput();
   sdcResetInput();
   fireworkResetInput();
+  alsAdvResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
@@ -342,6 +359,7 @@ export function setInputCell(index: i32, digit: i32): void {
   aicSetInputCell(index, digit);
   sdcSetInputCell(index, digit);
   fireworkSetInputCell(index, digit);
+  alsAdvSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
@@ -351,6 +369,7 @@ export function setInputMask(index: i32, mask: i32): void {
   aicSetInputMask(index, mask);
   sdcSetInputMask(index, mask);
   fireworkSetInputMask(index, mask);
+  alsAdvSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -1758,6 +1777,20 @@ export function fireworkFinderResultPatternAt(i:i32): i32 { return fireworkResul
 export function fireworkFinderResultEliminationCount(): i32 { return fireworkResultEliminationCount(); }
 export function fireworkFinderResultEliminationAt(i:i32): i32 { return fireworkResultEliminationAt(i); }
 export function fireworkFinderResultMeta(i:i32): i32 { return fireworkResultMeta(i); }
+
+export function runAlsAdvancedFinder(id:i32): i32 {
+  if (id == 38) return alsChainFind();
+  if (id == 39) return deathBlossomFind();
+  return 0;
+}
+export function alsAdvancedResultKind(): i32 { return alsAdvResultKind(); }
+export function alsAdvancedResultPatternCount(): i32 { return alsAdvResultPatternCount(); }
+export function alsAdvancedResultPatternAt(i:i32): i32 { return alsAdvResultPatternAt(i); }
+export function alsAdvancedResultEliminationCount(): i32 { return alsAdvResultEliminationCount(); }
+export function alsAdvancedResultEliminationAt(i:i32): i32 { return alsAdvResultEliminationAt(i); }
+export function alsAdvancedResultExtraDigitCount(): i32 { return alsAdvResultExtraDigitCount(); }
+export function alsAdvancedResultExtraDigitAt(i:i32): i32 { return alsAdvResultExtraDigitAt(i); }
+export function alsAdvancedResultMeta(i:i32): i32 { return alsAdvResultMeta(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
