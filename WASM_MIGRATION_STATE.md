@@ -105,3 +105,37 @@ Only if work is resumed:
 - do not sort outputs to make differentials pass
 - main-thread and Worker paths must use the same WASM core
 - do not modify `main`
+
+
+## One-state #22 MSLS follow-up (latest bounded task)
+
+This section supersedes the earlier 10-state MSLS sweep as the authoritative evidence for the latest request.
+
+Focused temporary workflow run: `36006543354` (success).
+Historical target under test: `3fb98015986848e20025f8d1b1881f28fa6978e4`.
+No full #22 solve and no 57-puzzle trace were run for this task.
+
+State location:
+- the frozen oracle was bounded with `tracePuzzle(..., 512, true)`, which stops at the first DFC state
+- first DFC state in #22: step `2`
+- expected technique: `dynamicNishioChain`
+- because MSLS is TECHNIQUE_CHAIN id `47` and Dynamic Nishio is id `50`, this is the earliest recorded #22 state that guarantees the dispatcher would pass through MSLS before reaching the expected technique
+
+Exact recorded state:
+- `beforeGrid`: `000000039000010005003005800008009006070020000100400000009008050020000600400700000`
+- `beforeMasks`: `[242,185,123,162,232,106,11,0,0,482,424,106,422,0,110,74,106,0,354,297,0,290,360,0,0,107,75,22,28,0,21,84,0,95,75,0,308,0,56,181,0,37,285,393,141,0,308,50,0,244,100,342,450,198,100,37,0,39,44,0,79,0,75,212,0,81,277,284,13,0,457,205,0,181,49,0,308,39,263,387,135]`
+
+Exactly one WASM technique call was then made:
+- `runStandaloneTechniqueFinder(core, 47)`
+- result: `null`
+- no `RuntimeError: unreachable`
+- no Finding, no eliminations
+
+Diagnosis:
+- the historical #22 failure is **not reproducible as a state-local MSLS failure on this first DFC state**
+- therefore this state plus one MSLS invocation is not sufficient to explain the old full-trace `unreachable`
+- do not change MSLS discovery, matching, ordering, candidate masks, or ABI based on the earlier allocation hypothesis
+- the original `3fb9801` full-trace run did not record the exact failing step or technique id, so it is not proven that MSLS was the actual `runStandaloneTechniqueFinder` technique that trapped
+- if diagnosis resumes later, the next bounded target is the dispatcher/materialization sequence needed to identify the exact technique id at the historical trap; do not return to a broad MSLS sweep
+
+No solver fix was made in this task.
