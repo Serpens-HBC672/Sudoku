@@ -2,6 +2,7 @@ import {
   basicResetInput,
   basicSetInputCell,
   basicSetInputMask,
+  basicSetGivenCell,
   runBasicTechniqueFinder as basicRunTechniqueFinder,
   basicResultActionType as basicActionType,
   basicResultTechniqueId as basicTechniqueId,
