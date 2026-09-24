@@ -27,7 +27,18 @@ function boxIndex(r: i32, c: i32): i32 {
 
 @inline
 function bitForDigit(d: i32): u16 {
-  return <u16>(1 << (d - 1));
+  switch (d) {
+    case 1: return 0x001;
+    case 2: return 0x002;
+    case 3: return 0x004;
+    case 4: return 0x008;
+    case 5: return 0x010;
+    case 6: return 0x020;
+    case 7: return 0x040;
+    case 8: return 0x080;
+    case 9: return 0x100;
+    default: return 0;
+  }
 }
 
 @inline
