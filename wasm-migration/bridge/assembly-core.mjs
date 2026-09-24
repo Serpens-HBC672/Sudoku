@@ -31,6 +31,17 @@ export function loadPosition(core, grid, masks) {
   }
 }
 
+export function loadGivenGrid(core, grid) {
+  if (!Array.isArray(grid) || grid.length !== 9 || !grid.every((row) => Array.isArray(row) && row.length === 9)) {
+    throw new Error("given grid must be a 9x9 array");
+  }
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      core.setGivenCell(r * 9 + c, grid[r][c] | 0);
+    }
+  }
+}
+
 export function decodeFact(k) {
   const digit = (k % 9) + 1;
   const q = (k - (digit - 1)) / 9;
