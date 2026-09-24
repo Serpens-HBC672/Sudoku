@@ -77,7 +77,13 @@ for (const testCase of corpus) {
     const jsFinding = oracle.findTechniqueFromMasks(
       key, testCase.puzzle, masks, testCase.puzzle, testCase.solution,
     );
-    const rawWasmFinding = runStandaloneTechniqueFinder(core, id);
+    let rawWasmFinding;
+    try {
+      rawWasmFinding = runStandaloneTechniqueFinder(core, id);
+    } catch (error) {
+      console.error("STANDALONE_CRASH", JSON.stringify({ caseId: testCase.id, id, key }));
+      throw error;
+    }
     const wasmFinding =
       key === "juniorExocet" || key === "seniorExocet"
         ? oracle.validateFindingAgainstSolution(rawWasmFinding, testCase.solution)
