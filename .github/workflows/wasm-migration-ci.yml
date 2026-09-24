@@ -45,6 +45,9 @@ jobs:
       - name: Run exact JS-WASM static propagation differential suite
         run: npm run test:static
 
+      - name: Run bounded JS-WASM dynamic propagation differential suite
+        run: npm run test:dynamic
+
       - name: Build SIMD-enabled profile
         run: npm run build:simd
 
