@@ -336,11 +336,74 @@ function readStandaloneEliminations(core) {
 }
 
 export function runStandaloneTechniqueFinder(core, techniqueId) {
+  const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
+  if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId === 28) {
+    core.runAicFinder();
+    const nodeCount = core.aicFinderResultNodeCount();
+    if (nodeCount === 0) return null;
+    const chainNodes = [];
+    const patternCells = [];
+    for (let i = 0; i < nodeCount; i++) {
+      const cells = [];
+      for (let j = 0; j < core.aicFinderResultNodeCellCount(i); j++) {
+        const index = core.aicFinderResultNodeCellAt(i, j);
+        const cell = [Math.floor(index / 9), index % 9];
+        cells.push(cell);
+        patternCells.push([...cell]);
+      }
+      chainNodes.push({ cells, d: core.aicFinderResultNodeDigit(i) });
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.aicFinderResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.aicFinderResultEliminationAt(i)));
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      subtype: core.aicFinderResultSubtype() === 0 ? "type1" : "type2",
+      patternCells,
+      chainNodes,
+      eliminations,
+      context: {
+        chainLength: chainNodes.length,
+        startDigit: chainNodes[0].d,
+        endDigit: chainNodes[chainNodes.length - 1].d,
+        grouped: chainNodes.some((node) => node.cells.length > 1),
+      },
+    };
+  }
+
+  if (techniqueId === 29) {
+    core.runNiceLoopFinder();
+    const nodeCount = core.aicFinderResultNodeCount();
+    if (nodeCount === 0) return null;
+    const chainNodes = [];
+    for (let i = 0; i < nodeCount; i++) {
+      const cells = [];
+      for (let j = 0; j < core.aicFinderResultNodeCellCount(i); j++) {
+        const index = core.aicFinderResultNodeCellAt(i, j);
+        cells.push([Math.floor(index / 9), index % 9]);
+      }
+      chainNodes.push({ cells, d: core.aicFinderResultNodeDigit(i) });
+    }
+    const start = chainNodes[0];
+    const [r, c] = start.cells[0];
+    return {
+      actionType: "fill",
+      technique,
+      r,
+      c,
+      digit: start.d,
+      chainNodes,
+      context: { chainLength: chainNodes.length },
+    };
+  }
+
   core.runStandaloneTechniqueFinder(techniqueId);
   const actionType = core.standaloneResultActionType();
   if (actionType === 0) return null;
-  const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
-  if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
 
   const r = core.standaloneResultR();
   const c = core.standaloneResultC();
