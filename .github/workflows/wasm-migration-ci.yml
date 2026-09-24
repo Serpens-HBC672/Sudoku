@@ -57,6 +57,9 @@ jobs:
       - name: Run standalone technique finder differential suite
         run: npm run test:standalone
 
+      - name: Report Exocet oracle findings
+        run: node tests/exocet-oracle-report.mjs
+
       - name: Run static forcing-chain finder differential suite
         run: npm run test:static-finders
 
