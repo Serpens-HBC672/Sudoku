@@ -73,3 +73,91 @@ export function runDynamicAssumption(core, r, c, digit, startTrue, budgetLimit =
     core.runDynamicAssumption(r, c, digit, startTrue ? 1 : 0, budgetLimit),
   );
 }
+
+
+function readFinderEliminations(core) {
+  const eliminations = [];
+  for (let i = 0; i < core.finderResultEliminationCount(); i++) {
+    const fact = decodeFact(core.finderResultEliminationFactAt(i));
+    eliminations.push({ r: fact.r, c: fact.c, digit: fact.digit });
+  }
+  return eliminations;
+}
+
+export function runDynamicNishioFinder(core, budgetLimit = 6790) {
+  core.runDynamicNishioFinder(budgetLimit);
+  const actionType = core.finderResultActionType();
+  const budgetCalls = core.resultBudgetCalls();
+  if (actionType === 0) return { finding: null, budgetCalls, budgetLimit };
+
+  const r = core.finderResultStartR();
+  const c = core.finderResultStartC();
+  const d = core.finderResultStartDigit();
+  return {
+    finding: {
+      actionType: "eliminate",
+      technique: "dynamicNishioChain",
+      patternCells: [[r, c]],
+      eliminations: readFinderEliminations(core),
+      context: { r, c, d, branches: null },
+    },
+    budgetCalls,
+    budgetLimit,
+  };
+}
+
+export function runDynamicUnaryFinder(core, budgetLimit = 6790) {
+  core.runDynamicUnaryFinder(budgetLimit);
+  const actionType = core.finderResultActionType();
+  const budgetCalls = core.resultBudgetCalls();
+  if (actionType === 0) return { finding: null, budgetCalls, budgetLimit };
+
+  const startR = core.finderResultStartR();
+  const startC = core.finderResultStartC();
+  const startDigit = core.finderResultStartDigit();
+
+  if (actionType === 1) {
+    const r = core.finderResultR();
+    const c = core.finderResultC();
+    const digit = core.finderResultDigit();
+    return {
+      finding: {
+        actionType: "fill",
+        technique: "dynamicUnaryChain",
+        r,
+        c,
+        digit,
+        patternCells: [[startR, startC]],
+        context: {
+          startCell: [startR, startC],
+          startDigit,
+          concludeCell: [r, c],
+          concludeDigit: digit,
+          concludeValue: true,
+          branches: null,
+        },
+      },
+      budgetCalls,
+      budgetLimit,
+    };
+  }
+
+  const eliminations = readFinderEliminations(core);
+  return {
+    finding: {
+      actionType: "eliminate",
+      technique: "dynamicUnaryChain",
+      patternCells: [[startR, startC]],
+      eliminations,
+      context: {
+        startCell: [startR, startC],
+        startDigit,
+        concludeValue: false,
+        eliminationCount: eliminations.length,
+        branches: null,
+      },
+    },
+    budgetCalls,
+    budgetLimit,
+  };
+}
