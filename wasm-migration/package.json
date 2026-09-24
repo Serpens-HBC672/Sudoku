@@ -10,10 +10,11 @@
     "build": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime stub --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --outFile build/sudoku-techniques.wasm",
     "build:simd": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime stub --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --enable simd --outFile build/sudoku-techniques-simd.wasm",
     "test:static": "node tests/static-differential.mjs",
-    "test": "npm run build && npm run test:static && npm run test:dynamic",
+    "test": "npm run build && npm run test:static && npm run test:dynamic && npm run test:dynamic-finders",
     "oracle": "node benchmark/generate-oracle-traces.mjs",
     "benchmark:static": "node benchmark/benchmark-static.mjs",
-    "test:dynamic": "node tests/dynamic-differential.mjs"
+    "test:dynamic": "node tests/dynamic-differential.mjs",
+    "test:dynamic-finders": "node tests/dynamic-finder-differential.mjs"
   },
   "devDependencies": {
     "assemblyscript": "0.27.31"
