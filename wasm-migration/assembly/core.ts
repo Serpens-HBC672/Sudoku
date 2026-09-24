@@ -64,8 +64,24 @@ function tripleKey(unitType: i32, idx: i32, d: i32): i32 {
 }
 
 @inline
+function positionBit(pos: i32): u16 {
+  switch (pos) {
+    case 0: return 0x001;
+    case 1: return 0x002;
+    case 2: return 0x004;
+    case 3: return 0x008;
+    case 4: return 0x010;
+    case 5: return 0x020;
+    case 6: return 0x040;
+    case 7: return 0x080;
+    case 8: return 0x100;
+    default: return 0;
+  }
+}
+
+@inline
 function bitForDigit(d: i32): u16 {
-  return <u16>(1 << <u32>(d - 1));
+  return positionBit(d - 1);
 }
 
 @inline
@@ -160,7 +176,7 @@ function clearUnitPositionsOnly(index: i32, d: i32): void {
 
   let ui = unitMaskIndex(0, r, d);
   let m = unchecked(unitDigitMask[ui]);
-  const rowBit = <u16>(1 << <u32>c);
+  const rowBit = positionBit(c);
   if ((m & rowBit) != 0) {
     unchecked(unitDigitMask[ui] = <u16>(m & ~rowBit));
     markTripleTouched(0, r, d);
@@ -168,7 +184,7 @@ function clearUnitPositionsOnly(index: i32, d: i32): void {
 
   ui = unitMaskIndex(1, c, d);
   m = unchecked(unitDigitMask[ui]);
-  const colBit = <u16>(1 << <u32>r);
+  const colBit = positionBit(r);
   if ((m & colBit) != 0) {
     unchecked(unitDigitMask[ui] = <u16>(m & ~colBit));
     markTripleTouched(1, c, d);
@@ -176,7 +192,7 @@ function clearUnitPositionsOnly(index: i32, d: i32): void {
 
   ui = unitMaskIndex(2, box, d);
   m = unchecked(unitDigitMask[ui]);
-  const boxBit = <u16>(1 << <u32>posInBox);
+  const boxBit = positionBit(posInBox);
   if ((m & boxBit) != 0) {
     unchecked(unitDigitMask[ui] = <u16>(m & ~boxBit));
     markTripleTouched(2, box, d);
@@ -332,11 +348,11 @@ function initMasks(): void {
       const bit = bitForDigit(d);
       if ((mask & bit) == 0) continue;
       let ui = unitMaskIndex(0, r, d);
-      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << <u32>c)));
+      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | positionBit(c)));
       ui = unitMaskIndex(1, c, d);
-      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << <u32>r)));
+      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | positionBit(r)));
       ui = unitMaskIndex(2, box, d);
-      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << <u32>posInBox)));
+      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | positionBit(posInBox)));
     }
   }
 
