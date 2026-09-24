@@ -12221,6 +12221,39 @@ function renderStringPanels() {
     return normalizeOracleValue(propagateAssumption(grid, getCands, r, c, d, !!startTrue));
   }
 
+  function propagateDynamicFromMasks(grid, masks, r, c, d, startTrue, budgetLimit = DFC_BUDGET) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const result = propagateAssumptionDynamic(grid, getCands, r, c, d, !!startTrue, budget);
+    return {
+      result: normalizeOracleValue(result),
+      budgetCalls: budget.calls,
+      budgetLimit: budget.limit,
+    };
+  }
+
+  function findDynamicNishioFromMasks(grid, masks) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      return normalizeOracleValue(findDynamicNishioChain(grid, getCands));
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
+  function findDynamicUnaryFromMasks(grid, masks) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      return normalizeOracleValue(findDynamicUnaryChain(grid, getCands));
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
   globalThis.__SUDOKU_WASM_MIGRATION_TEST_HOOKS__ = Object.freeze({
     version: 1,
     techniqueKeys: () => TECHNIQUE_CHAIN.map((entry) => entry.key),
@@ -12228,6 +12261,9 @@ function renderStringPanels() {
     tracePuzzle,
     enumerateAvailableFromMasks,
     propagateStaticFromMasks,
+    propagateDynamicFromMasks,
+    findDynamicNishioFromMasks,
+    findDynamicUnaryFromMasks,
   });
 })();
 
