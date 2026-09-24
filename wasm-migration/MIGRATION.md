@@ -1,101 +1,240 @@
-# Human-technique JS -> WASM migration contract
+# MIGRATION.md
 
-## Frozen authority
+# Human-technique JS → WASM migration
 
-This migration branch starts from:
+## Authority and scope
 
-- source branch: `feat/android-release-packaging`
-- frozen source commit: `fa68cb875b32673a66d8d9a3b46d891b3e3adee7`
-- readable source: `Sudoku v3.23.3-rc.3 - DevVer.html`
-- benchmark corpus: `求解器的数独基准测试盘面参考.txt` (57 boards)
+Authoritative readable source:
 
-The JavaScript DevVer implementation is the behavioral oracle until a WASM implementation has passed differential verification.
+- branch: `feat/android-release-packaging`
+- baseline: `fa68cb875b32673a66d8d9a3b46d891b3e3adee7`
+- source: `Sudoku v3.23.3-rc.3 - DevVer.html`
+- source Git blob: `80402c3fadd8a7cd408fc283ea6e9632fa8833cc`
+- benchmark: `求解器的数独基准测试盘面参考.txt`
+- benchmark Git blob: `3ebce44796bc41a18d94f2b00925f762a13365fd`
 
-## Scope
+The readable DevVer implementation remains the behavioral oracle. The mangled/minified `main` HTML is not a migration source.
 
-In scope:
+In scope: the human-style solving / technique-discovery engine, candidate state, forcing-chain propagation, JS Finding compatibility, main/Worker computation adapters, differential/oracle/coverage/benchmark infrastructure.
 
-- the 53 human solving techniques registered in `TECHNIQUE_CHAIN`;
-- candidate-mask and technique-search support needed by those techniques;
-- forcing-chain propagation and its exact budget/order semantics;
-- a compatibility adapter that returns the current JS-facing Finding shape;
-- benchmark, oracle-trace, coverage, and differential-test tooling.
+Explicitly excluded: **MRV/backtracking generator**, UI/UX, DOM rendering, message text generation, CSS/navigation, Android packaging, APK/AAB/signing/release work, Base64 embedding, and DLX except as an independent pre-existing validation helper if needed.
 
-Out of scope:
+No commit in this migration is a merge to `main`.
 
-- MRV/backtracking puzzle generation;
-- DLX uniqueness solving unless a later migration step requires a read-only test helper;
-- UI/UX, rendering, Chinese explanations, highlighting, controls, settings behavior;
-- unrelated application behavior.
+## Language decision
 
-The MRV generator is intentionally left to the repository owner.
+AssemblyScript **0.27.31** is retained.
 
-## Correctness gates
+The real forcing-chain hotspot, not a helper microbenchmark, was ported first: board/candidate masks, incremental unit masks, static propagation, dynamic mid-level propagation, nested Nishio, shared DFC budget, Dynamic Nishio/Unary/Multiple.
 
-Every migrated step is rejected if any of the following occurs:
+A C++ fallback was **not** started because AssemblyScript produced a practical improvement on the actual forcing-chain workload while passing exact behavioral gates. The final benchmark evidence is recorded in `BENCHMARK.md`.
 
-1. an elimination removes the digit that is the known final solution for that cell;
-2. a fill/fix/advanced action writes a digit different from the known final solution;
-3. after applying the step, an affected empty cell has zero candidates.
+The runtime is AssemblyScript `minimal`. The early `stub` prototype did not reclaim temporary managed allocations and eventually trapped in long multi-technique/corpus sessions; switching runtime fixes a lifecycle/runtime issue without changing technique discovery semantics.
 
-The third check existed visually in reports as `×` but was not previously an actual gate. This branch upgrades it to a real `verifySoundnessAfterApply` failure.
+## Candidate and board representation
 
-Exact differential comparison additionally preserves:
+- board: fixed 81-cell row-major byte storage
+- candidate state: fixed 81-entry `u16` masks
+- authoritative invariant: `(mask & ~0x1FF) == 0`
+- bit `d-1` represents Sudoku digit `d`
+- row/column/box candidate positions: 9-bit masks
+- facts: integer ids `r*81 + c*9 + (d-1)`
+- temporary digit arrays exist only at compatibility/context boundaries
 
-- technique order;
-- row/column/box traversal order;
-- digit order;
-- combination enumeration order;
-- first-match behavior;
-- elimination array order;
-- contradiction selection order;
-- forcing-chain true/false fact insertion order;
-- DFC budget accounting and abort semantics.
+Candidate Sets/Arrays are not the authoritative migrated representation.
 
-A mathematically valid but differently selected first finding is still a migration mismatch.
+## Propagation representation
 
-## Technique coverage
+The WASM propagation core mirrors the incremental JS `propagateAssumptionCore` contract:
 
-The existing `findAllAvailableSteps()` implementation is reused as the coverage probe. The migration hook exposes two complementary modes:
+- fixed grid and cell candidate masks
+- unit-digit position masks
+- placed-digit masks
+- ordered true/false fact buffers plus membership bitsets
+- touched-cell and touched-unit/digit tracking
+- explicit outer-frame snapshot/restore for one nested dynamic layer
+- stable contradiction checks
+- row-major / unit / digit ordering
+- 200-iteration guard
+- exact shared budget accounting
 
-- `tracePuzzle()`: normal first-match solving trace without running all 53 techniques at every step;
-- `enumerateAvailableFromMasks()`: full 53-technique scan of a recorded state.
+Dynamic mid-level propagation remains:
 
-This separation is deliberate. Running all 53 techniques at every state of DFC-heavy boards such as Golden Nugget or Platinum Blonde would distort the performance benchmark by repeatedly invoking the most expensive techniques.
+`Naked Single → Hidden Single → Locked Candidates → Naked Pair → Hidden Pair → Naked Triple → Hidden Triple → X-Wing → Swordfish → one-level nested Nishio`
 
-The trace generator can optionally attach full available-finding scans to selected states and produces a machine-readable coverage summary.
+No technique was added to or removed from that propagation list.
 
-## AssemblyScript milestone 1
+## DFC and nesting contract
 
-The first compiled prototype ports the exact static propagation kernel used by the forcing-chain family:
+Current frozen DFC budget: **6790 calls**.
 
-`Naked Single -> Hidden Single -> Locked Candidates`
+The value is a semantic limit, not a wall-clock target. Faster WASM execution does not reset or raise it.
 
-It preserves the original `propagateAssumptionCore` semantics for:
+Preserved:
 
-- 9-bit candidate masks;
-- base candidate restrictions;
-- true/false fact insertion order;
-- incremental candidate/unit masks;
-- touched-cell and touched-unit contradiction checks;
-- 200-iteration guard;
-- row-major / unit / digit scan order.
+- shared call counter across branches;
+- abort when the current JS contract aborts;
+- fresh empty result membership state on budget abort;
+- all Dynamic Multiple branches are evaluated before contradiction aggregation, matching JS array construction / `.some()` semantics;
+- nested Nishio depth remains exactly one static-propagation level;
+- candidate/assumption order is unchanged;
+- first contradiction selection remains deterministic.
 
-The differential suite executes deterministic true/false assumptions across all 57 benchmark boards, including a second candidate-mask variant per board. This is a gate for expanding the port into dynamic propagation.
+## Technique mapping
 
-## Next implementation order
+Ids are zero-based `TECHNIQUE_CHAIN` positions. The registry is derived from the oracle.
 
-After milestone 1 is green:
+| id | JS technique key | WASM implementation |
+|---:|---|---|
+| 0 | nakedSingle | `basic-finders.ts / findNakedSingle` |
+| 1 | hiddenSingle | `basic-finders.ts / findHiddenSingle` |
+| 2 | lockedCandidate | `basic-finders.ts / findLockedCandidate` |
+| 3 | gsp | `basic-finders.ts / findGsp` |
+| 4 | nakedPair | `basic-finders.ts / findNakedSubset(2)` |
+| 5 | hiddenPair | `basic-finders.ts / findHiddenSubset(2)` |
+| 6 | nakedTriple | `basic-finders.ts / findNakedSubset(3)` |
+| 7 | hiddenTriple | `basic-finders.ts / findHiddenSubset(3)` |
+| 8 | nakedQuad | `basic-finders.ts / findNakedSubset(4)` |
+| 9 | hiddenQuad | `basic-finders.ts / findHiddenSubset(4)` |
+| 10 | xWing | `basic-finders.ts / findFish(2)` |
+| 11 | swordfish | `basic-finders.ts / findFish(3)` |
+| 12 | skyscraper | `basic-finders.ts / findSkyscraper` |
+| 13 | twoStringKite | `basic-finders.ts / findTwoStringKite` |
+| 14 | emptyRectangle | `basic-finders.ts / findEmptyRectangle` |
+| 15 | jellyfish | `basic-finders.ts / findFish(4)` |
+| 16 | squirmbagFish | `basic-finders.ts / findFish(5)` |
+| 17 | finnedXWing | `basic-finders.ts / findFinnedFish(2)` |
+| 18 | finnedSwordfish | `basic-finders.ts / findFinnedFish(3)` |
+| 19 | finnedJellyfish | `basic-finders.ts / findFinnedFish(4)` |
+| 20 | uniqueRectangleType1 | `basic-finders.ts / findUniqueRectangleType1` |
+| 21 | uniqueRectangleType2 | `basic-finders.ts / findUniqueRectangleType2` |
+| 22 | hiddenUniqueRectangle | `basic-finders.ts / findHiddenUniqueRectangle` |
+| 23 | bugPlusOne | `basic-finders.ts / findBugPlusOne` |
+| 24 | xyzWing | `basic-finders.ts / findWing(3,2)` |
+| 25 | wWing | `basic-finders.ts / findWWing` |
+| 26 | wxyzWing | `basic-finders.ts / findWing(4,3)` |
+| 27 | xyChain | `basic-finders.ts / findXYChain` |
+| 28 | aic | `aic-finder.ts / aicFind` |
+| 29 | niceLoop | `aic-finder.ts / niceLoopFind` |
+| 30 | sueDeCoq | `sdc-finder.ts / sdcFind` |
+| 31 | fireworkTriple | `firework-finder.ts / fireworkFind(31)` |
+| 32 | fireworkQuadruple | `firework-finder.ts / fireworkFind(32)` |
+| 33 | fireworkWWing | `firework-finder.ts / fireworkFind(33)` |
+| 34 | fireworkAlp | `firework-finder.ts / fireworkFind(34)` |
+| 35 | pom | `basic-finders.ts / findPom` |
+| 36 | alsXZ | `basic-finders.ts / findAlsXZ` |
+| 37 | ahsXZ | `basic-finders.ts / findAhsXZ` |
+| 38 | alsChain | `als-advanced.ts / alsChainFind` |
+| 39 | deathBlossom | `als-advanced.ts / deathBlossomFind` |
+| 40 | medusa3D | `medusa-finder.ts / medusaFind` |
+| 41 | tridagon | `tridagon-finder.ts / tridagonFind` |
+| 42 | unaryChain | `core.ts / runStaticUnaryFinder` |
+| 43 | nishioChain | `core.ts / runStaticNishioFinder` |
+| 44 | multipleChain | `core.ts / runStaticMultipleFinder` |
+| 45 | tridagonForce | `core.ts / runTridagonForceFinder` |
+| 46 | skLoop | `skloop-finder.ts / skLoopFind` |
+| 47 | msls | `msls-finder.ts / mslsFind` |
+| 48 | juniorExocet | `exocet-finder.ts / juniorExocetFind` |
+| 49 | seniorExocet | `exocet-finder.ts / seniorExocetFind` |
+| 50 | dynamicNishioChain | `core.ts / runDynamicNishioFinder` |
+| 51 | dynamicUnaryChain | `core.ts / runDynamicUnaryFinder` |
+| 52 | dynamicMultipleChain | `core.ts / runDynamicMultipleFinder` |
 
-1. port Naked/Hidden Pair and Triple and X-Wing/Swordfish into the dynamic propagation list;
-2. port one-level nested Nishio with shared budget accounting;
-3. port Dynamic Nishio / Dynamic Unary outer search;
-4. validate on #22, #23, #39, #44, #56 before migrating the remaining technique families;
-5. expand raw Finding serialization and JS compatibility adapter;
-6. migrate remaining technique families in existing `TECHNIQUE_CHAIN` order, keeping exact per-technique differential tests.
+The shared propagation functions corresponding to JS `propagateAssumptionCore`, `propagateAssumption`, `propagateAssumptionDynamic` and nested Nishio are implemented in `assembly/core.ts`.
 
-AssemblyScript remains the first implementation language. A C++ prototype is only justified if the real DFC-heavy end-to-end benchmark shows inadequate improvement after the dynamic hotspot has been ported.
+## Ordering guarantees
 
-## No merge policy
+The behavioral port intentionally preserves:
 
-This branch is a migration work branch. Do not merge it into `main` or replace the distribution HTML until exact behavior and benchmark gates are complete.
+- TECHNIQUE_CHAIN order;
+- row / column / box order;
+- digit ascending order;
+- JS combination enumeration order;
+- Set/Map insertion-order dependent outputs where observable;
+- candidate enumeration order;
+- first-match selection;
+- selected pattern;
+- fill selection;
+- elimination order;
+- patternCells order;
+- AIC/Medusa/chain traversal order;
+- forcing-chain assumption order;
+- contradiction order;
+- DFC budget and abort behavior.
+
+Mathematical equivalence alone is not accepted.
+
+## Finding ABI and adapter
+
+WASM uses packed fixed buffers and tagged metadata internally. JS-facing code receives the existing Finding object shape.
+
+```text
+WASM result buffers
+  -> sudoku-wasm-adapter.js
+  -> existing Finding contract
+  -> existing renderer/message/UI
+```
+
+The UI does not depend on internal WASM layouts.
+
+The preferred boundary is coarse:
+
+- `findNextStepWasm`: one in-WASM ordered registry search, then result materialization;
+- `findAllAvailableStepsWasm`: one in-WASM full-registry availability scan, then materialization only for hit techniques.
+
+The Exocet solution validator remains an external validation contract in migration/oracle tests. If it rejects a selected Exocet finding, the coarse dispatcher resumes at the next registry id rather than changing Exocet discovery.
+
+## Main thread / Worker
+
+Both paths instantiate **the same `sudoku-techniques.wasm`**:
+
+```text
+                    -> main-thread adapter
+same .wasm module <
+                    -> Worker adapter
+```
+
+The Worker exposes coarse `findNext` and `findAll` operations plus lower-level differential diagnostics. It does not retain the old JS engine as a second solving authority.
+
+## Shared soundness contract
+
+A selected finding is a hard failure when:
+
+1. it eliminates the known solution digit from a cell;
+2. it fills a digit different from the known solution;
+3. applying it leaves an unsolved affected cell with zero candidates.
+
+Case 3 was upgraded from report-only behavior to an actual shared validation failure. Multiple zero-candidate cells are reported in stable row-major order.
+
+Exhaustive known-solution validation stays in migration/testing paths; production need not pay the cost of a full known-solution check.
+
+## Semantic differences
+
+No intentional Sudoku technique-discovery semantic difference is permitted.
+
+Implementation-only differences that are not observable solver semantics include:
+
+- Sets/Maps replaced by indexed bitsets/fixed arrays while explicitly preserving insertion-order outputs;
+- packed integer fact/cell ids;
+- fixed result buffers;
+- direct WASM ABI instead of JS collections;
+- AssemblyScript minimal runtime for lifecycle-safe temporary allocation.
+
+Any final validation exception must be documented here before delivery; it must not be hidden by output sorting or test normalization.
+
+## Performance opportunities intentionally not applied
+
+See `PERFORMANCE_OPPORTUNITIES.md`.
+
+The most important deferred ideas are in-place mutation + undo logs instead of snapshot/clone behavior, cross-technique caches, reordered search, more aggressive pruning and altered DFC limits/depth. They are not applied because each can change observable discovery order or calibrated forcing-chain semantics.
+
+## Known remaining risks
+
+- Seven registry techniques are not observed by either the complete first-match corpus trace or the bounded all-available coverage sample; see `COVERAGE.md`.
+- The strict oracle contract makes branch-heavy search less amenable to automatic SIMD vectorization.
+- Long-running full-trace and representative benchmark workflows are intentionally separated from fast CI because the extreme puzzles are expensive.
+- The final owner-specific Base64 embedding step remains outside this branch.
+
+## MRV exclusion
+
+There is no MRV WASM implementation in this migration. The generator remains owned by the repository owner as explicitly requested.
