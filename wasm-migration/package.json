@@ -10,14 +10,15 @@
     "build": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime stub --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --outFile build/sudoku-techniques.wasm",
     "build:simd": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime stub --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --enable simd --outFile build/sudoku-techniques-simd.wasm",
     "test:static": "node tests/static-differential.mjs",
-    "test": "npm run build && npm run test:static && npm run test:dynamic && npm run test:dynamic-finders && npm run test:standalone && npm run test:static-finders",
+    "test": "npm run build && npm run test:static && npm run test:dynamic && npm run test:dynamic-finders && npm run test:standalone && npm run test:static-finders && npm run test:worker",
     "oracle": "node benchmark/generate-oracle-traces.mjs",
     "test:dynamic": "node tests/dynamic-differential.mjs",
     "test:dynamic-finders": "node tests/dynamic-finder-differential.mjs",
     "benchmark:dfc": "node benchmark/benchmark-dfc.mjs",
     "corpus": "node benchmark/generate-corpus.mjs",
     "test:standalone": "node tests/standalone-finder-differential.mjs",
-    "test:static-finders": "node tests/static-finder-differential.mjs"
+    "test:static-finders": "node tests/static-finder-differential.mjs",
+    "test:worker": "node tests/worker-parity.mjs"
   },
   "devDependencies": {
     "assemblyscript": "0.27.31"
