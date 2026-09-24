@@ -392,3 +392,128 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
     },
   };
 }
+
+
+export function runStaticNishioFinder(core) {
+  core.runStaticNishioFinder();
+  if (core.finderResultActionType() === 0) return null;
+  const r = core.finderResultStartR();
+  const c = core.finderResultStartC();
+  const d = core.finderResultStartDigit();
+  return {
+    actionType: "eliminate",
+    technique: "nishioChain",
+    patternCells: [[r, c]],
+    eliminations: readFinderEliminations(core),
+    context: { r, c, d, branches: null },
+  };
+}
+
+export function runStaticUnaryFinder(core) {
+  core.runStaticUnaryFinder();
+  const actionType = core.finderResultActionType();
+  if (actionType === 0) return null;
+  const startR = core.finderResultStartR();
+  const startC = core.finderResultStartC();
+  const startDigit = core.finderResultStartDigit();
+  if (actionType === 1) {
+    const r = core.finderResultR();
+    const c = core.finderResultC();
+    const digit = core.finderResultDigit();
+    return {
+      actionType: "fill",
+      technique: "unaryChain",
+      r,
+      c,
+      digit,
+      patternCells: [[startR, startC]],
+      context: {
+        startCell: [startR, startC],
+        startDigit,
+        concludeCell: [r, c],
+        concludeDigit: digit,
+        concludeValue: true,
+        branches: null,
+      },
+    };
+  }
+  const eliminations = readFinderEliminations(core);
+  return {
+    actionType: "eliminate",
+    technique: "unaryChain",
+    patternCells: [[startR, startC]],
+    eliminations,
+    context: {
+      startCell: [startR, startC],
+      startDigit,
+      concludeValue: false,
+      eliminationCount: eliminations.length,
+      branches: null,
+    },
+  };
+}
+
+export function runStaticMultipleFinder(core) {
+  core.runStaticMultipleFinder();
+  const actionType = core.finderResultActionType();
+  if (actionType === 0) return null;
+
+  const kindCode = core.finderResultKind();
+  const patternCells = readFinderPatternCells(core);
+  const eliminations = actionType === 2 ? readFinderEliminations(core) : null;
+  const r = core.finderResultR();
+  const c = core.finderResultC();
+  const digit = core.finderResultDigit();
+  let context;
+
+  if (kindCode === 1) {
+    const startR = core.finderResultStartR();
+    const startC = core.finderResultStartC();
+    const startDigits = maskToDigits(core.getInputMask(startR * 9 + startC) & 0x1ff);
+    context = actionType === 1
+      ? {
+          kind: "cell",
+          startCell: [startR, startC],
+          startDigits,
+          concludeCell: [r, c],
+          concludeDigit: digit,
+          branches: null,
+        }
+      : {
+          kind: "cell",
+          startCell: [startR, startC],
+          startDigits,
+          eliminationCount: eliminations.length,
+          branches: null,
+        };
+  } else {
+    const unitTypeCode = core.finderResultUnitType();
+    const unitType = unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box";
+    const unitIdx = core.finderResultUnitIdx();
+    const startDigit = core.finderResultStartDigit();
+    context = actionType === 1
+      ? {
+          kind: "region",
+          unitType,
+          unitIdx,
+          digit: startDigit,
+          startCells: patternCells.map((cell) => [...cell]),
+          concludeCell: [r, c],
+          concludeDigit: digit,
+          branches: null,
+        }
+      : {
+          kind: "region",
+          unitType,
+          unitIdx,
+          digit: startDigit,
+          startCells: patternCells.map((cell) => [...cell]),
+          eliminationCount: eliminations.length,
+          branches: null,
+        };
+  }
+
+  return actionType === 1
+    ? { actionType: "fill", technique: "multipleChain", r, c, digit, patternCells, context }
+    : { actionType: "eliminate", technique: "multipleChain", patternCells, eliminations, context };
+}
