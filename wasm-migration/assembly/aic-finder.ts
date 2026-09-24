@@ -261,6 +261,56 @@ export function aicFind():i32 {
   return 0;
 }
 
+
+function sameAsStartPartner(p:i32,pDigits:StaticArray<u8>,pCounts:StaticArray<u8>,pCells:StaticArray<u8>):bool{
+  if(<i32>unchecked(pDigits[p])!=<i32>unchecked(pathDigits[0]))return false;
+  return sameCellSet(
+    <i32>unchecked(pCounts[p]),pCells,p*MAX_NODE_CELLS,
+    <i32>unchecked(pathCounts[0]),pathCells,0
+  );
+}
+
+function niceDfs(currentPathCount:i32,lastStrong:bool,remainingLinks:i32):bool{
+  if(remainingLinks<=0)return false;
+  const nextStrong=!lastStrong,node=currentPathCount-1;
+  const pDigits=new StaticArray<u8>(96),pCounts=new StaticArray<u8>(96),pCells=new StaticArray<u8>(288);
+  const pc=nextStrong?strongPartners(node,pDigits,pCounts,pCells):weakPartners(node,pDigits,pCounts,pCells);
+  for(let p:i32=0;p<pc;p++){
+    if(nextStrong&&sameAsStartPartner(p,pDigits,pCounts,pCells)){
+      copyPartner(currentPathCount,p,pDigits,pCounts,pCells);
+      pathCount=currentPathCount+1;
+      found=1;
+      return true;
+    }
+    const pd=<i32>unchecked(pDigits[p]),pn=<i32>unchecked(pCounts[p]);
+    if(partnerVisited(pd,pn,pCells,p*MAX_NODE_CELLS,currentPathCount))continue;
+    copyPartner(currentPathCount,p,pDigits,pCounts,pCells);
+    if(niceDfs(currentPathCount+1,nextStrong,remainingLinks-1))return true;
+  }
+  return false;
+}
+
+export function niceLoopFind():i32{
+  found=0;subtype=-1;eliminationCount=0;pathCount=0;
+  for(let maxLinks:i32=3;maxLinks<=7;maxLinks+=2){
+    for(let index:i32=0;index<CELL_COUNT;index++){
+      if(!empty(index))continue;
+      const m=maskAt(index);
+      for(let d:i32=1;d<=9;d++){
+        if((m&bit(d))==0)continue;
+        unchecked(pathDigits[0]=<u8>d);unchecked(pathCounts[0]=1);unchecked(pathCells[0]=<u8>index);
+        const pDigits=new StaticArray<u8>(32),pCounts=new StaticArray<u8>(32),pCells=new StaticArray<u8>(96);
+        const pc=strongPartners(0,pDigits,pCounts,pCells);
+        for(let p:i32=0;p<pc;p++){
+          copyPartner(1,p,pDigits,pCounts,pCells);
+          if(niceDfs(2,true,maxLinks-1))return found;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 export function aicResultSubtype():i32{return subtype;}
 export function aicResultEliminationCount():i32{return eliminationCount;}
 export function aicResultEliminationAt(i:i32):i32{return i>=0&&i<eliminationCount?<i32>unchecked(eliminations[i]):-1;}
