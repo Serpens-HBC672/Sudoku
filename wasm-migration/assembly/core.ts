@@ -2126,68 +2126,42 @@ export function exocetFinderResultTargetAt(i:i32): i32 { return exocetResultTarg
 export function exocetFinderResultBaseMask(): i32 { return exocetResultBaseMask(); }
 export function exocetFinderResultTrueBaseDigit(): i32 { return exocetResultTrueBaseDigit(); }
 
-// Coarse first-match dispatcher. Technique ids are zero-based TECHNIQUE_CHAIN
-// positions from the frozen JS oracle. Each finder preserves its own raw result
-// buffer; the JS compatibility adapter decodes that buffer without re-running
-// the search.
+// Coarse TECHNIQUE_CHAIN dispatchers. Technique ids are zero-based positions
+// from the frozen JS oracle. Search stays inside WASM; adapters cross the
+// boundary only to materialize returned findings.
+let availableTechniqueMaskLow: u32 = 0;
+let availableTechniqueMaskHigh: u32 = 0;
+
+function runTechniqueSearchById(id: i32, budgetLimit: i32): bool {
+  if (id <= 27 || (id >= 35 && id <= 37)) return basicRunTechniqueFinder(id) != 0;
+  if (id == 38) return alsChainFind() != 0;
+  if (id == 39) return deathBlossomFind() != 0;
+  if (id == 28) { aicFind(); return aicResultNodeCount() > 0; }
+  if (id == 29) { niceLoopFind(); return aicResultNodeCount() > 0; }
+  if (id == 30) { sdcFind(); return sdcResultActionType() != 0; }
+  if (id >= 31 && id <= 34) { fireworkFind(id); return fireworkResultActionType() != 0; }
+  if (id == 40) { medusaFind(); return medusaResultActionType() != 0; }
+  if (id == 41) { tridagonFind(); return tridagonResultActionType() != 0; }
+  if (id == 42) return runStaticUnaryFinder() != 0;
+  if (id == 43) return runStaticNishioFinder() != 0;
+  if (id == 44) return runStaticMultipleFinder() != 0;
+  if (id == 45) return runTridagonForceFinder() != 0;
+  if (id == 46) { skLoopFind(); return skLoopResultEliminationCount() > 0; }
+  if (id == 47) { mslsFind(); return mslsResultEliminationCount() > 0; }
+  if (id == 48) { juniorExocetFind(); return exocetResultTechnique() != 0; }
+  if (id == 49) { seniorExocetFind(); return exocetResultTechnique() != 0; }
+  if (id == 50) return runDynamicNishioFinder(budgetLimit) != 0;
+  if (id == 51) return runDynamicUnaryFinder(budgetLimit) != 0;
+  if (id == 52) return runDynamicMultipleFinder(budgetLimit) != 0;
+  return false;
+}
+
 export function runFindNextTechniqueIdFrom(startId: i32, budgetLimit: i32 = 6790): i32 {
   let first = startId;
   if (first < 0) first = 0;
   if (first > 53) first = 53;
   for (let id: i32 = first; id < 53; id++) {
-    let found = false;
-    if (id <= 27 || (id >= 35 && id <= 37)) {
-      found = basicRunTechniqueFinder(id) != 0;
-    } else if (id == 38) {
-      found = alsChainFind() != 0;
-    } else if (id == 39) {
-      found = deathBlossomFind() != 0;
-    } else if (id == 28) {
-      aicFind();
-      found = aicResultNodeCount() > 0;
-    } else if (id == 29) {
-      niceLoopFind();
-      found = aicResultNodeCount() > 0;
-    } else if (id == 30) {
-      sdcFind();
-      found = sdcResultActionType() != 0;
-    } else if (id >= 31 && id <= 34) {
-      fireworkFind(id);
-      found = fireworkResultActionType() != 0;
-    } else if (id == 40) {
-      medusaFind();
-      found = medusaResultActionType() != 0;
-    } else if (id == 41) {
-      tridagonFind();
-      found = tridagonResultActionType() != 0;
-    } else if (id == 42) {
-      found = runStaticUnaryFinder() != 0;
-    } else if (id == 43) {
-      found = runStaticNishioFinder() != 0;
-    } else if (id == 44) {
-      found = runStaticMultipleFinder() != 0;
-    } else if (id == 45) {
-      found = runTridagonForceFinder() != 0;
-    } else if (id == 46) {
-      skLoopFind();
-      found = skLoopResultEliminationCount() > 0;
-    } else if (id == 47) {
-      mslsFind();
-      found = mslsResultEliminationCount() > 0;
-    } else if (id == 48) {
-      juniorExocetFind();
-      found = exocetResultTechnique() != 0;
-    } else if (id == 49) {
-      seniorExocetFind();
-      found = exocetResultTechnique() != 0;
-    } else if (id == 50) {
-      found = runDynamicNishioFinder(budgetLimit) != 0;
-    } else if (id == 51) {
-      found = runDynamicUnaryFinder(budgetLimit) != 0;
-    } else if (id == 52) {
-      found = runDynamicMultipleFinder(budgetLimit) != 0;
-    }
-    if (found) return id;
+    if (runTechniqueSearchById(id, budgetLimit)) return id;
   }
   return -1;
 }
@@ -2195,6 +2169,24 @@ export function runFindNextTechniqueIdFrom(startId: i32, budgetLimit: i32 = 6790
 export function runFindNextTechniqueId(budgetLimit: i32 = 6790): i32 {
   return runFindNextTechniqueIdFrom(0, budgetLimit);
 }
+
+// Full availability scan remains one coarse WASM call. Two u32 masks expose
+// the 53 registered technique ids without requiring i64/BigInt glue.
+export function runScanAvailableTechniques(budgetLimit: i32 = 6790): i32 {
+  availableTechniqueMaskLow = 0;
+  availableTechniqueMaskHigh = 0;
+  let count: i32 = 0;
+  for (let id: i32 = 0; id < 53; id++) {
+    if (!runTechniqueSearchById(id, budgetLimit)) continue;
+    if (id < 32) availableTechniqueMaskLow |= <u32>(1 << id);
+    else availableTechniqueMaskHigh |= <u32>(1 << (id - 32));
+    count++;
+  }
+  return count;
+}
+
+export function resultAvailableTechniqueMaskLow(): u32 { return availableTechniqueMaskLow; }
+export function resultAvailableTechniqueMaskHigh(): u32 { return availableTechniqueMaskHigh; }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
