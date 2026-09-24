@@ -9031,7 +9031,7 @@ function estimateDifficulty(startGrid, solution, onProgress) {
       for (const { r, c, digit } of finding.eliminations) tracker.markErased(r, c, digit);
     }
     if (solution) {
-      const problem = verifySoundnessAfterApply(finding, solution);
+      const problem = verifySoundnessAfterApply(finding, solution, g, getCands);
       if (problem) {
         const afterSnapshot = snapshotCandidatesGrid(g, getCands);
         return buildSoundnessErrorReport(finding, beforeSnapshot, afterSnapshot, problem);
@@ -9939,24 +9939,60 @@ function formatCandidatesGridText(snapshot) {
   }
   return lines.join("\n");
 }
-// 核对一步finding有没有跟真实解矛盾。fill/fix/advanced类的看填的
-// 数字对不对;eliminate类的看划掉的候选数字,有没有哪一个恰好就是
-// 真实解——是的话就是把正确答案当成假的划掉了,这是最危险的一种错误
-// (填错数字至少还有机会靠后续矛盾检测出来,消除类的错误会让盘面
-// 悄悄失去唯一解,可能要走出很远才会暴露)。返回null表示没问题。
-function verifySoundnessAfterApply(ph, solution) {
-  if (!solution) return null; // 没有真实解可对照(理论上不该发生),不做检查
-  if (ph.actionType === "eliminate") {
-    for (const e of ph.eliminations) {
-      if (solution[e.r][e.c] === e.digit) {
-        return { kind: "badElimination", cell: { r: e.r, c: e.c }, digit: e.digit, correctDigit: solution[e.r][e.c] };
+// 核对一步finding有没有破坏盘面正确性。这里故意把三类错误放在
+// 同一个门禁里,迁移/差分测试也复用这套判据,避免生产路径和测试路径
+// 各自维护一份“什么算错误”的定义:
+//   1) eliminate把某格的真实答案候选划掉;
+//   2) fill/fix/advanced填入了与真实解不同的数字;
+//   3) 这一步执行后,某个受影响的仍为空的格子候选数变成0。
+// 第3项以前只会在错误报告快照里显示成“×”,并没有真的触发报错;
+// WASM迁移开始前把它补成正式门禁,这样行为对拍时能更早抓到候选传播
+// 被破坏的问题。grid/getCands是执行完finding后的实时状态。
+function verifySoundnessAfterApply(ph, solution, grid, getCands) {
+  if (solution) {
+    if (ph.actionType === "eliminate") {
+      for (const e of ph.eliminations) {
+        if (solution[e.r][e.c] === e.digit) {
+          return { kind: "badElimination", cell: { r: e.r, c: e.c }, digit: e.digit, correctDigit: solution[e.r][e.c] };
+        }
+      }
+    } else {
+      // fill / fix / advanced
+      if (solution[ph.r][ph.c] !== ph.digit) {
+        return { kind: "badFill", cell: { r: ph.r, c: ph.c }, digit: ph.digit, correctDigit: solution[ph.r][ph.c] };
       }
     }
-    return null;
   }
-  // fill / fix / advanced
-  if (solution[ph.r][ph.c] !== ph.digit) {
-    return { kind: "badFill", cell: { r: ph.r, c: ph.c }, digit: ph.digit, correctDigit: solution[ph.r][ph.c] };
+
+  // 没有执行后的盘面/候选读取器时只能做上面两项;生产路径和迁移
+  // oracle都会传这两个参数。只检查“本步可能碰到”的格子,不做81格
+  // 全盘扫描,避免给测难度的每一步增加不必要的固定开销。
+  if (!grid || !getCands) return null;
+  const affected = new Set();
+  const add = (r, c) => affected.add(r * 9 + c);
+  if (ph.actionType === "eliminate") {
+    for (const e of ph.eliminations) add(e.r, e.c);
+  } else if (Number.isInteger(ph.r) && Number.isInteger(ph.c)) {
+    // 定性填入只会让同行/同列/同宫的候选发生客观变化。
+    for (const key of collectUnitPeers(ph.r, ph.c)) {
+      const [r, c] = key.split(",").map(Number);
+      add(r, c);
+    }
+  }
+
+  // row-major检查,让同一异常在JS/WASM差分里总是报同一个“第一个格子”。
+  const ordered = [...affected].sort((a, b) => a - b);
+  for (const idx of ordered) {
+    const r = Math.floor(idx / 9);
+    const c = idx % 9;
+    if (grid[r][c] !== 0) continue;
+    if (getCands(r, c).length === 0) {
+      return {
+        kind: "zeroCandidates",
+        cell: { r, c },
+        correctDigit: solution ? solution[r][c] : null,
+      };
+    }
   }
   return null;
 }
@@ -9971,6 +10007,8 @@ function buildSoundnessErrorReport(ph, beforeSnapshot, afterSnapshot, problem) {
   const problemText =
     problem.kind === "badElimination"
       ? `!! 严重: 格子(${problem.cell.r},${problem.cell.c})的真实解是${problem.correctDigit},但这一步把候选数${problem.digit}当成假的划掉了,而${problem.digit}恰好就是真实解本身。`
+      : problem.kind === "zeroCandidates"
+      ? `!! 严重: 这一步执行后,格子(${problem.cell.r},${problem.cell.c})仍然是空格,但全部候选数都被划掉了${problem.correctDigit ? `,真实解应为${problem.correctDigit}` : ""}。`
       : `!! 严重: 格子(${problem.cell.r},${problem.cell.c})被填成了${problem.digit},但真实解是${problem.correctDigit}。`;
   return [
     "==== 数独求解器 · 盘面正确性检查失败 ====",
@@ -10030,7 +10068,7 @@ function applyPendingHint(ph) {
     pushHistory("play");
     if (!state.showCandidates) state.showCandidates = true; // 消除得让人看得见才有意义
     markCellsErased(state.play.notes, ph.eliminations);
-    const problem = verifySoundnessAfterApply(ph, state.play.solution);
+    const problem = verifySoundnessAfterApply(ph, state.play.solution, state.play.grid, (r, c) => liveCandidatesAt(state.play.grid, state.play.notes, r, c));
     if (problem) {
       const afterSnapshot = snapshotCandidatesGrid(state.play.grid, (r, c) => liveCandidatesAt(state.play.grid, state.play.notes, r, c));
       state.play.soundnessError = { report: buildSoundnessErrorReport(ph, beforeSnapshot, afterSnapshot, problem) };
@@ -10055,7 +10093,7 @@ function applyPendingHint(ph) {
   pushHistory("play");
   const beforeFillSnapshot = snapshotCandidatesGrid(state.play.grid, (rr, cc) => liveCandidatesAt(state.play.grid, state.play.notes, rr, cc));
   commitFill(state.play.grid, state.play.notes, r, c, digit);
-  const fillProblem = verifySoundnessAfterApply(ph, state.play.solution);
+  const fillProblem = verifySoundnessAfterApply(ph, state.play.solution, state.play.grid, (r, c) => liveCandidatesAt(state.play.grid, state.play.notes, r, c));
   if (fillProblem) {
     const afterFillSnapshot = snapshotCandidatesGrid(state.play.grid, (rr, cc) => liveCandidatesAt(state.play.grid, state.play.notes, rr, cc));
     state.play.soundnessError = { report: buildSoundnessErrorReport(ph, beforeFillSnapshot, afterFillSnapshot, fillProblem) };
