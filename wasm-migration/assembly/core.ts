@@ -2147,8 +2147,11 @@ export function exocetFinderResultTrueBaseDigit(): i32 { return exocetResultTrue
 // positions from the frozen JS oracle. Each finder preserves its own raw result
 // buffer; the JS compatibility adapter decodes that buffer without re-running
 // the search.
-export function runFindNextTechniqueId(budgetLimit: i32 = 6790): i32 {
-  for (let id: i32 = 0; id < 53; id++) {
+export function runFindNextTechniqueIdFrom(startId: i32, budgetLimit: i32 = 6790): i32 {
+  let first = startId;
+  if (first < 0) first = 0;
+  if (first > 53) first = 53;
+  for (let id: i32 = first; id < 53; id++) {
     let found = false;
     if (id <= 27 || (id >= 35 && id <= 37)) {
       found = basicRunTechniqueFinder(id) != 0;
@@ -2204,6 +2207,10 @@ export function runFindNextTechniqueId(budgetLimit: i32 = 6790): i32 {
     if (found) return id;
   }
   return -1;
+}
+
+export function runFindNextTechniqueId(budgetLimit: i32 = 6790): i32 {
+  return runFindNextTechniqueIdFrom(0, budgetLimit);
 }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
