@@ -133,3 +133,15 @@ Smallest behavior-preserving fix:
 This is a concrete capacity/indexing defect. The later allocator trap is consistent with prior heap-state corruption from that unchecked out-of-bounds write; no claim is made that AssemblyScript incremental GC itself is defective.
 
 Exact Senior reproduction plus the specified fast differential/Worker gates must pass before incremental runtime promotion.
+
+
+### Follow-on named-stack evidence: recursive Nice Loop frame
+
+After hoisting the non-reentrant `strongPartners` remainder scratch, standalone validation again progressed to case #5 `niceLoop`, then trapped one allocation later.
+
+Named/debug stack:
+`~lib/rt/tlsf/insertBlock -> ~lib/rt/itcms/step -> ~lib/rt/itcms/__new -> StaticArray<u8>#constructor -> aic-finder/niceDfs -> niceDfs -> niceLoopFind`.
+
+The source-level allocation is the recursive frame's `pDigits/pCounts/pCells` partner-buffer set. Because parent frames remain live while child DFS calls execute, these buffers cannot be replaced by one shared array. The bounded fix preallocates six module-scoped frame-specific buffer sets, matching the existing `currentPathCount 2..7` recursion contract, and selects by frame. No link ordering, recursion depth, partner enumeration, first-match logic, or Finding data is changed.
+
+Fast-gate validation remains authoritative.
