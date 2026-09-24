@@ -7,7 +7,7 @@
 - migration branch: `codex/wasm-human-techniques-migration`
 - recovery checkpoint before the bounded task: `7e23d42e249959ebeeb5690ddabe2b34d036f602`
 - focused diagnostic harness commit: `9a147e240e388cff53ceca9012a898abc963fed2`
-- current task status: bounded #22 standalone pre-call trap diagnostic complete; historical trap did not reproduce in the isolated #22 historical run; no solver fix was made
+- current task status: historical full-trace vs isolated-#22 execution-environment comparison complete; shared-instance allocator history is the strongest supported difference, but causation is not yet proven; no solver fix was made
 - scope remains human-style technique WASM migration only; MRV, UI/UX, Android packaging, and unrelated application logic remain out of scope
 
 ## Recovered commits since the previously visible checkpoint
@@ -202,3 +202,87 @@ Relevant changes between historical `3fb9801` and current checkpoint `886293e9`:
 No causal conclusion is assigned to any of those changes. The new bounded evidence only establishes that isolated #22 on `3fb9801` can reach 2 GiB of exported WASM memory and still finish without the historical trap. The old failure may depend on execution context that this #22-only task intentionally did not reproduce; do not infer which context factor matters without a separately authorized experiment.
 
 No solver fix was made in this task.
+
+
+## Historical full-trace failure vs isolated #22 environment comparison (latest bounded task)
+
+### Run-ID correction
+
+The run ID supplied as the "failed #22 workflow", `36006543354`, is not a failed full-trace run.
+
+GitHub records `36006543354` as:
+- workflow: `One-state MSLS`
+- branch/head: `codex/wasm-msls-one-state` / `57fa77e35fd0ecb9a3b45c67c5d53d634e8ee89b`
+- conclusion: `success`
+- behavior: checkout historical target `3fb98015986848e20025f8d1b1881f28fa6978e4`, create a fresh WASM instance, and execute exactly one `runStandaloneTechniqueFinder(core, 47)` call at #22 step 2
+
+The actual historical full-trace failure tied to `3fb98015986848e20025f8d1b1881f28fa6978e4` is workflow run `36000326922`.
+
+That run:
+- completed #1 through #21 successfully
+- entered #22
+- terminated with `RuntimeError: unreachable`
+- stack reached `runStandaloneTechniqueFinder`
+- did not log the exact failing technique id, step, or WASM memory size at the #22 boundary
+
+The successful isolated #22 comparison run remains `36009770454`.
+
+### Evidence table
+
+| Evidence | FAILED RUN `36000326922` | SUCCESS RUN `36009770454` | DIFFERENCE | POSSIBLE RELEVANCE |
+| --- | --- | --- | --- | --- |
+| Checked-out implementation | `3fb98015986848e20025f8d1b1881f28fa6978e4` | `1c28c42200241cdad9c048d17016f59fe2823a06`, which is exactly 3 commits ahead of `3fb9801` | The only files changed between them are the added #22 diagnostic workflow/harness plus a 12-line JS bridge pre-call hook. No AssemblyScript source or package/build config changed. | Strong evidence that the WASM implementation/build inputs were intentionally kept historical; the main material change is harness/instrumentation, not Sudoku technique logic. |
+| Workflow command | `node tests/full-trace-differential.mjs --ids all --out full-differential-results` | `node tests/benchmark-22-trap-diagnostic.mjs` | Full corpus versus #22 only. | High relevance. |
+| Node | `v22.23.2` | `v22.23.2` | None. | Does not explain the difference. |
+| npm | `10.9.8` | `10.9.8` | None. | Does not explain the difference. |
+| AssemblyScript | package pins `0.27.31` | same package pin `0.27.31` | None visible. | Does not explain the difference. |
+| Runtime mode | `--runtime stub` | `--runtime stub` | None. | Important because stub runtime never frees managed allocations, so allocation history persists within a reused instance. |
+| Build flags | `--optimizeLevel 3 --shrinkLevel 0 --exportRuntime` | same | None. | Does not explain the difference. |
+| Explicit initial-memory flag | none | none | None configured. | Failed-run initial pages were not logged. Successful isolated run directly observed 4 pages / 262144 bytes at its first standalone call. |
+| Explicit maximum-memory flag | none | none | None configured. | No configured maximum is visible in the workflow/package command. Isolated run successfully reached 32768 pages / 2 GiB; this establishes observed size, not an explicit configured maximum. |
+| Runner OS | Ubuntu 24.04.5 | Ubuntu 24.04.5 | None at OS release level. | Low relevance by itself. |
+| Runner image | `ubuntu-24.04` image `20260920.314.1`, Azure `eastus` | `ubuntu-24.04` image `20260907.300.1`, Azure `westcentralus` | Different image revision/region. | Uncontrolled environmental difference, but weaker than the verified harness lifecycle difference because Node/npm/build flags were identical. |
+| Earlier puzzles before #22 | Yes: logs prove #1-#21 completed in sequence before the trap in #22. | No. Only benchmark #22 was run. | Material. | High relevance for a non-collecting runtime. |
+| WASM instantiation | `const core = await instantiateCore(WASM_URL)` occurs once before the outer puzzle loop. | `const core = await instantiateCore(WASM_URL)` occurs after selecting #22 and before its trace loop. | Shared instance across puzzles versus fresh instance for #22. | Highest-supported difference. |
+| WASM instance reuse across puzzles | Yes, verified from `full-trace-differential.mjs`. | Not applicable; only #22 exists in the run. | Material. | #22 in the failed run inherits the same module/runtime/allocator state used by #1-#21. |
+| Linear-memory reuse across puzzles | Yes. The same exported `core.memory` belongs to the single reused instance; `loadPosition` calls `resetInput` but does not instantiate a new module/memory. | Fresh linear memory for the new #22 instance. | Material. | Strong candidate explanation for why isolated #22 does not reproduce the trap. |
+| Stub allocator lifecycle | Same stub runtime for all puzzles in the reused instance; no per-puzzle module recreation. | Same stub runtime, but lifetime begins immediately before #22. | Allocation history length differs drastically. | Strong relevance because the stub runtime is non-collecting / never frees managed allocations. |
+| JS-side retained WASM allocations | No explicit managed WASM object pointers are retained by the historical full-trace harness. Findings are materialized as host JS arrays/objects from scalar exports; the report stores case metadata, not Finding objects. The persistent host reference is the `core` instance itself. | Same bridge model, plus diagnostic breadcrumbs stored as host JS objects. | No evidence of host-side pinning/reference retention causing the difference. | Points toward internal runtime/linear-memory lifetime rather than an obvious JS reference leak. |
+| Memory immediately before #22 | Not logged. | Fresh run begins at 4 pages / 262144 bytes. | Exact historical boundary is unknown. | This is the critical missing measurement; do not claim the historical page count. |
+| Memory growth during #22 | Not logged. | 4 pages -> 32768 pages / 2 GiB, six observed growth events, then #22 still completes 138/138. | Only isolated run is instrumented. | Shows #22 alone can consume/grow a very large stub-runtime memory footprint without trapping; it does not show what happened after #1-#21 had already consumed allocator space. |
+| Process/resource limits | Workflow timeout 45 min; no RAM, cgroup, `ulimit`, `NODE_OPTIONS`, or V8 heap limit was logged. | Workflow timeout 20 min; likewise no explicit RAM/cgroup/`ulimit`/V8 limit logged. | Timeout differs; memory/resource ceiling not evidenced. | Timeout is not explanatory because the failed run trapped well before 45 min. Host memory ceiling cannot be compared from existing logs. |
+| Outcome | #1-#21 pass; #22 later `RuntimeError: unreachable`. | #22 passes 138/138 with 2333 standalone calls. | Failure depends on context not present in isolated #22. | Consistent with accumulated module/runtime state; not yet proof of causation. |
+
+### Harness-level conclusion
+
+A concrete material difference is established:
+
+- historical full trace `36000326922` created **one** WASM instance before the 57-puzzle loop and reused that same instance, allocator state, and linear memory through #1-#21 and into #22;
+- isolated run `36009770454` created a **fresh** WASM instance for #22;
+- both used the historical AssemblyScript `stub` runtime and the same visible compiler/build configuration;
+- the stub runtime is non-collecting, so managed allocations are not reclaimed during the lifetime of that instance;
+- `resetInput()` clears solver/input state but does not recreate the WASM instance or its linear memory.
+
+Therefore #22 did begin under materially different WASM runtime/allocator history in the failed full trace versus the successful isolated run.
+
+What is **not** established:
+- the exact linear-memory page count at the #21 -> #22 boundary in the failed run;
+- that memory exhaustion was definitively the cause of `unreachable`;
+- any particular Sudoku technique as the cause;
+- any causal role for the differing GitHub runner image revision/region.
+
+### Smallest supported next reproduction experiment — do not run yet
+
+If a future task explicitly authorizes another experiment, the smallest evidence-preserving reproduction is:
+
+1. check out historical target `3fb98015986848e20025f8d1b1881f28fa6978e4`;
+2. instantiate the WASM core exactly once;
+3. execute the same WASM finder sequence for benchmark #1 through #21 using the frozen oracle states and the same validator, but suppress per-step console/report output;
+4. immediately before starting #22, record `core.memory.buffer.byteLength` and pages;
+5. run #22 on that same still-live instance with the existing pre-call technique breadcrumbs;
+6. stop at the first trap, or record successful completion;
+7. do not change solver logic, runtime mode, technique implementations, or allocator behavior.
+
+This directly tests the only strongly evidenced lifecycle difference without rerunning unrelated migration work or all 57 puzzles.
+
+No experiment was run and no solver change was made in this comparison task.
