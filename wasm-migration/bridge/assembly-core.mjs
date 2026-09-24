@@ -312,6 +312,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [26, "wxyzWing"],
   [27, "xyChain"],
   [28, "aic"],
+  [29, "niceLoop"],
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
@@ -559,6 +560,32 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
         unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
         idx: core.standaloneResultMeta(3),
       },
+    };
+  }
+
+  if (techniqueId === 29) {
+    core.runNiceLoopFinder();
+    const nodeCount = core.aicFinderResultNodeCount();
+    if (nodeCount === 0) return null;
+    const chainNodes = [];
+    for (let i = 0; i < nodeCount; i++) {
+      const cells = [];
+      for (let j = 0; j < core.aicFinderResultNodeCellCount(i); j++) {
+        const index = core.aicFinderResultNodeCellAt(i, j);
+        cells.push([Math.floor(index / 9), index % 9]);
+      }
+      chainNodes.push({ cells, d: core.aicFinderResultNodeDigit(i) });
+    }
+    const start = chainNodes[0];
+    const [r, c] = start.cells[0];
+    return {
+      actionType: "fill",
+      technique,
+      r,
+      c,
+      digit: start.d,
+      chainNodes,
+      context: { chainLength: chainNodes.length },
     };
   }
 
