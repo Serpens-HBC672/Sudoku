@@ -1,4 +1,18 @@
 import {
+  aicResetInput,
+  aicSetInputCell,
+  aicSetInputMask,
+  aicFind,
+  aicResultSubtype,
+  aicResultEliminationCount,
+  aicResultEliminationAt,
+  aicResultNodeCount,
+  aicResultNodeDigit,
+  aicResultNodeCellCount,
+  aicResultNodeCellAt,
+} from "./aic-finder";
+
+import {
   basicResetInput,
   basicSetInputCell,
   basicSetInputMask,
@@ -256,18 +270,21 @@ export function resetInput(): void {
   clearU8(inputGrid, CELL_COUNT);
   clearU16(inputBaseMask, CELL_COUNT);
   basicResetInput();
+  aicResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
   if (index < 0 || index >= CELL_COUNT) return;
   unchecked(inputGrid[index] = <u8>digit);
   basicSetInputCell(index, digit);
+  aicSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
   if (index < 0 || index >= CELL_COUNT) return;
   unchecked(inputBaseMask[index] = <u16>(mask & 0x01ff));
   basicSetInputMask(index, mask);
+  aicSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -1634,6 +1651,15 @@ export function standaloneResultExtraCellCount(): i32 { return basicExtraCellCou
 export function standaloneResultExtraCellAt(i: i32): i32 { return basicExtraCellAt(i); }
 export function standaloneResultExtraDigitCount(): i32 { return basicExtraDigitCount(); }
 export function standaloneResultExtraDigitAt(i: i32): i32 { return basicExtraDigitAt(i); }
+
+export function runAicFinder(): i32 { return aicFind(); }
+export function aicFinderResultSubtype(): i32 { return aicResultSubtype(); }
+export function aicFinderResultEliminationCount(): i32 { return aicResultEliminationCount(); }
+export function aicFinderResultEliminationAt(i:i32): i32 { return aicResultEliminationAt(i); }
+export function aicFinderResultNodeCount(): i32 { return aicResultNodeCount(); }
+export function aicFinderResultNodeDigit(i:i32): i32 { return aicResultNodeDigit(i); }
+export function aicFinderResultNodeCellCount(i:i32): i32 { return aicResultNodeCellCount(i); }
+export function aicFinderResultNodeCellAt(i:i32,j:i32): i32 { return aicResultNodeCellAt(i,j); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
