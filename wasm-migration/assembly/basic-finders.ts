@@ -18,6 +18,8 @@ const patternCells = new StaticArray<u8>(CELL_COUNT);
 let patternCount: i32 = 0;
 const eliminations = new StaticArray<u16>(FACT_COUNT);
 let eliminationCount: i32 = 0;
+const extraCells = new StaticArray<u8>(CELL_COUNT);
+let extraCellCount: i32 = 0;
 const meta = new StaticArray<i32>(16);
 
 @inline
@@ -91,6 +93,7 @@ function resetResult(): void {
   resultDigit = 0;
   patternCount = 0;
   eliminationCount = 0;
+  extraCellCount = 0;
   for (let i: i32 = 0; i < 16; i++) unchecked(meta[i] = 0);
 }
 
@@ -705,6 +708,116 @@ function findEmptyRectangle(): i32 {
   return 0;
 }
 
+
+function findFinnedFish(k: i32, id: i32): i32 {
+  const eligibleBases = new StaticArray<i32>(9);
+  const baseCombo = new StaticArray<i32>(9);
+  const allPositions = new StaticArray<i32>(81);
+  const coverOrder = new StaticArray<i32>(9);
+  const coverCombo = new StaticArray<i32>(9);
+  const fins = new StaticArray<i32>(81);
+
+  for (let d: i32 = 1; d <= 9; d++) {
+    const bit = bitForDigit(d);
+    for (let baseType: i32 = 0; baseType < 2; baseType++) {
+      let eligibleCount: i32 = 0;
+      for (let idx: i32 = 0; idx < 9; idx++) {
+        let positions: i32 = 0;
+        for (let pos: i32 = 0; pos < 9; pos++) {
+          const index = unitCellIndex(baseType, idx, pos);
+          if (emptyAt(index) && (maskAt(index) & bit) != 0) positions++;
+        }
+        if (positions >= 1) unchecked(eligibleBases[eligibleCount++] = idx);
+      }
+      if (eligibleCount < k) continue;
+
+      initCombination(baseCombo, k);
+      while (true) {
+        let allCount: i32 = 0;
+        let coverCount: i32 = 0;
+        let baseMask: i32 = 0;
+        for (let bi: i32 = 0; bi < k; bi++) {
+          const baseIdx = unchecked(eligibleBases[unchecked(baseCombo[bi])]);
+          baseMask |= 1 << baseIdx;
+          for (let pos: i32 = 0; pos < 9; pos++) {
+            const index = unitCellIndex(baseType, baseIdx, pos);
+            if (!emptyAt(index) || (maskAt(index) & bit) == 0) continue;
+            unchecked(allPositions[allCount++] = index);
+            const coverIdx = baseType == 0 ? index % 9 : index / 9;
+            let seen = false;
+            for (let i: i32 = 0; i < coverCount; i++) if (unchecked(coverOrder[i]) == coverIdx) { seen = true; break; }
+            if (!seen) unchecked(coverOrder[coverCount++] = coverIdx);
+          }
+        }
+
+        if (coverCount > k) {
+          initCombination(coverCombo, k);
+          while (true) {
+            let finCount: i32 = 0;
+            for (let i: i32 = 0; i < allCount; i++) {
+              const index = unchecked(allPositions[i]);
+              const cross = baseType == 0 ? index % 9 : index / 9;
+              let covered = false;
+              for (let ci: i32 = 0; ci < k; ci++) {
+                if (unchecked(coverOrder[unchecked(coverCombo[ci])]) == cross) { covered = true; break; }
+              }
+              if (!covered) unchecked(fins[finCount++] = index);
+            }
+
+            if (finCount > 0) {
+              const finBox = boxIndex(unchecked(fins[0]) / 9, unchecked(fins[0]) % 9);
+              let oneBox = true;
+              for (let i: i32 = 1; i < finCount; i++) {
+                const index = unchecked(fins[i]);
+                if (boxIndex(index / 9, index % 9) != finBox) { oneBox = false; break; }
+              }
+
+              if (oneBox) {
+                eliminationCount = 0;
+                const coverType = baseType == 0 ? 1 : 0;
+                for (let ci: i32 = 0; ci < k; ci++) {
+                  const coverIdx = unchecked(coverOrder[unchecked(coverCombo[ci])]);
+                  for (let pos: i32 = 0; pos < 9; pos++) {
+                    const index = unitCellIndex(coverType, coverIdx, pos);
+                    const baseIdxOfCell = baseType == 0 ? index / 9 : index % 9;
+                    if ((baseMask & (1 << baseIdxOfCell)) != 0) continue;
+                    let isFin = false;
+                    for (let fi: i32 = 0; fi < finCount; fi++) if (unchecked(fins[fi]) == index) { isFin = true; break; }
+                    if (isFin || !emptyAt(index) || (maskAt(index) & bit) == 0) continue;
+                    let seesAll = true;
+                    for (let fi: i32 = 0; fi < finCount; fi++) {
+                      if (!cellsSee(index, unchecked(fins[fi]))) { seesAll = false; break; }
+                    }
+                    if (seesAll) appendElimination(index, d);
+                  }
+                }
+
+                if (eliminationCount > 0) {
+                  techniqueId = id; actionType = 2; subtype = baseType;
+                  patternCount = 0; extraCellCount = 0;
+                  for (let i: i32 = 0; i < allCount; i++) appendPattern(unchecked(allPositions[i]));
+                  for (let i: i32 = 0; i < finCount; i++) unchecked(extraCells[extraCellCount++] = <u8>unchecked(fins[i]));
+                  let coverMask: i32 = 0;
+                  for (let ci: i32 = 0; ci < k; ci++) coverMask |= 1 << unchecked(coverOrder[unchecked(coverCombo[ci])]);
+                  unchecked(meta[0] = d);
+                  unchecked(meta[1] = baseType);
+                  unchecked(meta[2] = baseMask);
+                  unchecked(meta[3] = coverMask);
+                  unchecked(meta[4] = k);
+                  return actionType;
+                }
+              }
+            }
+            if (!advanceCombination(coverCombo, coverCount, k)) break;
+          }
+        }
+        if (!advanceCombination(baseCombo, eligibleCount, k)) break;
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -723,6 +836,9 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 14) return findEmptyRectangle();
   if (id == 15) return findFish(4, 15);
   if (id == 16) return findFish(5, 16);
+  if (id == 17) return findFinnedFish(2, 17);
+  if (id == 18) return findFinnedFish(3, 18);
+  if (id == 19) return findFinnedFish(4, 19);
   return 0;
 }
 
@@ -742,4 +858,9 @@ export function basicResultEliminationAt(i: i32): i32 {
 }
 export function basicResultMeta(i: i32): i32 {
   return i >= 0 && i < 16 ? unchecked(meta[i]) : 0;
+}
+
+export function basicResultExtraCellCount(): i32 { return extraCellCount; }
+export function basicResultExtraCellAt(i: i32): i32 {
+  return i >= 0 && i < extraCellCount ? <i32>unchecked(extraCells[i]) : -1;
 }
