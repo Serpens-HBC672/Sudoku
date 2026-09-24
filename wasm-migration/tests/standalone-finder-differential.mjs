@@ -48,6 +48,8 @@ const TECHNIQUES = [
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
+  [38, "alsChain"],
+  [39, "deathBlossom"],
   [40, "medusa3D"],
 ];
 
