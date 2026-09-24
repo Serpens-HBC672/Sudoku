@@ -269,3 +269,71 @@ export function runDynamicMultipleFinder(core, budgetLimit = 6790) {
     budgetLimit,
   };
 }
+
+
+const STANDALONE_TECHNIQUE_KEYS = new Map([
+  [0, "nakedSingle"],
+  [1, "hiddenSingle"],
+  [2, "lockedCandidate"],
+]);
+
+function readStandalonePatternCells(core) {
+  const cells = [];
+  for (let i = 0; i < core.standaloneResultPatternCount(); i++) {
+    const index = core.standaloneResultPatternAt(i);
+    cells.push([Math.floor(index / 9), index % 9]);
+  }
+  return cells;
+}
+
+function readStandaloneEliminations(core) {
+  const out = [];
+  for (let i = 0; i < core.standaloneResultEliminationCount(); i++) {
+    out.push(decodeFact(core.standaloneResultEliminationAt(i)));
+  }
+  return out;
+}
+
+export function runStandaloneTechniqueFinder(core, techniqueId) {
+  core.runStandaloneTechniqueFinder(techniqueId);
+  const actionType = core.standaloneResultActionType();
+  if (actionType === 0) return null;
+  const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
+  if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  const r = core.standaloneResultR();
+  const c = core.standaloneResultC();
+  const digit = core.standaloneResultDigit();
+
+  if (techniqueId === 0) {
+    return { actionType: "fill", technique, r, c, digit };
+  }
+
+  if (techniqueId === 1) {
+    const unitTypeCode = core.standaloneResultMeta(0);
+    return {
+      actionType: "fill",
+      technique,
+      r,
+      c,
+      digit,
+      unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
+      idx: core.standaloneResultMeta(1),
+    };
+  }
+
+  const subtypeCode = core.standaloneResultSubtype();
+  const subtype = ["pointingRow", "pointingCol", "claimingRow", "claimingCol"][subtypeCode];
+  const box = core.standaloneResultMeta(0);
+  const line = core.standaloneResultMeta(1);
+  const lineType = core.standaloneResultMeta(2) === 0 ? "row" : "col";
+  const lockedDigit = core.standaloneResultMeta(3);
+  return {
+    actionType: "eliminate",
+    technique,
+    subtype,
+    patternCells: readStandalonePatternCells(core),
+    eliminations: readStandaloneEliminations(core),
+    context: { box, line, lineType, digit: lockedDigit },
+  };
+}
