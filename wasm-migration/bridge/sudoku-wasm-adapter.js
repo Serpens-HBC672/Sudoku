@@ -1517,7 +1517,7 @@ export function findAllAvailableStepsWasm(core, options = {}) {
   for (let id = 0; id < 53; id++) {
     const available = id < 32 ? !!(low & (1 << id)) : !!(high & (1 << (id - 32)));
     if (!available) continue;
-    const finding = runTechniqueById(core, id, budgetLimit, true);
+    const finding = runTechniqueById(core, id, budgetLimit, false);
     if (!finding) throw new Error("WASM availability scan marked technique " + id + " but adapter could not materialize its Finding");
     if (!validator || validator(finding)) findings.push(finding);
   }

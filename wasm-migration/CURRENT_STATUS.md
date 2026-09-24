@@ -193,3 +193,24 @@ Boundary-only fix:
 - this removes generated `@varargs` wrappers while leaving technique order, budget semantics, first-match behavior, and solver logic unchanged.
 
 The fix is an ABI/integration correction, not a Sudoku algorithm change.
+
+
+### findAll shared-result-buffer materialization fix
+
+Fast-gate run `36026637703` on the SK Loop + coarse-dispatch ABI fixes passed static, dynamic, dynamic-finder, standalone, Exocet-report, and static forcing-chain gates, then Worker parity reached `findAllAvailableStepsWasm` and failed with:
+
+`WASM availability scan marked technique 48 but adapter could not materialize its Finding`.
+
+This is a boundary/materialization defect, not a Sudoku discovery mismatch:
+- the coarse `runScanAvailableTechniques` scan correctly marked Junior Exocet id 48 available on benchmark #22;
+- the scan then continued to Senior Exocet id 49;
+- Junior and Senior Exocet intentionally share one Exocet result buffer, and Senior resets that buffer;
+- the adapter subsequently materialized id 48 with `alreadyRun=true`, assuming its earlier result buffer still existed, so it observed `null`.
+
+The same structural risk exists for other finder groups that share module result buffers across ids. Smallest boundary-only correction:
+- keep the one coarse availability scan and its hit mask;
+- materialize only reported hit ids;
+- rerun each hit finder during materialization (`alreadyRun=false`) so its own result buffer is current;
+- preserve registry order, candidate input, first-match/discovery semantics, Finding ordering, and the public JS/Worker API.
+
+`findNextStepWasm` is unchanged because its dispatcher stops at the selected technique, so that selected finder result remains current for immediate materialization.

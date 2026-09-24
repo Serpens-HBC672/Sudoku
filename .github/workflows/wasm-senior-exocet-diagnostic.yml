@@ -11,6 +11,7 @@ on:
       - "wasm-migration/assembly/aic-finder.ts"
       - "wasm-migration/assembly/skloop-finder.ts"
       - "wasm-migration/assembly/core.ts"
+      - "wasm-migration/bridge/sudoku-wasm-adapter.js"
 
 permissions:
   contents: read
