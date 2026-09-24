@@ -9,6 +9,8 @@ import {
   runDynamicNishioFinder,
   runDynamicUnaryFinder,
   runDynamicMultipleFinder,
+  findNextStepWasm,
+  findAllAvailableStepsWasm,
 } from "./sudoku-wasm-adapter.js";
 
 let core = null;
@@ -33,6 +35,16 @@ async function handle(message) {
       return {
         type: "result",
         finding: runStandaloneTechniqueFinder(assertCore(), message.techniqueId),
+      };
+    case "findNext":
+      return {
+        type: "result",
+        finding: findNextStepWasm(assertCore(), { budgetLimit: message.budgetLimit }),
+      };
+    case "findAll":
+      return {
+        type: "result",
+        findings: findAllAvailableStepsWasm(assertCore(), { budgetLimit: message.budgetLimit }),
       };
     case "staticNishio":
       return { type: "result", finding: runStaticNishioFinder(assertCore()) };
