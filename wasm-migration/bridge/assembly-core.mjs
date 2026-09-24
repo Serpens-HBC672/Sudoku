@@ -311,6 +311,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [25, "wWing"],
   [26, "wxyzWing"],
   [27, "xyChain"],
+  [28, "aic"],
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
@@ -557,6 +558,41 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
         elimDigit: core.standaloneResultMeta(1),
         unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
         idx: core.standaloneResultMeta(3),
+      },
+    };
+  }
+
+  if (techniqueId === 28) {
+    core.runAicFinder();
+    if (core.aicFinderResultNodeCount() === 0) return null;
+    const chainNodes = [];
+    const patternCells = [];
+    for (let i = 0; i < core.aicFinderResultNodeCount(); i++) {
+      const cells = [];
+      for (let j = 0; j < core.aicFinderResultNodeCellCount(i); j++) {
+        const index = core.aicFinderResultNodeCellAt(i, j);
+        const cell = [Math.floor(index / 9), index % 9];
+        cells.push(cell);
+        patternCells.push([...cell]);
+      }
+      chainNodes.push({ cells, d: core.aicFinderResultNodeDigit(i) });
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.aicFinderResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.aicFinderResultEliminationAt(i)));
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      subtype: core.aicFinderResultSubtype() === 0 ? "type1" : "type2",
+      patternCells,
+      chainNodes,
+      eliminations,
+      context: {
+        chainLength: chainNodes.length,
+        startDigit: chainNodes[0].d,
+        endDigit: chainNodes[chainNodes.length - 1].d,
+        grouped: chainNodes.some((node) => node.cells.length > 1),
       },
     };
   }
