@@ -9,6 +9,8 @@ import {
   runDynamicNishioFinder,
   runDynamicUnaryFinder,
   runDynamicMultipleFinder,
+  findNextStepWasm,
+  findAllAvailableStepsWasm,
 } from "../bridge/sudoku-wasm-adapter.js";
 import { loadOracle } from "./load-oracle.mjs";
 import { loadBenchmarkCorpus } from "./benchmark-corpus.mjs";
@@ -47,6 +49,14 @@ for (const id of [0, 1, 2, 28, 35, 40, 41, 46, 47, 48, 49]) {
   const threaded = await call({ type: "standalone", techniqueId: id });
   assert.deepEqual(threaded, main, "main/Worker mismatch for standalone technique id " + id);
 }
+const mainNext = findNextStepWasm(mainCore, { budgetLimit: 64 });
+const workerNext = await call({ type: "findNext", budgetLimit: 64 });
+assert.deepEqual(workerNext, mainNext, "main/Worker mismatch for coarse findNext");
+
+const mainAll = findAllAvailableStepsWasm(mainCore, { budgetLimit: 64 });
+const workerAll = await call({ type: "findAll", budgetLimit: 64 });
+assert.deepEqual(workerAll, mainAll, "main/Worker mismatch for coarse findAll");
+
 for (const [type, runner] of [
   ["dynamicNishio", runDynamicNishioFinder],
   ["dynamicUnary", runDynamicUnaryFinder],
