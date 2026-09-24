@@ -313,6 +313,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [27, "xyChain"],
   [28, "aic"],
   [29, "niceLoop"],
+  [30, "sueDeCoq"],
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
@@ -338,6 +339,38 @@ function readStandaloneEliminations(core) {
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId === 30) {
+    core.runSueDeCoqFinder();
+    if (core.sdcFinderResultActionType() === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.sdcFinderResultPatternCount(); i++) {
+      const index = core.sdcFinderResultPatternAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.sdcFinderResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.sdcFinderResultEliminationAt(i)));
+    }
+    const irCount = core.sdcFinderResultMeta(3);
+    const aSize = core.sdcFinderResultMeta(4);
+    const bSize = core.sdcFinderResultMeta(5);
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: {
+        box: core.sdcFinderResultMeta(0),
+        lineType: core.sdcFinderResultMeta(1) === 0 ? "row" : "col",
+        lineIdx: core.sdcFinderResultMeta(2),
+        irCells: patternCells.slice(0, irCount).map((cell) => [...cell]),
+        aCells: patternCells.slice(irCount, irCount + aSize).map((cell) => [...cell]),
+        bCells: patternCells.slice(irCount + aSize, irCount + aSize + bSize).map((cell) => [...cell]),
+        digits: maskToDigits(core.sdcFinderResultMeta(6) & 0x1ff),
+      },
+    };
+  }
 
   if (techniqueId === 28) {
     core.runAicFinder();
