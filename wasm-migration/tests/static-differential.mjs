@@ -17,14 +17,18 @@ function popcount9(mask) {
 
 function oracleFactOrder(setLike) {
   const values = setLike?.values || [];
-  return values.map((key) => {
+  return Array.from(values, (key) => {
     const [r, c, d] = String(key).split(",").map(Number);
     return factIndex(r, c, d);
   });
 }
 
 function flattenGrid(grid) {
-  return grid.flat().map(Number);
+  const out = [];
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) out.push(Number(grid[r][c]));
+  }
+  return out;
 }
 
 function pickFacts(grid, masks, limit = 5) {
