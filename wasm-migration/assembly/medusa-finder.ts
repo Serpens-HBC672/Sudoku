@@ -321,8 +321,3 @@ export function medusaResultReasonCount():i32{return reasonCount;}
 export function medusaResultReasonNode(i:i32):i32{return i>=0&&i<reasonCount?<i32>unchecked(reasonNodes[i]):-1;}
 export function medusaResultReasonColor(i:i32):i32{return i>=0&&i<reasonCount?<i32>unchecked(reasonColors[i]):-1;}
 
-export function medusaDebugAdjCount(k:i32):i32{return k>=0&&k<FACT_COUNT?<i32>unchecked(adjCount[k]):-1;}
-export function medusaDebugAdjAt(k:i32,i:i32):i32{
-  if(k<0||k>=FACT_COUNT||i<0||i>=<i32>unchecked(adjCount[k]))return -1;
-  return <i32>unchecked(adj[k*MAX_DEGREE+i]);
-}
