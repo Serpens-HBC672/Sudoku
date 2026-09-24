@@ -20,6 +20,8 @@ const eliminations = new StaticArray<u16>(FACT_COUNT);
 let eliminationCount: i32 = 0;
 const extraCells = new StaticArray<u8>(CELL_COUNT);
 let extraCellCount: i32 = 0;
+const extraDigits = new StaticArray<u8>(CELL_COUNT);
+let extraDigitCount: i32 = 0;
 const meta = new StaticArray<i32>(16);
 
 @inline
@@ -94,6 +96,7 @@ function resetResult(): void {
   patternCount = 0;
   eliminationCount = 0;
   extraCellCount = 0;
+  extraDigitCount = 0;
   for (let i: i32 = 0; i < 16; i++) unchecked(meta[i] = 0);
 }
 
@@ -1087,6 +1090,75 @@ function findWWing():i32{
   return 0;
 }
 
+
+function xyPathContains(path: StaticArray<i32>, pathCount: i32, index: i32): bool {
+  for (let i:i32=0;i<pathCount;i++) if(unchecked(path[i])==index) return true;
+  return false;
+}
+
+function xyDfs(
+  start:i32, z:i32, current:i32, neededDigit:i32, depth:i32,
+  cells:StaticArray<i32>, masks:StaticArray<u16>, cellCount:i32,
+  visited:StaticArray<u8>, path:StaticArray<i32>, links:StaticArray<i32>,
+  pathCount:i32, linkCount:i32
+): bool {
+  if(depth>10) return false;
+  const neededBit=bitForDigit(neededDigit);
+  for(let ni:i32=0;ni<cellCount;ni++){
+    const next=unchecked(cells[ni]);
+    if(unchecked(visited[next])!=0)continue;
+    const nextMask=unchecked(masks[ni]);
+    if((nextMask&neededBit)==0||!cellsSee(current,next))continue;
+    const nextOther=singletonDigit(<u16>(nextMask&<u16>(~neededBit)));
+
+    if(nextOther==z){
+      eliminationCount=0;
+      const zBit=bitForDigit(z);
+      for(let index:i32=0;index<CELL_COUNT;index++){
+        if(!emptyAt(index)||(maskAt(index)&zBit)==0)continue;
+        if(index==next||xyPathContains(path,pathCount,index))continue;
+        if(cellsSee(index,start)&&cellsSee(index,next))appendElimination(index,z);
+      }
+      if(eliminationCount>0){
+        techniqueId=27;actionType=2;patternCount=0;extraDigitCount=0;
+        for(let i:i32=0;i<pathCount;i++)appendPattern(unchecked(path[i]));
+        appendPattern(next);
+        for(let i:i32=0;i<linkCount;i++)unchecked(extraDigits[extraDigitCount++]=<u8>unchecked(links[i]));
+        unchecked(extraDigits[extraDigitCount++]=<u8>neededDigit);
+        unchecked(meta[0]=z);
+        return true;
+      }
+    }
+
+    unchecked(visited[next]=1);
+    unchecked(path[pathCount]=next);
+    unchecked(links[linkCount]=neededDigit);
+    if(xyDfs(start,z,next,nextOther,depth+1,cells,masks,cellCount,visited,path,links,pathCount+1,linkCount+1))return true;
+    unchecked(visited[next]=0);
+  }
+  return false;
+}
+
+function findXYChain():i32{
+  const cells=new StaticArray<i32>(81),masks=new StaticArray<u16>(81);let count:i32=0;
+  for(let index:i32=0;index<CELL_COUNT;index++){
+    if(emptyAt(index)&&countBits9(maskAt(index))==2){unchecked(cells[count]=index);unchecked(masks[count]=maskAt(index));count++;}
+  }
+  if(count<3)return 0;
+  const visited=new StaticArray<u8>(81),path=new StaticArray<i32>(12),links=new StaticArray<i32>(11);
+  for(let si:i32=0;si<count;si++){
+    const start=unchecked(cells[si]),sm=unchecked(masks[si]);
+    for(let z:i32=1;z<=9;z++){
+      const zBit=bitForDigit(z);if((sm&zBit)==0)continue;
+      const other=singletonDigit(<u16>(sm&<u16>(~zBit)));
+      for(let i:i32=0;i<81;i++)unchecked(visited[i]=0);
+      unchecked(visited[start]=1);unchecked(path[0]=start);
+      if(xyDfs(start,z,start,other,1,cells,masks,count,visited,path,links,1,0))return actionType;
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -1115,6 +1187,7 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 24) return findWing(3, 2, 24);
   if (id == 25) return findWWing();
   if (id == 26) return findWing(4, 3, 26);
+  if (id == 27) return findXYChain();
   return 0;
 }
 
@@ -1139,4 +1212,9 @@ export function basicResultMeta(i: i32): i32 {
 export function basicResultExtraCellCount(): i32 { return extraCellCount; }
 export function basicResultExtraCellAt(i: i32): i32 {
   return i >= 0 && i < extraCellCount ? <i32>unchecked(extraCells[i]) : -1;
+}
+
+export function basicResultExtraDigitCount(): i32 { return extraDigitCount; }
+export function basicResultExtraDigitAt(i: i32): i32 {
+  return i >= 0 && i < extraDigitCount ? <i32>unchecked(extraDigits[i]) : -1;
 }
