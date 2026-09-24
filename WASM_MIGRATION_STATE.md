@@ -7,7 +7,7 @@
 - migration branch: `codex/wasm-human-techniques-migration`
 - recovery checkpoint before the bounded task: `7e23d42e249959ebeeb5690ddabe2b34d036f602`
 - focused diagnostic harness commit: `9a147e240e388cff53ceca9012a898abc963fed2`
-- current task status: historical full-trace vs isolated-#22 execution-environment comparison complete; shared-instance allocator history is the strongest supported difference, but causation is not yet proven; no solver fix was made
+- current task status: bounded shared-instance #1→#22 historical reproduction complete; the historical `unreachable` reproduced at #22 step 5 during standalone technique 47/MSLS after #1-#21 left linear memory at 2 GiB; no solver fix was made
 - scope remains human-style technique WASM migration only; MRV, UI/UX, Android packaging, and unrelated application logic remain out of scope
 
 ## Recovered commits since the previously visible checkpoint
@@ -286,3 +286,128 @@ If a future task explicitly authorizes another experiment, the smallest evidence
 This directly tests the only strongly evidenced lifecycle difference without rerunning unrelated migration work or all 57 puzzles.
 
 No experiment was run and no solver change was made in this comparison task.
+
+
+## Shared-instance #1→#22 historical reproduction (latest bounded task)
+
+Purpose: test only whether the historical full-trace runtime/allocation history reproduces the #22 trap. No solver logic, AssemblyScript source, runtime mode, build flags, technique order, candidate state, or optimization was changed.
+
+Diagnostic branch and run:
+- branch: `codex/wasm-22-accumulated-runtime`
+- historical implementation lineage: `3fb98015986848e20025f8d1b1881f28fa6978e4`
+- inherited JS-only pre-call hook: `2c17c22979fc391166073462175a54017dc87cb3`
+- harness commit: `49195f66165cc24696f3efd6621297cc0d3184df`
+- workflow commit: `f7c729bf9810ccea67dd6eaf4bde3c6ec15ce0a5`
+- preflight-only fix: `9112edaf06acc6b595eea20a0329718023fa8225`
+- experiment workflow run: `36012154795` (completed)
+- artifact: `sudoku-wasm-22-accumulated-runtime` / artifact id `10813655266`
+- an earlier workflow attempt `36012083071` failed in the shallow-clone lineage preflight before install/build/test; it did not execute the experiment
+
+The experiment instantiated exactly one WASM core and preserved the historical full-trace execution path for #1 through #22:
+- same `findNextStepWasm` control flow
+- same validator
+- same selected-Finding deep comparison
+- same `loadPosition` / `resetInput` calls
+- same technique ordering
+- same historical `--runtime stub --optimizeLevel 3 --shrinkLevel 0 --exportRuntime` build
+- no core recreation between puzzles
+- no run beyond #22
+
+### Linear-memory sequence
+
+`core.memory.buffer.byteLength` measures linear-memory size only; it is not a measurement of live allocated bytes and is not proof of a leak.
+
+Initial immediately after core instantiation:
+- 262144 bytes / 4 pages
+
+After each completed warm-up puzzle:
+
+| Puzzle | byteLength | pages |
+| ---: | ---: | ---: |
+| 1 | 134217728 | 2048 |
+| 2 | 268435456 | 4096 |
+| 3 | 268435456 | 4096 |
+| 4 | 536870912 | 8192 |
+| 5 | 536870912 | 8192 |
+| 6 | 536870912 | 8192 |
+| 7 | 1073741824 | 16384 |
+| 8 | 1073741824 | 16384 |
+| 9 | 1073741824 | 16384 |
+| 10 | 1073741824 | 16384 |
+| 11 | 1073741824 | 16384 |
+| 12 | 1073741824 | 16384 |
+| 13 | 1073741824 | 16384 |
+| 14 | 1073741824 | 16384 |
+| 15 | 1073741824 | 16384 |
+| 16 | 1073741824 | 16384 |
+| 17 | 1073741824 | 16384 |
+| 18 | 1073741824 | 16384 |
+| 19 | 1073741824 | 16384 |
+| 20 | 1073741824 | 16384 |
+| 21 | 2147483648 | 32768 |
+
+Important #21→#22 boundaries:
+- A — immediately after #21: 2147483648 bytes / 32768 pages
+- B — immediately before first `loadPosition` for #22: 2147483648 bytes / 32768 pages
+- C — immediately after first `loadPosition/resetInput` for #22: 2147483648 bytes / 32768 pages
+- D — immediately before the first standalone technique call in #22: 2147483648 bytes / 32768 pages
+
+Therefore `resetInput/loadPosition` did not reduce or recreate the shared WASM linear memory. #22 began with the same 2 GiB linear-memory size inherited from #1-#21.
+
+### Reproduced trap
+
+The first #22 runtime failure reproduced as:
+- error: `RuntimeError: unreachable`
+- solver step: `5`
+- standalone-call ordinal within #22: `278`
+- active technique call: `47 / msls`
+- compact state id: `bb8d5eee4b435209`
+- linear memory immediately before entering that call: 2147483648 bytes / 32768 pages
+- linear memory when the exception was caught: 4294967296 bytes / 65536 pages
+
+The final pre-call breadcrumb was synchronously written before entering `runMslsFinder`; no later standalone call began.
+
+No #22 pre-call memory-size change was observed before the failing call. The most recent completed-puzzle boundary growth before the failure was:
+- after #20: 1073741824 bytes / 16384 pages
+- after #21: 2147483648 bytes / 32768 pages
+
+The catch observed 4 GiB / 65536 pages, whereas the pre-call breadcrumb observed 2 GiB / 32768 pages. This establishes that linear memory increased during the failing call before the exception was caught. It does not by itself establish live allocation size, leaked objects, or the allocator's exact internal reason for trapping.
+
+### Exact saved pre-call state
+
+The run saved the exact failing pre-call state in the workflow artifact as `benchmark-22-failing-precall-state.json`.
+
+- puzzle: `22`
+- step: `5`
+- standalone call: `278`
+- technique: `47 / msls`
+- state id: `bb8d5eee4b435209`
+- `beforeGrid`: `000000039000010005003005800008009006070020000100400000009008050020000600400700000`
+- `beforeMasks`: `[80,185,123,162,232,106,11,0,0,482,424,106,422,0,110,74,106,0,354,297,0,290,360,0,0,107,75,22,28,0,21,84,0,95,75,0,308,0,56,181,0,37,285,393,141,0,308,50,0,244,100,342,450,198,100,37,0,39,44,0,79,0,75,212,0,81,277,284,13,0,457,205,0,181,49,0,308,39,263,387,135]`
+
+### Fresh-instance A/B comparison at the exact same call
+
+The successful isolated #22 run `36009770454` reached the same:
+- step `5`
+- standalone ordinal `278`
+- technique `47 / msls`
+- state id `bb8d5eee4b435209`
+
+In that fresh-instance run, the pre-call linear memory was:
+- 1073741824 bytes / 16384 pages
+
+That MSLS call completed and the next standalone call (`279 / juniorExocet`) began normally.
+
+In the accumulated-runtime reproduction, the same state/call began at:
+- 2147483648 bytes / 32768 pages
+
+and trapped before call 279, with 4294967296 bytes / 65536 pages visible when caught.
+
+Interpretation:
+- the historical failure is now reproducible when #22 inherits #1-#21 runtime/allocation history;
+- the active finder at the reproduced trap is MSLS, but this does **not** establish an MSLS logic defect;
+- the same MSLS call/state succeeds with a fresh runtime at a smaller linear-memory size;
+- the evidence therefore supports accumulated non-collecting runtime/allocation history as a necessary differentiating condition in these two runs;
+- do not equate linear-memory size with live bytes, do not label this a proven leak, and do not infer allocator causation beyond the observed correlation without a separately authorized experiment.
+
+No fix was made. Do not continue the migration automatically.
