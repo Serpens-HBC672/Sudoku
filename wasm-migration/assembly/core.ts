@@ -270,6 +270,11 @@ export function setInputMask(index: i32, mask: i32): void {
   basicSetInputMask(index, mask);
 }
 
+export function setGivenCell(index: i32, digit: i32): void {
+  if (index < 0 || index >= CELL_COUNT) return;
+  basicSetGivenCell(index, digit);
+}
+
 export function getInputCell(index: i32): i32 {
   if (index < 0 || index >= CELL_COUNT) return 0;
   return <i32>unchecked(inputGrid[index]);
