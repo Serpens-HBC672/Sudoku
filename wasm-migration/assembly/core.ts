@@ -1060,6 +1060,152 @@ export function runDynamicAssumption(r: i32, c: i32, d: i32, startTrue: i32, bud
   return runDynamicShared(r, c, d, startTrue != 0);
 }
 
+
+function resetFinderResult(): void {
+  finderActionType = 0;
+  finderR = -1;
+  finderC = -1;
+  finderDigit = 0;
+  finderStartR = -1;
+  finderStartC = -1;
+  finderStartDigit = 0;
+  finderEliminationCount = 0;
+}
+
+function copyOnBranchSets(): void {
+  copyU8(trueSeen, branchTrueSeen, FACT_COUNT);
+  copyU8(falseSeen, branchFalseSeen, FACT_COUNT);
+  copyU16(trueOrder, branchTrueOrder, FACT_COUNT);
+  copyU16(falseOrder, branchFalseOrder, FACT_COUNT);
+  branchTrueCount = trueCountValue;
+  branchFalseCount = falseCountValue;
+}
+
+export function runDynamicNishioFinder(budgetLimit: i32): i32 {
+  resetFinderResult();
+  budgetCallsValue = 0;
+  budgetLimitValue = budgetLimit;
+
+  for (let index: i32 = 0; index < CELL_COUNT; index++) {
+    if (unchecked(inputGrid[index]) != 0) continue;
+    const mask = unchecked(inputBaseMask[index]) & ALL_DIGITS;
+    for (let d: i32 = 1; d <= 9; d++) {
+      if ((mask & bitForDigit(d)) == 0) continue;
+      const r = index / 9;
+      const c = index % 9;
+      runDynamicShared(r, c, d, true);
+      if (contradictionValue == 0) continue;
+
+      finderActionType = 2;
+      finderStartR = r;
+      finderStartC = c;
+      finderStartDigit = d;
+      finderEliminationCount = 1;
+      unchecked(finderEliminations[0] = <u16>factIndex(r, c, d));
+      return finderActionType;
+    }
+  }
+  return 0;
+}
+
+export function runDynamicUnaryFinder(budgetLimit: i32): i32 {
+  resetFinderResult();
+  budgetCallsValue = 0;
+  budgetLimitValue = budgetLimit;
+
+  for (let index: i32 = 0; index < CELL_COUNT; index++) {
+    if (unchecked(inputGrid[index]) != 0) continue;
+    const mask = unchecked(inputBaseMask[index]) & ALL_DIGITS;
+    for (let d: i32 = 1; d <= 9; d++) {
+      if ((mask & bitForDigit(d)) == 0) continue;
+      const r = index / 9;
+      const c = index % 9;
+      const startFact = factIndex(r, c, d);
+
+      runDynamicShared(r, c, d, true);
+      if (contradictionValue != 0) continue;
+      copyOnBranchSets();
+
+      runDynamicShared(r, c, d, false);
+      if (contradictionValue != 0) continue;
+
+      // JS iterates onB.trueSet insertion order and picks the first common
+      // true fact, excluding the starting candidate itself.
+      for (let i: i32 = 0; i < branchTrueCount; i++) {
+        const k = <i32>unchecked(branchTrueOrder[i]);
+        if (k == startFact || unchecked(trueSeen[k]) == 0) continue;
+        const td = k % 9 + 1;
+        const q = (k - (td - 1)) / 9;
+        const tc = q % 9;
+        const tr = (q - tc) / 9;
+
+        finderActionType = 1;
+        finderR = tr;
+        finderC = tc;
+        finderDigit = td;
+        finderStartR = r;
+        finderStartC = c;
+        finderStartDigit = d;
+        return finderActionType;
+      }
+
+      // No common true fact: JS filters onB.falseSet in its insertion order,
+      // retaining every member also present in offB.falseSet.
+      finderEliminationCount = 0;
+      for (let i: i32 = 0; i < branchFalseCount; i++) {
+        const k = <i32>unchecked(branchFalseOrder[i]);
+        if (unchecked(falseSeen[k]) == 0) continue;
+        unchecked(finderEliminations[finderEliminationCount++] = <u16>k);
+      }
+      if (finderEliminationCount > 0) {
+        finderActionType = 2;
+        finderStartR = r;
+        finderStartC = c;
+        finderStartDigit = d;
+        return finderActionType;
+      }
+    }
+  }
+  return 0;
+}
+
+export function finderResultActionType(): i32 {
+  return finderActionType;
+}
+
+export function finderResultR(): i32 {
+  return finderR;
+}
+
+export function finderResultC(): i32 {
+  return finderC;
+}
+
+export function finderResultDigit(): i32 {
+  return finderDigit;
+}
+
+export function finderResultStartR(): i32 {
+  return finderStartR;
+}
+
+export function finderResultStartC(): i32 {
+  return finderStartC;
+}
+
+export function finderResultStartDigit(): i32 {
+  return finderStartDigit;
+}
+
+export function finderResultEliminationCount(): i32 {
+  return finderEliminationCount;
+}
+
+export function finderResultEliminationFactAt(index: i32): i32 {
+  if (index < 0 || index >= finderEliminationCount) return -1;
+  return <i32>unchecked(finderEliminations[index]);
+}
+
 export function resultBudgetCalls(): i32 {
   return budgetCallsValue;
 }
