@@ -74,6 +74,11 @@ let finderDigit: i32 = 0;
 let finderStartR: i32 = -1;
 let finderStartC: i32 = -1;
 let finderStartDigit: i32 = 0;
+let finderKind: i32 = 0; // 0 none/simple, 1 cell-multiple, 2 region-multiple
+let finderUnitType: i32 = -1;
+let finderUnitIdx: i32 = -1;
+const finderPatternCells = new StaticArray<u8>(CELL_COUNT);
+let finderPatternCellCount: i32 = 0;
 const finderEliminations = new StaticArray<u16>(FACT_COUNT);
 let finderEliminationCount: i32 = 0;
 
@@ -1084,6 +1089,10 @@ function resetFinderResult(): void {
   finderStartR = -1;
   finderStartC = -1;
   finderStartDigit = 0;
+  finderKind = 0;
+  finderUnitType = -1;
+  finderUnitIdx = -1;
+  finderPatternCellCount = 0;
   finderEliminationCount = 0;
 }
 
