@@ -95,8 +95,8 @@ function readFinderEliminations(core) {
   return eliminations;
 }
 
-export function runDynamicNishioFinder(core, budgetLimit = 6790) {
-  core.runDynamicNishioFinder(budgetLimit);
+export function runDynamicNishioFinder(core, budgetLimit = 6790, alreadyRun = false) {
+  if (!alreadyRun) core.runDynamicNishioFinder(budgetLimit);
   const actionType = core.finderResultActionType();
   const budgetCalls = core.resultBudgetCalls();
   if (actionType === 0) return { finding: null, budgetCalls, budgetLimit };
@@ -117,8 +117,8 @@ export function runDynamicNishioFinder(core, budgetLimit = 6790) {
   };
 }
 
-export function runDynamicUnaryFinder(core, budgetLimit = 6790) {
-  core.runDynamicUnaryFinder(budgetLimit);
+export function runDynamicUnaryFinder(core, budgetLimit = 6790, alreadyRun = false) {
+  if (!alreadyRun) core.runDynamicUnaryFinder(budgetLimit);
   const actionType = core.finderResultActionType();
   const budgetCalls = core.resultBudgetCalls();
   if (actionType === 0) return { finding: null, budgetCalls, budgetLimit };
@@ -189,8 +189,8 @@ function readFinderPatternCells(core) {
   return cells;
 }
 
-export function runDynamicMultipleFinder(core, budgetLimit = 6790) {
-  core.runDynamicMultipleFinder(budgetLimit);
+export function runDynamicMultipleFinder(core, budgetLimit = 6790, alreadyRun = false) {
+  if (!alreadyRun) core.runDynamicMultipleFinder(budgetLimit);
   const actionType = core.finderResultActionType();
   const budgetCalls = core.resultBudgetCalls();
   if (actionType === 0) return { finding: null, budgetCalls, budgetLimit };
@@ -349,13 +349,13 @@ function readStandaloneEliminations(core) {
   return out;
 }
 
-export function runStandaloneTechniqueFinder(core, techniqueId) {
+export function runStandaloneTechniqueFinder(core, techniqueId, alreadyRun = false) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
 
   if (techniqueId === 48 || techniqueId === 49) {
-    if (techniqueId === 48) core.runJuniorExocetFinder();
-    else core.runSeniorExocetFinder();
+    if (!alreadyRun && techniqueId === 48) core.runJuniorExocetFinder();
+    else if (!alreadyRun) core.runSeniorExocetFinder();
     if (core.exocetFinderResultTechnique() === 0) return null;
 
     const transposed = core.exocetFinderResultOrientation() === 1;
@@ -423,7 +423,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 47) {
-    core.runMslsFinder();
+    if (!alreadyRun) core.runMslsFinder();
     if (core.mslsFinderResultEliminationCount() === 0) return null;
     const patternCells = [];
     for (let i = 0; i < core.mslsFinderResultPatternCount(); i++) {
@@ -447,7 +447,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 46) {
-    core.runSkLoopFinder();
+    if (!alreadyRun) core.runSkLoopFinder();
     if (core.skLoopResultEliminationCount() === 0) return null;
     const patternCells = [];
     for (let i = 0; i < core.skLoopResultPatternCount(); i++) {
@@ -472,7 +472,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 45) {
-    core.runTridagonForceFinder();
+    if (!alreadyRun) core.runTridagonForceFinder();
     const actionType = core.finderResultActionType();
     if (actionType === 0) return null;
     const patternCells = [];
@@ -525,7 +525,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 40) {
-    core.runMedusaFinder();
+    if (!alreadyRun) core.runMedusaFinder();
     if (core.medusaFinderResultActionType() === 0) return null;
     const patternCells = [];
     for (let i = 0; i < core.medusaFinderResultPatternCount(); i++) {
@@ -563,7 +563,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 41) {
-    core.runTridagonFinder();
+    if (!alreadyRun) core.runTridagonFinder();
     if (core.tridagonFinderResultActionType() === 0) return null;
     const patternCells = [];
     for (let i = 0; i < core.tridagonFinderResultPatternCount(); i++) {
@@ -642,7 +642,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 38 || techniqueId === 39) {
-    core.runAlsAdvancedFinder(techniqueId);
+    if (!alreadyRun) core.runAlsAdvancedFinder(techniqueId);
     if (core.alsAdvancedResultKind() === 0) return null;
     const patternCells = [];
     for (let i = 0; i < core.alsAdvancedResultPatternCount(); i++) {
@@ -707,7 +707,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId >= 31 && techniqueId <= 34) {
-    core.runFireworkFinder(techniqueId);
+    if (!alreadyRun) core.runFireworkFinder(techniqueId);
     if (core.fireworkFinderResultActionType() === 0) return null;
     const patternCells = [];
     for (let i = 0; i < core.fireworkFinderResultPatternCount(); i++) {
@@ -776,7 +776,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 30) {
-    core.runSueDeCoqFinder();
+    if (!alreadyRun) core.runSueDeCoqFinder();
     if (core.sdcFinderResultActionType() === 0) return null;
     const patternCells = [];
     for (let i = 0; i < core.sdcFinderResultPatternCount(); i++) {
@@ -808,7 +808,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 28) {
-    core.runAicFinder();
+    if (!alreadyRun) core.runAicFinder();
     const nodeCount = core.aicFinderResultNodeCount();
     if (nodeCount === 0) return null;
     const chainNodes = [];
@@ -844,7 +844,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 29) {
-    core.runNiceLoopFinder();
+    if (!alreadyRun) core.runNiceLoopFinder();
     const nodeCount = core.aicFinderResultNodeCount();
     if (nodeCount === 0) return null;
     const chainNodes = [];
@@ -869,7 +869,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
     };
   }
 
-  core.runStandaloneTechniqueFinder(techniqueId);
+  if (!alreadyRun) core.runStandaloneTechniqueFinder(techniqueId);
   const actionType = core.standaloneResultActionType();
   if (actionType === 0) return null;
 
@@ -1095,7 +1095,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 29) {
-    core.runNiceLoopFinder();
+    if (!alreadyRun) core.runNiceLoopFinder();
     const nodeCount = core.aicFinderResultNodeCount();
     if (nodeCount === 0) return null;
     const chainNodes = [];
@@ -1121,7 +1121,7 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
   }
 
   if (techniqueId === 28) {
-    core.runAicFinder();
+    if (!alreadyRun) core.runAicFinder();
     if (core.aicFinderResultNodeCount() === 0) return null;
     const chainNodes = [];
     const patternCells = [];
@@ -1338,8 +1338,8 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
 }
 
 
-export function runStaticNishioFinder(core) {
-  core.runStaticNishioFinder();
+export function runStaticNishioFinder(core, alreadyRun = false) {
+  if (!alreadyRun) core.runStaticNishioFinder();
   if (core.finderResultActionType() === 0) return null;
   const r = core.finderResultStartR();
   const c = core.finderResultStartC();
@@ -1353,8 +1353,8 @@ export function runStaticNishioFinder(core) {
   };
 }
 
-export function runStaticUnaryFinder(core) {
-  core.runStaticUnaryFinder();
+export function runStaticUnaryFinder(core, alreadyRun = false) {
+  if (!alreadyRun) core.runStaticUnaryFinder();
   const actionType = core.finderResultActionType();
   if (actionType === 0) return null;
   const startR = core.finderResultStartR();
@@ -1397,8 +1397,8 @@ export function runStaticUnaryFinder(core) {
   };
 }
 
-export function runStaticMultipleFinder(core) {
-  core.runStaticMultipleFinder();
+export function runStaticMultipleFinder(core, alreadyRun = false) {
+  if (!alreadyRun) core.runStaticMultipleFinder();
   const actionType = core.finderResultActionType();
   if (actionType === 0) return null;
 
@@ -1463,15 +1463,15 @@ export function runStaticMultipleFinder(core) {
 }
 
 
-function runTechniqueById(core, techniqueId, budgetLimit) {
-  if (techniqueId >= 0 && techniqueId <= 41) return runStandaloneTechniqueFinder(core, techniqueId);
-  if (techniqueId === 42) return runStaticUnaryFinder(core);
-  if (techniqueId === 43) return runStaticNishioFinder(core);
-  if (techniqueId === 44) return runStaticMultipleFinder(core);
-  if (techniqueId >= 45 && techniqueId <= 49) return runStandaloneTechniqueFinder(core, techniqueId);
-  if (techniqueId === 50) return runDynamicNishioFinder(core, budgetLimit).finding;
-  if (techniqueId === 51) return runDynamicUnaryFinder(core, budgetLimit).finding;
-  if (techniqueId === 52) return runDynamicMultipleFinder(core, budgetLimit).finding;
+function runTechniqueById(core, techniqueId, budgetLimit, alreadyRun = false) {
+  if (techniqueId >= 0 && techniqueId <= 41) return runStandaloneTechniqueFinder(core, techniqueId, alreadyRun);
+  if (techniqueId === 42) return runStaticUnaryFinder(core, alreadyRun);
+  if (techniqueId === 43) return runStaticNishioFinder(core, alreadyRun);
+  if (techniqueId === 44) return runStaticMultipleFinder(core, alreadyRun);
+  if (techniqueId >= 45 && techniqueId <= 49) return runStandaloneTechniqueFinder(core, techniqueId, alreadyRun);
+  if (techniqueId === 50) return runDynamicNishioFinder(core, budgetLimit, alreadyRun).finding;
+  if (techniqueId === 51) return runDynamicUnaryFinder(core, budgetLimit, alreadyRun).finding;
+  if (techniqueId === 52) return runDynamicMultipleFinder(core, budgetLimit, alreadyRun).finding;
   throw new RangeError("Unknown TECHNIQUE_CHAIN id: " + techniqueId);
 }
 
@@ -1490,7 +1490,7 @@ export function findNextStepWasm(core, options = {}) {
     // Re-running only the selected finder here is temporary ABI materialization:
     // it reconstructs the existing JS Finding object from the same deterministic
     // technique, while avoiding 53 JS<->WASM boundary crossings.
-    const finding = runTechniqueById(core, techniqueId, budgetLimit);
+    const finding = runTechniqueById(core, techniqueId, budgetLimit, true);
     if (!finding) throw new Error("WASM selected technique " + techniqueId + " but adapter could not materialize its Finding");
     if (!validator || validator(finding)) return finding;
     startId = techniqueId + 1;
@@ -1503,7 +1503,7 @@ export function findAllAvailableStepsWasm(core, options = {}) {
   const validator = typeof options.validator === "function" ? options.validator : null;
   const findings = [];
   for (let techniqueId = 0; techniqueId < 53; techniqueId++) {
-    const finding = runTechniqueById(core, techniqueId, budgetLimit);
+    const finding = runTechniqueById(core, techniqueId, budgetLimit, true);
     if (!finding) continue;
     if (validator && !validator(finding)) continue;
     findings.push(finding);
