@@ -50,6 +50,26 @@ const backupFalseOrder = new StaticArray<u16>(FACT_COUNT);
 const backupTouchedCells = new StaticArray<u8>(CELL_COUNT);
 const backupTouchedTriples = new StaticArray<u8>(TRIPLE_COUNT);
 
+// Unary forcing chains must compare the completed on/off branches while
+// preserving insertion order from the "on" branch.
+const branchTrueSeen = new StaticArray<u8>(FACT_COUNT);
+const branchFalseSeen = new StaticArray<u8>(FACT_COUNT);
+const branchTrueOrder = new StaticArray<u16>(FACT_COUNT);
+const branchFalseOrder = new StaticArray<u16>(FACT_COUNT);
+let branchTrueCount: i32 = 0;
+let branchFalseCount: i32 = 0;
+
+// Raw finder result ABI for the migration adapter.
+let finderActionType: i32 = 0; // 0 none, 1 fill, 2 eliminate
+let finderR: i32 = -1;
+let finderC: i32 = -1;
+let finderDigit: i32 = 0;
+let finderStartR: i32 = -1;
+let finderStartC: i32 = -1;
+let finderStartDigit: i32 = 0;
+const finderEliminations = new StaticArray<u16>(FACT_COUNT);
+let finderEliminationCount: i32 = 0;
+
 let budgetCallsValue: i32 = 0;
 let budgetLimitValue: i32 = 0;
 let abortedValue: i32 = 0;
