@@ -599,6 +599,347 @@ function applyLockedCandidates(): i32 {
   return 0;
 }
 
+
+@inline
+function comboContains(index: i32, a: i32, b: i32, c: i32, k: i32): bool {
+  if (index == a || index == b) return true;
+  return k == 3 && index == c;
+}
+
+function tryNakedSubsetCombo(unitType: i32, idx: i32, a: i32, b: i32, c: i32, k: i32): i32 {
+  let unionMask: u16 = unchecked(cellMask[a]) | unchecked(cellMask[b]);
+  if (k == 3) unionMask = <u16>(unionMask | unchecked(cellMask[c]));
+  if (countBits9(unionMask) != k) return 0;
+
+  let eliminationCount: i32 = 0;
+  for (let pos: i32 = 0; pos < 9; pos++) {
+    const index = unitCellIndex(unitType, idx, pos);
+    if (comboContains(index, a, b, c, k) || unchecked(grid[index]) != 0) continue;
+    eliminationCount += countBits9(<u16>(unchecked(cellMask[index]) & unionMask));
+  }
+  if (eliminationCount == 0) return 0;
+
+  // JS builds the full elimination list in unit-cell order, with digits
+  // ascending inside each cell, then applies it. This second pass preserves
+  // that exact order while avoiding a heap Finding object in the hot path.
+  for (let pos: i32 = 0; pos < 9; pos++) {
+    const index = unitCellIndex(unitType, idx, pos);
+    if (comboContains(index, a, b, c, k) || unchecked(grid[index]) != 0) continue;
+    const eliminateMask = <u16>(unchecked(cellMask[index]) & unionMask);
+    for (let d: i32 = 1; d <= 9; d++) {
+      if ((eliminateMask & bitForDigit(d)) == 0) continue;
+      if (!markFalse(index / 9, index % 9, d)) return -1;
+    }
+  }
+  return 1;
+}
+
+function applyNakedSubset(k: i32): i32 {
+  for (let unitType: i32 = 0; unitType < 3; unitType++) {
+    for (let idx: i32 = 0; idx < 9; idx++) {
+      const eligible = new StaticArray<i32>(9);
+      let count: i32 = 0;
+      for (let pos: i32 = 0; pos < 9; pos++) {
+        const index = unitCellIndex(unitType, idx, pos);
+        if (unchecked(grid[index]) != 0) continue;
+        const n = countBits9(unchecked(cellMask[index]));
+        if (n >= 2 && n <= k) unchecked(eligible[count++] = index);
+      }
+      if (count < k) continue;
+
+      if (k == 2) {
+        for (let i: i32 = 0; i < count - 1; i++) {
+          for (let j: i32 = i + 1; j < count; j++) {
+            const result = tryNakedSubsetCombo(
+              unitType, idx,
+              unchecked(eligible[i]), unchecked(eligible[j]), -1, 2
+            );
+            if (result != 0) return result;
+          }
+        }
+      } else {
+        for (let i: i32 = 0; i < count - 2; i++) {
+          for (let j: i32 = i + 1; j < count - 1; j++) {
+            for (let q: i32 = j + 1; q < count; q++) {
+              const result = tryNakedSubsetCombo(
+                unitType, idx,
+                unchecked(eligible[i]), unchecked(eligible[j]), unchecked(eligible[q]), 3
+              );
+              if (result != 0) return result;
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function tryHiddenSubsetDigits(unitType: i32, idx: i32, d1: i32, d2: i32, d3: i32, k: i32): i32 {
+  const cells = new StaticArray<i32>(9);
+  let cellCount: i32 = 0;
+
+  // JS Set insertion order is: first selected digit's unit positions, then the
+  // second's, then the third's, de-duplicated. Recreate that order explicitly.
+  for (let which: i32 = 0; which < k; which++) {
+    const d = which == 0 ? d1 : which == 1 ? d2 : d3;
+    const bit = bitForDigit(d);
+    for (let pos: i32 = 0; pos < 9; pos++) {
+      const index = unitCellIndex(unitType, idx, pos);
+      if (unchecked(grid[index]) != 0 || (unchecked(cellMask[index]) & bit) == 0) continue;
+      let seen: bool = false;
+      for (let i: i32 = 0; i < cellCount; i++) if (unchecked(cells[i]) == index) { seen = true; break; }
+      if (!seen) unchecked(cells[cellCount++] = index);
+    }
+  }
+  if (cellCount != k) return 0;
+
+  let digitMask = <u16>(bitForDigit(d1) | bitForDigit(d2));
+  if (k == 3) digitMask = <u16>(digitMask | bitForDigit(d3));
+
+  let eliminationCount: i32 = 0;
+  for (let i: i32 = 0; i < cellCount; i++) {
+    const index = unchecked(cells[i]);
+    eliminationCount += countBits9(<u16>(unchecked(cellMask[index]) & <u16>(~digitMask)));
+  }
+  if (eliminationCount == 0) return 0;
+
+  for (let i: i32 = 0; i < cellCount; i++) {
+    const index = unchecked(cells[i]);
+    const eliminateMask = <u16>(unchecked(cellMask[index]) & <u16>(~digitMask));
+    for (let d: i32 = 1; d <= 9; d++) {
+      if ((eliminateMask & bitForDigit(d)) == 0) continue;
+      if (!markFalse(index / 9, index % 9, d)) return -1;
+    }
+  }
+  return 1;
+}
+
+function applyHiddenSubset(k: i32): i32 {
+  for (let unitType: i32 = 0; unitType < 3; unitType++) {
+    for (let idx: i32 = 0; idx < 9; idx++) {
+      const present = unchecked(placedMask[placedIndex(unitType, idx)]);
+      const eligibleDigits = new StaticArray<i32>(9);
+      let eligibleCount: i32 = 0;
+
+      for (let d: i32 = 1; d <= 9; d++) {
+        const bit = bitForDigit(d);
+        if ((present & bit) != 0) continue;
+        let positions: i32 = 0;
+        for (let pos: i32 = 0; pos < 9; pos++) {
+          const index = unitCellIndex(unitType, idx, pos);
+          if (unchecked(grid[index]) == 0 && (unchecked(cellMask[index]) & bit) != 0) positions++;
+        }
+        if (positions >= 2 && positions <= k) unchecked(eligibleDigits[eligibleCount++] = d);
+      }
+      if (eligibleCount < k) continue;
+
+      if (k == 2) {
+        for (let i: i32 = 0; i < eligibleCount - 1; i++) {
+          for (let j: i32 = i + 1; j < eligibleCount; j++) {
+            const result = tryHiddenSubsetDigits(
+              unitType, idx, unchecked(eligibleDigits[i]), unchecked(eligibleDigits[j]), 0, 2
+            );
+            if (result != 0) return result;
+          }
+        }
+      } else {
+        for (let i: i32 = 0; i < eligibleCount - 2; i++) {
+          for (let j: i32 = i + 1; j < eligibleCount - 1; j++) {
+            for (let q: i32 = j + 1; q < eligibleCount; q++) {
+              const result = tryHiddenSubsetDigits(
+                unitType, idx,
+                unchecked(eligibleDigits[i]), unchecked(eligibleDigits[j]), unchecked(eligibleDigits[q]), 3
+              );
+              if (result != 0) return result;
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+@inline
+function baseComboContains(idx: i32, a: i32, b: i32, c: i32, k: i32): bool {
+  if (idx == a || idx == b) return true;
+  return k == 3 && idx == c;
+}
+
+function tryFishCombo(d: i32, baseType: i32, a: i32, b: i32, c: i32, k: i32): i32 {
+  const bit = bitForDigit(d);
+  const coverOrder = new StaticArray<i32>(9);
+  let coverCount: i32 = 0;
+
+  for (let which: i32 = 0; which < k; which++) {
+    const baseIdx = which == 0 ? a : which == 1 ? b : c;
+    for (let pos: i32 = 0; pos < 9; pos++) {
+      const index = unitCellIndex(baseType, baseIdx, pos);
+      if (unchecked(grid[index]) != 0 || (unchecked(cellMask[index]) & bit) == 0) continue;
+      const coverIdx = baseType == 0 ? index % 9 : index / 9;
+      let seen: bool = false;
+      for (let i: i32 = 0; i < coverCount; i++) if (unchecked(coverOrder[i]) == coverIdx) { seen = true; break; }
+      if (!seen) unchecked(coverOrder[coverCount++] = coverIdx);
+    }
+  }
+  if (coverCount != k) return 0;
+
+  const coverType = baseType == 0 ? 1 : 0;
+  let eliminationCount: i32 = 0;
+  for (let ci: i32 = 0; ci < coverCount; ci++) {
+    const coverIdx = unchecked(coverOrder[ci]);
+    for (let pos: i32 = 0; pos < 9; pos++) {
+      const index = unitCellIndex(coverType, coverIdx, pos);
+      const baseIdxOfCell = baseType == 0 ? index / 9 : index % 9;
+      if (baseComboContains(baseIdxOfCell, a, b, c, k)) continue;
+      if (unchecked(grid[index]) == 0 && (unchecked(cellMask[index]) & bit) != 0) eliminationCount++;
+    }
+  }
+  if (eliminationCount == 0) return 0;
+
+  for (let ci: i32 = 0; ci < coverCount; ci++) {
+    const coverIdx = unchecked(coverOrder[ci]);
+    for (let pos: i32 = 0; pos < 9; pos++) {
+      const index = unitCellIndex(coverType, coverIdx, pos);
+      const baseIdxOfCell = baseType == 0 ? index / 9 : index % 9;
+      if (baseComboContains(baseIdxOfCell, a, b, c, k)) continue;
+      if (unchecked(grid[index]) == 0 && (unchecked(cellMask[index]) & bit) != 0) {
+        if (!markFalse(index / 9, index % 9, d)) return -1;
+      }
+    }
+  }
+  return 1;
+}
+
+function applyFish(k: i32): i32 {
+  for (let d: i32 = 1; d <= 9; d++) {
+    const bit = bitForDigit(d);
+    for (let baseType: i32 = 0; baseType < 2; baseType++) {
+      const eligible = new StaticArray<i32>(9);
+      let eligibleCount: i32 = 0;
+      for (let idx: i32 = 0; idx < 9; idx++) {
+        let positions: i32 = 0;
+        for (let pos: i32 = 0; pos < 9; pos++) {
+          const index = unitCellIndex(baseType, idx, pos);
+          if (unchecked(grid[index]) == 0 && (unchecked(cellMask[index]) & bit) != 0) positions++;
+        }
+        if (positions >= 2 && positions <= k) unchecked(eligible[eligibleCount++] = idx);
+      }
+      if (eligibleCount < k) continue;
+
+      if (k == 2) {
+        for (let i: i32 = 0; i < eligibleCount - 1; i++) {
+          for (let j: i32 = i + 1; j < eligibleCount; j++) {
+            const result = tryFishCombo(d, baseType, unchecked(eligible[i]), unchecked(eligible[j]), -1, 2);
+            if (result != 0) return result;
+          }
+        }
+      } else {
+        for (let i: i32 = 0; i < eligibleCount - 2; i++) {
+          for (let j: i32 = i + 1; j < eligibleCount - 1; j++) {
+            for (let q: i32 = j + 1; q < eligibleCount; q++) {
+              const result = tryFishCombo(
+                d, baseType, unchecked(eligible[i]), unchecked(eligible[j]), unchecked(eligible[q]), 3
+              );
+              if (result != 0) return result;
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function runStaticBudgetedInternal(r: i32, c: i32, d: i32, startTrue: bool): i32 {
+  budgetCallsValue++;
+  if (budgetCallsValue > budgetLimitValue) {
+    contradictionValue = 0;
+    abortedValue = 1;
+    trueCountValue = 0;
+    falseCountValue = 0;
+    return 0;
+  }
+
+  resetWork();
+  abortedValue = 0;
+  const initialOk = startTrue ? markTrue(r, c, d) : markFalse(r, c, d);
+  if (!initialOk) {
+    contradictionValue = 1;
+    return 1;
+  }
+  initMasks();
+
+  let guard: i32 = 0;
+  while (guard++ < 200) {
+    guardIterationsValue = guard;
+    let result = applyNakedSingle();
+    if (result == 0) result = applyHiddenSingle();
+    if (result == 0) result = applyLockedCandidates();
+    if (result == 0) break;
+    if (result < 0 || detectContradiction()) {
+      contradictionValue = 1;
+      return 1;
+    }
+    clearTouched();
+  }
+  contradictionValue = 0;
+  return 0;
+}
+
+function nestedStaticContradiction(r: i32, c: i32, d: i32): bool {
+  // Snapshot the full outer propagation frame. Budget counters intentionally
+  // live outside the frame because JS shares one budget object across all
+  // nested calls in a Dynamic finder.
+  saveOuterFrame();
+  copyU8(backupGrid, inputGrid, CELL_COUNT);
+  copyU16(backupCellMask, inputBaseMask, CELL_COUNT);
+
+  const nestedContradiction = runStaticBudgetedInternal(r, c, d, true) != 0;
+  restoreOuterFrame();
+  return nestedContradiction;
+}
+
+function applyNestedNishio(): i32 {
+  if (budgetCallsValue > budgetLimitValue) return 0;
+
+  // JS uses a stable sort by candidate-count only. The source list is
+  // row-major and digit-ascending, so iterating n=1..9 reproduces that stable
+  // ordering exactly without a comparator implementation.
+  for (let n: i32 = 1; n <= 9; n++) {
+    for (let index: i32 = 0; index < CELL_COUNT; index++) {
+      if (unchecked(grid[index]) != 0) continue;
+      const mask = unchecked(cellMask[index]);
+      if (countBits9(mask) != n) continue;
+      for (let d: i32 = 1; d <= 9; d++) {
+        if ((mask & bitForDigit(d)) == 0) continue;
+        if (budgetCallsValue > budgetLimitValue) return 0;
+        const r = index / 9;
+        const c = index % 9;
+        if (nestedStaticContradiction(r, c, d)) {
+          return markFalse(r, c, d) ? 1 : -1;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function applyDynamicTechnique(): i32 {
+  let result = applyNakedSingle();
+  if (result == 0) result = applyHiddenSingle();
+  if (result == 0) result = applyLockedCandidates();
+  if (result == 0) result = applyNakedSubset(2);
+  if (result == 0) result = applyHiddenSubset(2);
+  if (result == 0) result = applyNakedSubset(3);
+  if (result == 0) result = applyHiddenSubset(3);
+  if (result == 0) result = applyFish(2);
+  if (result == 0) result = applyFish(3);
+  if (result == 0) result = applyNestedNishio();
+  return result;
+}
+
 function detectContradiction(): bool {
   for (let index: i32 = 0; index < CELL_COUNT; index++) {
     if (unchecked(touchedCells[index]) == 0) continue;
