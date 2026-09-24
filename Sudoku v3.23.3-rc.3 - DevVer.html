@@ -12237,6 +12237,11 @@ function renderStringPanels() {
     }
   }
 
+  function validateFindingAgainstSolution(finding, solution) {
+    if (!finding) return null;
+    return exocetFindingMatchesSolution(finding, solution) ? normalizeOracleValue(finding) : null;
+  }
+
   function propagateStaticFromMasks(grid, masks, r, c, d, startTrue) {
     const getCands = getCandsFromMasks(grid, masks);
     return normalizeOracleValue(propagateAssumption(grid, getCands, r, c, d, !!startTrue));
@@ -12314,6 +12319,7 @@ function renderStringPanels() {
     tracePuzzle,
     enumerateAvailableFromMasks,
     findTechniqueFromMasks,
+    validateFindingAgainstSolution,
     propagateStaticFromMasks,
     propagateDynamicFromMasks,
     findDynamicNishioFromMasks,
