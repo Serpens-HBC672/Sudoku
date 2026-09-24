@@ -818,6 +818,275 @@ function findFinnedFish(k: i32, id: i32): i32 {
   return 0;
 }
 
+
+function rectangleBoxesAreTwo(c0: i32, c1: i32, c2: i32, c3: i32): bool {
+  const b0 = boxIndex(c0 / 9, c0 % 9);
+  const b1 = boxIndex(c1 / 9, c1 % 9);
+  const b2 = boxIndex(c2 / 9, c2 % 9);
+  const b3 = boxIndex(c3 / 9, c3 % 9);
+  let count: i32 = 1;
+  let second: i32 = -1;
+  if (b1 != b0) { second = b1; count++; }
+  if (b2 != b0 && b2 != second) { if (count == 2) return false; second = b2; count++; }
+  if (b3 != b0 && b3 != second) return false;
+  return count == 2;
+}
+
+function findUniqueRectangleType1(): i32 {
+  const corners = new StaticArray<i32>(4);
+  const masks = new StaticArray<u16>(4);
+  for (let r1: i32 = 0; r1 < 8; r1++) for (let r2: i32 = r1 + 1; r2 < 9; r2++) {
+    for (let c1: i32 = 0; c1 < 8; c1++) for (let c2: i32 = c1 + 1; c2 < 9; c2++) {
+      unchecked(corners[0] = r1 * 9 + c1);
+      unchecked(corners[1] = r1 * 9 + c2);
+      unchecked(corners[2] = r2 * 9 + c1);
+      unchecked(corners[3] = r2 * 9 + c2);
+      if (!rectangleBoxesAreTwo(unchecked(corners[0]), unchecked(corners[1]), unchecked(corners[2]), unchecked(corners[3]))) continue;
+      let allEmpty = true;
+      for (let i: i32 = 0; i < 4; i++) {
+        const index = unchecked(corners[i]);
+        if (!emptyAt(index)) { allEmpty = false; break; }
+        unchecked(masks[i] = maskAt(index));
+      }
+      if (!allEmpty) continue;
+      for (let x: i32 = 1; x <= 8; x++) for (let y: i32 = x + 1; y <= 9; y++) {
+        const xy = <u16>(bitForDigit(x) | bitForDigit(y));
+        let allContain = true, pureCount: i32 = 0, extraIdx: i32 = -1;
+        for (let i: i32 = 0; i < 4; i++) {
+          const m = unchecked(masks[i]);
+          if ((m & xy) != xy) { allContain = false; break; }
+          if (countBits9(m) == 2) pureCount++; else extraIdx = i;
+        }
+        if (!allContain || pureCount != 3) continue;
+        const extra = unchecked(corners[extraIdx]);
+        eliminationCount = 0;
+        const em = <u16>(unchecked(masks[extraIdx]) & xy);
+        for (let d: i32 = 1; d <= 9; d++) if ((em & bitForDigit(d)) != 0) appendElimination(extra, d);
+        if (eliminationCount > 0) {
+          techniqueId = 20; actionType = 2; patternCount = 0;
+          for (let i: i32 = 0; i < 4; i++) appendPattern(unchecked(corners[i]));
+          unchecked(meta[0] = <i32>xy); unchecked(meta[1] = extraIdx);
+          return actionType;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function findUniqueRectangleType2(): i32 {
+  const corners = new StaticArray<i32>(4);
+  const masks = new StaticArray<u16>(4);
+  const pure = new StaticArray<i32>(4);
+  for (let r1: i32 = 0; r1 < 8; r1++) for (let r2: i32 = r1 + 1; r2 < 9; r2++) {
+    for (let c1: i32 = 0; c1 < 8; c1++) for (let c2: i32 = c1 + 1; c2 < 9; c2++) {
+      unchecked(corners[0] = r1 * 9 + c1); unchecked(corners[1] = r1 * 9 + c2);
+      unchecked(corners[2] = r2 * 9 + c1); unchecked(corners[3] = r2 * 9 + c2);
+      if (!rectangleBoxesAreTwo(unchecked(corners[0]), unchecked(corners[1]), unchecked(corners[2]), unchecked(corners[3]))) continue;
+      let allEmpty = true;
+      for (let i: i32 = 0; i < 4; i++) {
+        const index = unchecked(corners[i]);
+        if (!emptyAt(index)) { allEmpty = false; break; }
+        unchecked(masks[i] = maskAt(index));
+      }
+      if (!allEmpty) continue;
+      for (let x: i32 = 1; x <= 8; x++) for (let y: i32 = x + 1; y <= 9; y++) {
+        const xy = <u16>(bitForDigit(x) | bitForDigit(y));
+        let allContain = true, pureCount: i32 = 0;
+        for (let i: i32 = 0; i < 4; i++) {
+          const m = unchecked(masks[i]);
+          if ((m & xy) != xy) { allContain = false; break; }
+          if (countBits9(m) == 2) unchecked(pure[pureCount++] = i);
+        }
+        if (!allContain || pureCount != 2) continue;
+        const p1 = unchecked(pure[0]), p2 = unchecked(pure[1]);
+        const cp1 = unchecked(corners[p1]), cp2 = unchecked(corners[p2]);
+        if (cp1 / 9 != cp2 / 9 && cp1 % 9 != cp2 % 9) continue;
+        let q1: i32 = -1, q2: i32 = -1;
+        for (let i: i32 = 0; i < 4; i++) {
+          if (i == p1 || i == p2) continue;
+          if (q1 < 0) q1 = i; else q2 = i;
+        }
+        if (countBits9(unchecked(masks[q1])) != 3 || countBits9(unchecked(masks[q2])) != 3) continue;
+        const e1 = <u16>(unchecked(masks[q1]) & <u16>(~xy));
+        const e2 = <u16>(unchecked(masks[q2]) & <u16>(~xy));
+        if (e1 != e2 || countBits9(e1) != 1) continue;
+        const z = singletonDigit(e1);
+        const roof1 = unchecked(corners[q1]), roof2 = unchecked(corners[q2]);
+        eliminationCount = 0;
+        const zBit = bitForDigit(z);
+        for (let index: i32 = 0; index < CELL_COUNT; index++) {
+          if (!emptyAt(index) || (maskAt(index) & zBit) == 0) continue;
+          if (index == roof1 || index == roof2) continue;
+          if (cellsSee(index, roof1) && cellsSee(index, roof2)) appendElimination(index, z);
+        }
+        if (eliminationCount > 0) {
+          techniqueId = 21; actionType = 2; patternCount = 0; extraCellCount = 0;
+          for (let i: i32 = 0; i < 4; i++) appendPattern(unchecked(corners[i]));
+          unchecked(extraCells[extraCellCount++] = <u8>roof1);
+          unchecked(extraCells[extraCellCount++] = <u8>roof2);
+          unchecked(meta[0] = <i32>xy); unchecked(meta[1] = z);
+          return actionType;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function findHiddenUniqueRectangle(): i32 {
+  const corners = new StaticArray<i32>(4);
+  const masks = new StaticArray<u16>(4);
+  const diag = new StaticArray<i32>(4); unchecked(diag[0]=3); unchecked(diag[1]=2); unchecked(diag[2]=1); unchecked(diag[3]=0);
+  const rowPartner = new StaticArray<i32>(4); unchecked(rowPartner[0]=1); unchecked(rowPartner[1]=0); unchecked(rowPartner[2]=3); unchecked(rowPartner[3]=2);
+  const colPartner = new StaticArray<i32>(4); unchecked(colPartner[0]=2); unchecked(colPartner[1]=3); unchecked(colPartner[2]=0); unchecked(colPartner[3]=1);
+  for (let r1: i32 = 0; r1 < 8; r1++) for (let r2: i32 = r1 + 1; r2 < 9; r2++) {
+    for (let c1: i32 = 0; c1 < 8; c1++) for (let c2: i32 = c1 + 1; c2 < 9; c2++) {
+      unchecked(corners[0] = r1*9+c1); unchecked(corners[1] = r1*9+c2);
+      unchecked(corners[2] = r2*9+c1); unchecked(corners[3] = r2*9+c2);
+      if (!rectangleBoxesAreTwo(unchecked(corners[0]), unchecked(corners[1]), unchecked(corners[2]), unchecked(corners[3]))) continue;
+      let allEmpty = true;
+      for (let i:i32=0;i<4;i++){ const index=unchecked(corners[i]); if(!emptyAt(index)){allEmpty=false;break;} unchecked(masks[i]=maskAt(index)); }
+      if(!allEmpty) continue;
+      for (let floorIdx:i32=0; floorIdx<4; floorIdx++) {
+        const fm=unchecked(masks[floorIdx]);
+        if(countBits9(fm)!=2) continue;
+        let x:i32=0,y:i32=0;
+        for(let d:i32=1;d<=9;d++) if((fm&bitForDigit(d))!=0){ if(x==0)x=d; else y=d; }
+        const xy=<u16>(bitForDigit(x)|bitForDigit(y));
+        let allContain=true;
+        for(let i:i32=0;i<4;i++) if((unchecked(masks[i])&xy)!=xy){allContain=false;break;}
+        if(!allContain) continue;
+        const targetIdx=unchecked(diag[floorIdx]);
+        const target=unchecked(corners[targetIdx]);
+        const rp=unchecked(corners[unchecked(rowPartner[targetIdx])]);
+        const cp=unchecked(corners[unchecked(colPartner[targetIdx])]);
+        for(let pass:i32=0;pass<2;pass++){
+          const testDigit=pass==0?x:y, otherDigit=testDigit==x?y:x;
+          if((unchecked(masks[targetIdx])&bitForDigit(otherDigit))==0) continue;
+          const bit=bitForDigit(testDigit);
+          let rowCount:i32=0,rowHasPartner=false;
+          for(let pos:i32=0;pos<9;pos++){const index=unitCellIndex(0,target/9,pos);if(emptyAt(index)&&(maskAt(index)&bit)!=0){rowCount++;if(index==rp)rowHasPartner=true;}}
+          if(rowCount!=2||!rowHasPartner) continue;
+          let colCount:i32=0,colHasPartner=false;
+          for(let pos:i32=0;pos<9;pos++){const index=unitCellIndex(1,target%9,pos);if(emptyAt(index)&&(maskAt(index)&bit)!=0){colCount++;if(index==cp)colHasPartner=true;}}
+          if(colCount!=2||!colHasPartner) continue;
+          techniqueId=22;actionType=2;patternCount=0;eliminationCount=0;
+          for(let i:i32=0;i<4;i++)appendPattern(unchecked(corners[i]));
+          appendElimination(target,otherDigit);
+          unchecked(meta[0]=<i32>xy);unchecked(meta[1]=floorIdx);unchecked(meta[2]=targetIdx);unchecked(meta[3]=testDigit);
+          return actionType;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function findBugPlusOne(): i32 {
+  let triple: i32 = -1;
+  for(let index:i32=0;index<CELL_COUNT;index++){
+    if(!emptyAt(index)) continue;
+    const n=countBits9(maskAt(index));
+    if(n==2) continue;
+    if(n==3 && triple<0){triple=index;continue;}
+    return 0;
+  }
+  if(triple<0) return 0;
+  const tripleMask=maskAt(triple);
+  const r0=triple/9,c0=triple%9,b0=boxIndex(r0,c0);
+  for(let d:i32=1;d<=9;d++){
+    const bit=bitForDigit(d);if((tripleMask&bit)==0)continue;
+    let rowCount:i32=0,colCount:i32=0,boxCount:i32=0;
+    for(let pos:i32=0;pos<9;pos++){
+      let index=unitCellIndex(0,r0,pos);if(emptyAt(index)&&(maskAt(index)&bit)!=0)rowCount++;
+      index=unitCellIndex(1,c0,pos);if(emptyAt(index)&&(maskAt(index)&bit)!=0)colCount++;
+      index=unitCellIndex(2,b0,pos);if(emptyAt(index)&&(maskAt(index)&bit)!=0)boxCount++;
+    }
+    let unitType:i32=-1,idx:i32=-1;
+    if((rowCount&1)==1){unitType=0;idx=r0;}else if((colCount&1)==1){unitType=1;idx=c0;}else if((boxCount&1)==1){unitType=2;idx=b0;}
+    if(unitType>=0){
+      techniqueId=23;actionType=1;resultR=r0;resultC=c0;resultDigit=d;
+      unchecked(meta[0]=<i32>tripleMask);unchecked(meta[1]=unitType);unchecked(meta[2]=idx);
+      return actionType;
+    }
+  }
+  return 0;
+}
+
+function findWing(hingeSize:i32,outlierCount:i32,id:i32):i32{
+  const candidates=new StaticArray<i32>(81);
+  const others=new StaticArray<i32>(81);
+  const combo=new StaticArray<i32>(4);
+  for(let hinge:i32=0;hinge<CELL_COUNT;hinge++){
+    if(!emptyAt(hinge))continue;
+    const hm=maskAt(hinge);if(countBits9(hm)!=hingeSize)continue;
+    for(let z:i32=1;z<=9;z++){
+      const zBit=bitForDigit(z);if((hm&zBit)==0)continue;
+      const otherMask=<u16>(hm&<u16>(~zBit));
+      let count:i32=0;
+      for(let index:i32=0;index<CELL_COUNT;index++){
+        if(index==hinge||!emptyAt(index)||!cellsSee(index,hinge))continue;
+        const m=maskAt(index);if(countBits9(m)!=2||(m&zBit)==0)continue;
+        const ob=<u16>(m&<u16>(~zBit));if((otherMask&ob)==0)continue;
+        unchecked(candidates[count]=index);unchecked(others[count]=singletonDigit(ob));count++;
+      }
+      if(count<outlierCount)continue;
+      initCombination(combo,outlierCount);
+      while(true){
+        let covered:i32=0;
+        for(let ci:i32=0;ci<outlierCount;ci++)covered|=1<<(unchecked(others[unchecked(combo[ci])])-1);
+        if(countBits9(<u16>covered)==outlierCount){
+          patternCount=0;appendPattern(hinge);
+          for(let ci:i32=0;ci<outlierCount;ci++)appendPattern(unchecked(candidates[unchecked(combo[ci])]));
+          eliminationCount=0;
+          for(let index:i32=0;index<CELL_COUNT;index++){
+            if(!emptyAt(index)||(maskAt(index)&zBit)==0)continue;
+            let isPattern=false;for(let pi:i32=0;pi<patternCount;pi++)if(<i32>unchecked(patternCells[pi])==index){isPattern=true;break;}
+            if(isPattern)continue;
+            let seesAll=true;for(let pi:i32=0;pi<patternCount;pi++)if(!cellsSee(index,<i32>unchecked(patternCells[pi]))){seesAll=false;break;}
+            if(seesAll)appendElimination(index,z);
+          }
+          if(eliminationCount>0){
+            techniqueId=id;actionType=2;unchecked(meta[0]=z);unchecked(meta[1]=<i32>hm);return actionType;
+          }
+        }
+        if(!advanceCombination(combo,count,outlierCount))break;
+      }
+    }
+  }
+  return 0;
+}
+
+function findWWing():i32{
+  const cells=new StaticArray<i32>(81);const masks=new StaticArray<u16>(81);let count:i32=0;
+  for(let index:i32=0;index<CELL_COUNT;index++)if(emptyAt(index)&&countBits9(maskAt(index))==2){unchecked(cells[count]=index);unchecked(masks[count]=maskAt(index));count++;}
+  for(let i:i32=0;i<count;i++)for(let j:i32=i+1;j<count;j++){
+    const A=unchecked(cells[i]),B=unchecked(cells[j]);const m=unchecked(masks[i]);
+    if(m!=unchecked(masks[j])||cellsSee(A,B))continue;
+    let x:i32=0,y:i32=0;for(let d:i32=1;d<=9;d++)if((m&bitForDigit(d))!=0){if(x==0)x=d;else y=d;}
+    for(let pass:i32=0;pass<2;pass++){
+      const strong=pass==0?x:y,elim=pass==0?y:x,strongBit=bitForDigit(strong),elimBit=bitForDigit(elim);
+      for(let unitType:i32=0;unitType<3;unitType++)for(let idx:i32=0;idx<9;idx++){
+        let p:i32=-1,q:i32=-1,n:i32=0;
+        for(let pos:i32=0;pos<9;pos++){const index=unitCellIndex(unitType,idx,pos);if(emptyAt(index)&&(maskAt(index)&strongBit)!=0){if(n==0)p=index;else if(n==1)q=index;n++;}}
+        if(n!=2||p==A||p==B||q==A||q==B)continue;
+        const config1=cellsSee(p,A)&&cellsSee(q,B),config2=cellsSee(p,B)&&cellsSee(q,A);if(!config1&&!config2)continue;
+        eliminationCount=0;
+        for(let index:i32=0;index<CELL_COUNT;index++){
+          if(!emptyAt(index)||index==A||index==B||(maskAt(index)&elimBit)==0)continue;
+          if(cellsSee(index,A)&&cellsSee(index,B))appendElimination(index,elim);
+        }
+        if(eliminationCount>0){
+          techniqueId=25;actionType=2;patternCount=0;appendPattern(A);appendPattern(B);appendPattern(p);appendPattern(q);
+          unchecked(meta[0]=strong);unchecked(meta[1]=elim);unchecked(meta[2]=unitType);unchecked(meta[3]=idx);return actionType;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -839,6 +1108,13 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 17) return findFinnedFish(2, 17);
   if (id == 18) return findFinnedFish(3, 18);
   if (id == 19) return findFinnedFish(4, 19);
+  if (id == 20) return findUniqueRectangleType1();
+  if (id == 21) return findUniqueRectangleType2();
+  if (id == 22) return findHiddenUniqueRectangle();
+  if (id == 23) return findBugPlusOne();
+  if (id == 24) return findWing(3, 2, 24);
+  if (id == 25) return findWWing();
+  if (id == 26) return findWing(4, 3, 26);
   return 0;
 }
 
