@@ -4,6 +4,7 @@ import {
   loadPosition,
   runDynamicNishioFinder,
   runDynamicUnaryFinder,
+  runDynamicMultipleFinder,
 } from "../bridge/assembly-core.mjs";
 import { loadOracle } from "./load-oracle.mjs";
 import { loadBenchmarkCorpus } from "./benchmark-corpus.mjs";
@@ -46,10 +47,15 @@ for (const testCase of corpus) {
   const wasmUnary = runDynamicUnaryFinder(core, budgetLimit);
   compareEnvelope("#" + testCase.id + " Dynamic Unary budget=" + budgetLimit, jsUnary, wasmUnary);
   comparisons++;
+
+  const jsMultiple = oracle.findDynamicMultipleFromMasks(testCase.puzzle, masks, budgetLimit);
+  const wasmMultiple = runDynamicMultipleFinder(core, budgetLimit);
+  compareEnvelope("#" + testCase.id + " Dynamic Multiple budget=" + budgetLimit, jsMultiple, wasmMultiple);
+  comparisons++;
 }
 
 console.log(
   "PASS dynamic finder differential: " + comparisons +
-    " JS↔WASM Dynamic Nishio/Unary first-match cases across " +
+    " JS↔WASM Dynamic Nishio/Unary/Multiple first-match cases across " +
     corpus.length + " benchmark boards with shared budget limit " + budgetLimit + ".",
 );
