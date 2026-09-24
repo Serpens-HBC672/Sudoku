@@ -7,7 +7,7 @@
 - migration branch: `codex/wasm-human-techniques-migration`
 - recovery checkpoint before the bounded task: `7e23d42e249959ebeeb5690ddabe2b34d036f602`
 - focused diagnostic harness commit: `9a147e240e388cff53ceca9012a898abc963fed2`
-- current task status: bounded #22 / MSLS diagnosis complete; no solver fix was made
+- current task status: bounded #22 standalone pre-call trap diagnostic complete; historical trap did not reproduce in the isolated #22 historical run; no solver fix was made
 - scope remains human-style technique WASM migration only; MRV, UI/UX, Android packaging, and unrelated application logic remain out of scope
 
 ## Recovered commits since the previously visible checkpoint
@@ -137,5 +137,68 @@ Diagnosis:
 - do not change MSLS discovery, matching, ordering, candidate masks, or ABI based on the earlier allocation hypothesis
 - the original `3fb9801` full-trace run did not record the exact failing step or technique id, so it is not proven that MSLS was the actual `runStandaloneTechniqueFinder` technique that trapped
 - if diagnosis resumes later, the next bounded target is the dispatcher/materialization sequence needed to identify the exact technique id at the historical trap; do not return to a broad MSLS sweep
+
+No solver fix was made in this task.
+
+
+## Isolated historical #22 standalone-call trap diagnostic
+
+This is the latest bounded diagnostic task and supersedes the prior proposed dispatcher/materialization reproduction as the current evidence.
+
+Diagnostic branch:
+- `codex/wasm-22-trap-diagnostic`
+- base: historical failing implementation `3fb98015986848e20025f8d1b1881f28fa6978e4`
+- pre-call hook commit: `2c17c22979fc391166073462175a54017dc87cb3`
+- bounded #22 harness commit: `7d703d3a2696953635ab64f1621349b00b0cefc7`
+- workflow commit: `1c28c42200241cdad9c048d17016f59fe2823a06`
+- workflow run: `36009770454` (success)
+
+Scope:
+- benchmark #22 only
+- historical AssemblyScript `--runtime stub` build
+- no 57-puzzle corpus run
+- no additional migration
+- no solver logic changes
+- no MSLS optimization or allocator/runtime fix
+- instrumentation only at the JS-to-WASM standalone technique boundary
+
+Each standalone invocation wrote a synchronous pre-call breadcrumb before entering the finder:
+- puzzle id
+- solver step
+- global standalone-call ordinal
+- technique id/key
+- 16-hex SHA-256 state fingerprint derived from `beforeGrid:beforeMasks`
+- exported WASM linear-memory byte/page count
+
+Result:
+- #22 completed all `138/138` oracle trace steps
+- exact selected-Finding comparisons remained green for the whole isolated trace
+- total standalone calls: `2333`
+- no `RuntimeError: unreachable`
+- therefore there is no exact failing standalone technique id/call/state to extract from this run
+- the historical full-corpus #22 trap is not reproducible by running #22 alone, even on the historical `3fb9801` implementation
+
+Observed memory counters:
+- first recorded WASM memory: `262144` bytes (4 pages)
+- last/max recorded WASM memory: `2147483648` bytes (32768 pages / 2 GiB)
+- delta: `2147221504` bytes
+- growth events observed across standalone pre-call breadcrumbs: `6`
+- the run nevertheless completed, so this is evidence of cumulative linear-memory growth under the historical stub runtime, not evidence that memory growth by itself caused the old trap
+
+Last standalone breadcrumb on successful completion:
+- solver step: `137`
+- standalone call ordinal: `2333`
+- technique: `0 / nakedSingle`
+- state id: `dd32fd040b212dc8`
+- WASM memory: `2147483648` bytes
+
+Relevant changes between historical `3fb9801` and current checkpoint `886293e9`:
+- `wasm-migration/package.json`: AssemblyScript runtime changed from `stub` to `minimal`
+- `wasm-migration/assembly/msls-finder.ts`: hot-loop scratch arrays were changed to reusable module-scoped storage
+- `wasm-migration/bridge/assembly-core.mjs`: dispatch/materialization changed from the historical JS loop that called each technique finder directly to a WASM dispatcher (`runFindNextTechniqueIdFrom`) followed by materialization of the already-run selected finder
+- `wasm-migration/tests/full-trace-differential.mjs`: later crash breadcrumbs were added, including case, step, expected technique, and last dispatcher technique id
+- additional diagnostic/focused harnesses and documentation were added after the historical failure
+
+No causal conclusion is assigned to any of those changes. The new bounded evidence only establishes that isolated #22 on `3fb9801` can reach 2 GiB of exported WASM memory and still finish without the historical trap. The old failure may depend on execution context that this #22-only task intentionally did not reproduce; do not infer which context factor matters without a separately authorized experiment.
 
 No solver fix was made in this task.
