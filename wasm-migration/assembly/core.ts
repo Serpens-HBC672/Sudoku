@@ -1,4 +1,24 @@
 import {
+  medusaResetInput,
+  medusaSetInputCell,
+  medusaSetInputMask,
+  medusaFind,
+  medusaResultActionType,
+  medusaResultRuleType,
+  medusaResultBadColor,
+  medusaResultPatternCount,
+  medusaResultPatternAt,
+  medusaResultEliminationCount,
+  medusaResultEliminationAt,
+  medusaResultColoringCount,
+  medusaResultColoringNode,
+  medusaResultColoringColor,
+  medusaResultReasonCount,
+  medusaResultReasonNode,
+  medusaResultReasonColor,
+} from "./medusa-finder";
+
+import {
   fireworkResetInput,
   fireworkSetInputCell,
   fireworkSetInputMask,
@@ -1715,6 +1735,21 @@ export function sdcFinderResultPatternAt(i:i32): i32 { return sdcResultPatternAt
 export function sdcFinderResultEliminationCount(): i32 { return sdcResultEliminationCount(); }
 export function sdcFinderResultEliminationAt(i:i32): i32 { return sdcResultEliminationAt(i); }
 export function sdcFinderResultMeta(i:i32): i32 { return sdcResultMeta(i); }
+
+export function runMedusaFinder(): i32 { return medusaFind(); }
+export function medusaFinderResultActionType(): i32 { return medusaResultActionType(); }
+export function medusaFinderResultRuleType(): i32 { return medusaResultRuleType(); }
+export function medusaFinderResultBadColor(): i32 { return medusaResultBadColor(); }
+export function medusaFinderResultPatternCount(): i32 { return medusaResultPatternCount(); }
+export function medusaFinderResultPatternAt(i:i32): i32 { return medusaResultPatternAt(i); }
+export function medusaFinderResultEliminationCount(): i32 { return medusaResultEliminationCount(); }
+export function medusaFinderResultEliminationAt(i:i32): i32 { return medusaResultEliminationAt(i); }
+export function medusaFinderResultColoringCount(): i32 { return medusaResultColoringCount(); }
+export function medusaFinderResultColoringNode(i:i32): i32 { return medusaResultColoringNode(i); }
+export function medusaFinderResultColoringColor(i:i32): i32 { return medusaResultColoringColor(i); }
+export function medusaFinderResultReasonCount(): i32 { return medusaResultReasonCount(); }
+export function medusaFinderResultReasonNode(i:i32): i32 { return medusaResultReasonNode(i); }
+export function medusaFinderResultReasonColor(i:i32): i32 { return medusaResultReasonColor(i); }
 
 export function runFireworkFinder(id:i32): i32 { return fireworkFind(id); }
 export function fireworkFinderResultActionType(): i32 { return fireworkResultActionType(); }
