@@ -349,9 +349,21 @@ function readStandaloneEliminations(core) {
   return out;
 }
 
+let standaloneDiagnosticHook = null;
+
+export function setStandaloneDiagnosticHook(hook) {
+  if (hook != null && typeof hook !== "function") {
+    throw new TypeError("standalone diagnostic hook must be a function or null");
+  }
+  standaloneDiagnosticHook = hook;
+}
+
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+  if (standaloneDiagnosticHook) {
+    standaloneDiagnosticHook({ core, techniqueId, technique });
+  }
 
   if (techniqueId === 48 || techniqueId === 49) {
     if (techniqueId === 48) core.runJuniorExocetFinder();
