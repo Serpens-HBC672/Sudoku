@@ -321,6 +321,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
+  [40, "medusa3D"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -343,6 +344,44 @@ function readStandaloneEliminations(core) {
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId === 40) {
+    core.runMedusaFinder();
+    if (core.medusaFinderResultActionType() === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.medusaFinderResultPatternCount(); i++) {
+      const index = core.medusaFinderResultPatternAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.medusaFinderResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.medusaFinderResultEliminationAt(i)));
+    }
+    const coloring = [];
+    for (let i = 0; i < core.medusaFinderResultColoringCount(); i++) {
+      const fact = decodeFact(core.medusaFinderResultColoringNode(i));
+      coloring.push({ r: fact.r, c: fact.c, d: fact.digit, color: core.medusaFinderResultColoringColor(i) });
+    }
+    const rule = core.medusaFinderResultRuleType();
+    const reasonCells = [];
+    for (let i = 0; i < core.medusaFinderResultReasonCount(); i++) {
+      const fact = decodeFact(core.medusaFinderResultReasonNode(i));
+      const color = core.medusaFinderResultReasonColor(i);
+      const entry = { r: fact.r, c: fact.c, d: fact.digit };
+      if (rule === 2 || (rule === 3 && i > 0)) entry.color = color;
+      reasonCells.push(entry);
+    }
+    const ruleType = ["cell", "unit", "twoColorsInCell", "seesTwoColors"][rule];
+    const context = { coloring, ruleType, reasonCells };
+    if (rule === 0 || rule === 1) context.badColor = core.medusaFinderResultBadColor();
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context,
+    };
+  }
 
   if (techniqueId >= 31 && techniqueId <= 34) {
     core.runFireworkFinder(techniqueId);
