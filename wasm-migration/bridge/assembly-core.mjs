@@ -1475,6 +1475,10 @@ function runTechniqueById(core, techniqueId, budgetLimit, alreadyRun = false) {
   throw new RangeError("Unknown TECHNIQUE_CHAIN id: " + techniqueId);
 }
 
+export function materializeTechniqueFinding(core, techniqueId, budgetLimit = 6790) {
+  return runTechniqueById(core, techniqueId, budgetLimit, true);
+}
+
 export function findNextStepWasm(core, options = {}) {
   const budgetLimit = options.budgetLimit ?? 6790;
   const validator = typeof options.validator === "function" ? options.validator : null;
