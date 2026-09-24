@@ -325,6 +325,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [39, "deathBlossom"],
   [40, "medusa3D"],
   [41, "tridagon"],
+  [45, "tridagonForce"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -347,6 +348,59 @@ function readStandaloneEliminations(core) {
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId === 45) {
+    core.runTridagonForceFinder();
+    const actionType = core.finderResultActionType();
+    if (actionType === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.finderResultPatternCellCount(); i++) {
+      const index = core.finderResultPatternCellAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const guardians = [];
+    for (let i = 0; i < core.tridagonForceResultGuardianCount(); i++) {
+      const f = decodeFact(core.tridagonForceResultGuardianFactAt(i));
+      guardians.push([f.r, f.c, f.digit]);
+    }
+    const blocks = Array.from({ length: 4 }, (_, i) => core.tridagonForceResultBlockAt(i));
+    const digits = maskToDigits(core.tridagonForceResultTripleMask() & 0x1ff);
+    if (actionType === 1) {
+      const r = core.finderResultR();
+      const c = core.finderResultC();
+      const digit = core.finderResultDigit();
+      return {
+        actionType: "fill",
+        technique,
+        r,
+        c,
+        digit,
+        patternCells,
+        context: {
+          digits,
+          guardians,
+          blocks,
+          concludeCell: [r, c],
+          concludeDigit: digit,
+          branches: null,
+        },
+      };
+    }
+    const eliminations = readFinderEliminations(core);
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: {
+        digits,
+        guardians,
+        blocks,
+        eliminationCount: eliminations.length,
+        branches: null,
+      },
+    };
+  }
 
   if (techniqueId === 40) {
     core.runMedusaFinder();
