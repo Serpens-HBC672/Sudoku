@@ -2130,9 +2130,11 @@ export function exocetFinderResultTrueBaseDigit(): i32 { return exocetResultTrue
 // from the frozen JS oracle. Search stays inside WASM; adapters cross the
 // boundary only to materialize returned findings.
 let availableTechniqueMaskLow: u32 = 0;
+let lastTechniqueSearchId: i32 = -1;
 let availableTechniqueMaskHigh: u32 = 0;
 
 function runTechniqueSearchById(id: i32, budgetLimit: i32): bool {
+  lastTechniqueSearchId = id;
   if (id <= 27 || (id >= 35 && id <= 37)) return basicRunTechniqueFinder(id) != 0;
   if (id == 38) return alsChainFind() != 0;
   if (id == 39) return deathBlossomFind() != 0;
@@ -2184,6 +2186,8 @@ export function runScanAvailableTechniques(budgetLimit: i32 = 6790): i32 {
   }
   return count;
 }
+
+export function debugLastTechniqueSearchId(): i32 { return lastTechniqueSearchId; }
 
 export function resultAvailableTechniqueMaskLow(): u32 { return availableTechniqueMaskLow; }
 export function resultAvailableTechniqueMaskHigh(): u32 { return availableTechniqueMaskHigh; }
