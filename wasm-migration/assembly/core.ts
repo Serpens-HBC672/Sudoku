@@ -140,6 +140,63 @@ function clearU16(array: StaticArray<u16>, length: i32): void {
   for (let i: i32 = 0; i < length; i++) unchecked(array[i] = 0);
 }
 
+function copyU8(src: StaticArray<u8>, dst: StaticArray<u8>, length: i32): void {
+  for (let i: i32 = 0; i < length; i++) unchecked(dst[i] = unchecked(src[i]));
+}
+
+function copyU16(src: StaticArray<u16>, dst: StaticArray<u16>, length: i32): void {
+  for (let i: i32 = 0; i < length; i++) unchecked(dst[i] = unchecked(src[i]));
+}
+
+let backupTrueCountValue: i32 = 0;
+let backupFalseCountValue: i32 = 0;
+let backupInitializedValue: bool = false;
+let backupContradictionValue: i32 = 0;
+let backupGuardIterationsValue: i32 = 0;
+let backupAbortedValue: i32 = 0;
+
+function saveOuterFrame(): void {
+  copyU8(inputGrid, backupInputGrid, CELL_COUNT);
+  copyU16(inputBaseMask, backupInputBaseMask, CELL_COUNT);
+  copyU8(grid, backupGrid, CELL_COUNT);
+  copyU16(cellMask, backupCellMask, CELL_COUNT);
+  copyU16(unitDigitMask, backupUnitDigitMask, UNIT_DIGIT_COUNT);
+  copyU16(placedMask, backupPlacedMask, PLACED_COUNT);
+  copyU8(trueSeen, backupTrueSeen, FACT_COUNT);
+  copyU8(falseSeen, backupFalseSeen, FACT_COUNT);
+  copyU16(trueOrder, backupTrueOrder, FACT_COUNT);
+  copyU16(falseOrder, backupFalseOrder, FACT_COUNT);
+  copyU8(touchedCells, backupTouchedCells, CELL_COUNT);
+  copyU8(touchedTriples, backupTouchedTriples, TRIPLE_COUNT);
+  backupTrueCountValue = trueCountValue;
+  backupFalseCountValue = falseCountValue;
+  backupInitializedValue = initialized;
+  backupContradictionValue = contradictionValue;
+  backupGuardIterationsValue = guardIterationsValue;
+  backupAbortedValue = abortedValue;
+}
+
+function restoreOuterFrame(): void {
+  copyU8(backupInputGrid, inputGrid, CELL_COUNT);
+  copyU16(backupInputBaseMask, inputBaseMask, CELL_COUNT);
+  copyU8(backupGrid, grid, CELL_COUNT);
+  copyU16(backupCellMask, cellMask, CELL_COUNT);
+  copyU16(backupUnitDigitMask, unitDigitMask, UNIT_DIGIT_COUNT);
+  copyU16(backupPlacedMask, placedMask, PLACED_COUNT);
+  copyU8(backupTrueSeen, trueSeen, FACT_COUNT);
+  copyU8(backupFalseSeen, falseSeen, FACT_COUNT);
+  copyU16(backupTrueOrder, trueOrder, FACT_COUNT);
+  copyU16(backupFalseOrder, falseOrder, FACT_COUNT);
+  copyU8(backupTouchedCells, touchedCells, CELL_COUNT);
+  copyU8(backupTouchedTriples, touchedTriples, TRIPLE_COUNT);
+  trueCountValue = backupTrueCountValue;
+  falseCountValue = backupFalseCountValue;
+  initialized = backupInitializedValue;
+  contradictionValue = backupContradictionValue;
+  guardIterationsValue = backupGuardIterationsValue;
+  abortedValue = backupAbortedValue;
+}
+
 export function resetInput(): void {
   clearU8(inputGrid, CELL_COUNT);
   clearU16(inputBaseMask, CELL_COUNT);
