@@ -29,7 +29,7 @@ The real forcing-chain hotspot, not a helper microbenchmark, was ported first: b
 
 A C++ fallback was **not** started because AssemblyScript produced a practical improvement on the actual forcing-chain workload while passing exact behavioral gates. The final benchmark evidence is recorded in `BENCHMARK.md`.
 
-The runtime is AssemblyScript `minimal`. The early `stub` prototype did not reclaim temporary managed allocations and eventually trapped in long multi-technique/corpus sessions; switching runtime fixes a lifecycle/runtime issue without changing technique discovery semantics.
+The migration runtime is AssemblyScript `incremental`, selected from controlled shared-instance evidence rather than theory. On workflow `36018679055`, the historical `stub` runtime failed at #22 step 5 after reaching the wasm32 4 GiB linear-memory ceiling, while `incremental` completed #1→#22 with exact 1867/1867 selected-Finding parity, peak/final linear memory of 524288 bytes (8 pages), and no explicit collection calls. `minimal` plus explicit `__collect()` at completed-puzzle boundaries also preserved 1867/1867 parity, but retained a 2 GiB peak/final linear-memory footprint and requires explicit lifecycle hooks, so it is not the production runtime.
 
 ## Candidate and board representation
 
@@ -218,7 +218,7 @@ Implementation-only differences that are not observable solver semantics include
 - packed integer fact/cell ids;
 - fixed result buffers;
 - direct WASM ABI instead of JS collections;
-- AssemblyScript minimal runtime for lifecycle-safe temporary allocation.
+- AssemblyScript incremental runtime for measured long-lived shared-instance lifecycle safety without explicit puzzle-boundary collection.
 
 Any final validation exception must be documented here before delivery; it must not be hidden by output sorting or test normalization.
 
