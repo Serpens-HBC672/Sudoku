@@ -1,0 +1,59 @@
+name: Focused MSLS #22 Reproduction
+
+on:
+  push:
+    branches:
+      - codex/wasm-human-techniques-migration
+    paths:
+      - ".github/wasm-focused/**"
+      - ".github/workflows/wasm-msls-case22-focused.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  msls-case22:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: historical-3fb9801
+            ref: 3fb98015986848e20025f8d1b1881f28fa6978e4
+            expect: trap
+          - label: recovered-head-7e23d42
+            ref: 7e23d42e249959ebeeb5690ddabe2b34d036f602
+            expect: pass
+    name: msls-case22-${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout focused harness
+        uses: actions/checkout@v4
+        with:
+          path: harness
+
+      - name: Checkout target solver state
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          path: target
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install isolated target toolchain
+        working-directory: target/wasm-migration
+        run: npm install --no-audit --no-fund
+
+      - name: Build target WASM core
+        working-directory: target/wasm-migration
+        run: npm run build
+
+      - name: Run bounded #22 MSLS standalone reproduction
+        run: >
+          node harness/.github/wasm-focused/msls-case22-repro.mjs
+          --root target
+          --expect ${{ matrix.expect }}
+          --max-ms 240000
