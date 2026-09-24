@@ -51,6 +51,7 @@ const TECHNIQUES = [
   [38, "alsChain"],
   [39, "deathBlossom"],
   [40, "medusa3D"],
+  [41, "tridagon"],
 ];
 
 function hostClone(value) {
