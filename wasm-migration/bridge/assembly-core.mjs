@@ -314,6 +314,10 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [28, "aic"],
   [29, "niceLoop"],
   [30, "sueDeCoq"],
+  [31, "fireworkTriple"],
+  [32, "fireworkQuadruple"],
+  [33, "fireworkWWing"],
+  [34, "fireworkAlp"],
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
@@ -339,6 +343,75 @@ function readStandaloneEliminations(core) {
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId >= 31 && techniqueId <= 34) {
+    core.runFireworkFinder(techniqueId);
+    if (core.fireworkFinderResultActionType() === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.fireworkFinderResultPatternCount(); i++) {
+      const index = core.fireworkFinderResultPatternAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.fireworkFinderResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.fireworkFinderResultEliminationAt(i)));
+    }
+    const digits = maskToDigits(core.fireworkFinderResultMeta(0) & 0x1ff);
+    if (techniqueId === 31) {
+      return {
+        actionType: "eliminate",
+        technique,
+        patternCells,
+        eliminations,
+        context: {
+          stem: [...patternCells[0]],
+          leaf: patternCells.slice(1, 3).map((cell) => [...cell]),
+          digits,
+        },
+      };
+    }
+    if (techniqueId === 32) {
+      return {
+        actionType: "eliminate",
+        technique,
+        patternCells,
+        eliminations,
+        context: {
+          stem: patternCells.slice(0, 2).map((cell) => [...cell]),
+          leaf: patternCells.slice(2, 4).map((cell) => [...cell]),
+          digits,
+        },
+      };
+    }
+    if (techniqueId === 33) {
+      return {
+        actionType: "eliminate",
+        technique,
+        patternCells,
+        eliminations,
+        context: {
+          stem: [...patternCells[0]],
+          leaf: patternCells.slice(1, 3).map((cell) => [...cell]),
+          assist: patternCells.slice(3, 5).map((cell) => [...cell]),
+          target: [...patternCells[5]],
+          digits,
+        },
+      };
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: {
+        stem: [...patternCells[0]],
+        rowPartner: [...patternCells[1]],
+        colPartner: [...patternCells[2]],
+        assist: [...patternCells[3]],
+        digits,
+      },
+    };
+  }
 
   if (techniqueId === 30) {
     core.runSueDeCoqFinder();
