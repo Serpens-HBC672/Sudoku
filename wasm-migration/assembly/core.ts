@@ -14,6 +14,8 @@ import {
   basicResultEliminationCount as basicEliminationCount,
   basicResultEliminationAt as basicEliminationAt,
   basicResultMeta as basicMeta,
+  basicResultExtraCellCount as basicExtraCellCount,
+  basicResultExtraCellAt as basicExtraCellAt,
 } from "./basic-finders";
 
 // AssemblyScript hotspot prototype for the human-technique solver.
@@ -1620,6 +1622,8 @@ export function standaloneResultPatternAt(i: i32): i32 { return basicPatternAt(i
 export function standaloneResultEliminationCount(): i32 { return basicEliminationCount(); }
 export function standaloneResultEliminationAt(i: i32): i32 { return basicEliminationAt(i); }
 export function standaloneResultMeta(i: i32): i32 { return basicMeta(i); }
+export function standaloneResultExtraCellCount(): i32 { return basicExtraCellCount(); }
+export function standaloneResultExtraCellAt(i: i32): i32 { return basicExtraCellAt(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
