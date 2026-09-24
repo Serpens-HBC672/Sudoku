@@ -1,4 +1,23 @@
 import {
+  exocetResetInput,
+  exocetSetInputCell,
+  exocetSetInputMask,
+  juniorExocetFind,
+  seniorExocetFind,
+  exocetResultTechnique,
+  exocetResultSubtype,
+  exocetResultOrientation,
+  exocetResultPatternCount,
+  exocetResultPatternAt,
+  exocetResultEliminationCount,
+  exocetResultEliminationAt,
+  exocetResultBaseAt,
+  exocetResultTargetAt,
+  exocetResultBaseMask,
+  exocetResultTrueBaseDigit,
+} from "./exocet-finder";
+
+import {
   mslsResetInput,
   mslsSetInputCell,
   mslsSetInputMask,
@@ -411,6 +430,7 @@ export function resetInput(): void {
   tridagonResetInput();
   skResetInput();
   mslsResetInput();
+  exocetResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
@@ -425,6 +445,7 @@ export function setInputCell(index: i32, digit: i32): void {
   tridagonSetInputCell(index, digit);
   skSetInputCell(index, digit);
   mslsSetInputCell(index, digit);
+  exocetSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
@@ -439,6 +460,7 @@ export function setInputMask(index: i32, mask: i32): void {
   tridagonSetInputMask(index, mask);
   skSetInputMask(index, mask);
   mslsSetInputMask(index, mask);
+  exocetSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -2106,6 +2128,20 @@ export function mslsFinderResultColCount(): i32 { return mslsResultColCount(); }
 export function mslsFinderResultColAt(i:i32): i32 { return mslsResultColAt(i); }
 export function mslsFinderResultBoxCount(): i32 { return mslsResultBoxCount(); }
 export function mslsFinderResultBoxAt(i:i32): i32 { return mslsResultBoxAt(i); }
+
+export function runJuniorExocetFinder(): i32 { return juniorExocetFind(); }
+export function runSeniorExocetFinder(): i32 { return seniorExocetFind(); }
+export function exocetFinderResultTechnique(): i32 { return exocetResultTechnique(); }
+export function exocetFinderResultSubtype(): i32 { return exocetResultSubtype(); }
+export function exocetFinderResultOrientation(): i32 { return exocetResultOrientation(); }
+export function exocetFinderResultPatternCount(): i32 { return exocetResultPatternCount(); }
+export function exocetFinderResultPatternAt(i:i32): i32 { return exocetResultPatternAt(i); }
+export function exocetFinderResultEliminationCount(): i32 { return exocetResultEliminationCount(); }
+export function exocetFinderResultEliminationAt(i:i32): i32 { return exocetResultEliminationAt(i); }
+export function exocetFinderResultBaseAt(i:i32): i32 { return exocetResultBaseAt(i); }
+export function exocetFinderResultTargetAt(i:i32): i32 { return exocetResultTargetAt(i); }
+export function exocetFinderResultBaseMask(): i32 { return exocetResultBaseMask(); }
+export function exocetFinderResultTrueBaseDigit(): i32 { return exocetResultTrueBaseDigit(); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
