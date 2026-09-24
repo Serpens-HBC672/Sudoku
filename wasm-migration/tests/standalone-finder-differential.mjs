@@ -54,6 +54,7 @@ const TECHNIQUES = [
   [41, "tridagon"],
   [45, "tridagonForce"],
   [46, "skLoop"],
+  [47, "msls"],
 ];
 
 function hostClone(value) {
