@@ -1345,6 +1345,150 @@ function findPom():i32{
   return 0;
 }
 
+
+const ALS_CAP:i32=4096;
+const alsSize=new StaticArray<u8>(ALS_CAP);
+const alsMask=new StaticArray<u16>(ALS_CAP);
+const alsCell0=new StaticArray<u8>(ALS_CAP);
+const alsCell1=new StaticArray<u8>(ALS_CAP);
+const alsCell2=new StaticArray<u8>(ALS_CAP);
+let alsCount:i32=0;
+
+@inline
+function alsCellAt(ai:i32,pos:i32):i32{
+  if(pos==0)return <i32>unchecked(alsCell0[ai]);
+  if(pos==1)return <i32>unchecked(alsCell1[ai]);
+  return <i32>unchecked(alsCell2[ai]);
+}
+
+function sameAlsCells(size:i32,a:i32,b:i32,c:i32,ai:i32):bool{
+  if(<i32>unchecked(alsSize[ai])!=size)return false;
+  if(alsCellAt(ai,0)!=a)return false;
+  if(size>=2&&alsCellAt(ai,1)!=b)return false;
+  if(size>=3&&alsCellAt(ai,2)!=c)return false;
+  return true;
+}
+
+function addAls(size:i32,a:i32,b:i32,c:i32,mask:u16):void{
+  for(let ai:i32=0;ai<alsCount;ai++)if(sameAlsCells(size,a,b,c,ai))return;
+  if(alsCount>=ALS_CAP)return;
+  unchecked(alsSize[alsCount]=<u8>size);
+  unchecked(alsMask[alsCount]=mask);
+  unchecked(alsCell0[alsCount]=<u8>a);
+  unchecked(alsCell1[alsCount]=<u8>b);
+  unchecked(alsCell2[alsCount]=<u8>c);
+  alsCount++;
+}
+
+function enumerateAls():void{
+  alsCount=0;
+  const empty=new StaticArray<i32>(9);
+  const combo=new StaticArray<i32>(3);
+  for(let unitType:i32=0;unitType<3;unitType++){
+    for(let idx:i32=0;idx<9;idx++){
+      let n:i32=0;
+      for(let pos:i32=0;pos<9;pos++){
+        const index=unitCellIndex(unitType,idx,pos);
+        if(emptyAt(index))unchecked(empty[n++]=index);
+      }
+      const maxSize=n<3?n:3;
+      for(let size:i32=1;size<=maxSize;size++){
+        initCombination(combo,size);
+        while(true){
+          let union:u16=0;
+          let a:i32=-1,b:i32=-1,c:i32=-1;
+          for(let k:i32=0;k<size;k++){
+            const index=unchecked(empty[unchecked(combo[k])]);
+            if(k==0)a=index;else if(k==1)b=index;else c=index;
+            union=<u16>(union|maskAt(index));
+          }
+          if(countBits9(union)==size+1)addAls(size,a,b,c,union);
+          if(!advanceCombination(combo,n,size))break;
+        }
+      }
+    }
+  }
+}
+
+function alsOverlapByIndex(a:i32,b:i32):bool{
+  const as=<i32>unchecked(alsSize[a]),bs=<i32>unchecked(alsSize[b]);
+  for(let i:i32=0;i<as;i++)for(let j:i32=0;j<bs;j++)if(alsCellAt(a,i)==alsCellAt(b,j))return true;
+  return false;
+}
+
+function alsDigitAllSee(a:i32,b:i32,d:i32):bool{
+  const bit=bitForDigit(d);
+  const as=<i32>unchecked(alsSize[a]),bs=<i32>unchecked(alsSize[b]);
+  let anyA=false,anyB=false;
+  for(let i:i32=0;i<as;i++){
+    const ca=alsCellAt(a,i);if((maskAt(ca)&bit)==0)continue;anyA=true;
+    for(let j:i32=0;j<bs;j++){
+      const cb=alsCellAt(b,j);if((maskAt(cb)&bit)==0)continue;anyB=true;
+      if(!cellsSee(ca,cb))return false;
+    }
+  }
+  return anyA&&anyB;
+}
+
+function appendAlsPattern(ai:i32):void{
+  const size=<i32>unchecked(alsSize[ai]);
+  for(let i:i32=0;i<size;i++)appendPattern(alsCellAt(ai,i));
+}
+
+function cellInAls(index:i32,ai:i32):bool{
+  const size=<i32>unchecked(alsSize[ai]);
+  for(let i:i32=0;i<size;i++)if(alsCellAt(ai,i)==index)return true;
+  return false;
+}
+
+function cellSeesAllAlsDigitPositions(index:i32,ai:i32,d:i32):bool{
+  const bit=bitForDigit(d),size=<i32>unchecked(alsSize[ai]);
+  for(let i:i32=0;i<size;i++){
+    const cell=alsCellAt(ai,i);
+    if((maskAt(cell)&bit)!=0&&!cellsSee(index,cell))return false;
+  }
+  return true;
+}
+
+function findAlsXZ():i32{
+  enumerateAls();
+  for(let a:i32=0;a<alsCount-1;a++){
+    for(let b:i32=a+1;b<alsCount;b++){
+      if(alsOverlapByIndex(a,b))continue;
+      const common=<u16>(unchecked(alsMask[a])&unchecked(alsMask[b]));
+      let rccMask:u16=0,rccCount:i32=0;
+      extraDigitCount=0;
+      for(let d:i32=1;d<=9;d++){
+        if((common&bitForDigit(d))==0)continue;
+        if(alsDigitAllSee(a,b,d)){
+          rccMask=<u16>(rccMask|bitForDigit(d));rccCount++;
+          unchecked(extraDigits[extraDigitCount++]=<u8>d);
+        }
+      }
+      if(rccCount==0)continue;
+      for(let z:i32=1;z<=9;z++){
+        const zBit=bitForDigit(z);if((common&zBit)==0)continue;
+        if(!(rccCount>1||(rccMask&zBit)==0))continue;
+        eliminationCount=0;
+        for(let index:i32=0;index<CELL_COUNT;index++){
+          if(cellInAls(index,a)||cellInAls(index,b))continue;
+          if(!emptyAt(index)||(maskAt(index)&zBit)==0)continue;
+          if(cellSeesAllAlsDigitPositions(index,a,z)&&cellSeesAllAlsDigitPositions(index,b,z))appendElimination(index,z);
+        }
+        if(eliminationCount>0){
+          techniqueId=36;actionType=2;patternCount=0;
+          appendAlsPattern(a);appendAlsPattern(b);
+          unchecked(meta[0]=<i32>unchecked(alsSize[a]));
+          unchecked(meta[1]=<i32>unchecked(alsSize[b]));
+          unchecked(meta[2]=z);
+          return actionType;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -1376,6 +1520,7 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 26) return findWing(4, 3, 26);
   if (id == 27) return findXYChain();
   if (id == 35) return findPom();
+  if (id == 36) return findAlsXZ();
   return 0;
 }
 
