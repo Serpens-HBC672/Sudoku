@@ -42,6 +42,12 @@ jobs:
       - name: Accumulated debug core exact standalone-suite history
         continue-on-error: true
         run: node tests/senior-exocet-incremental-diagnostic.mjs accumulated ../build/sudoku-techniques-debug.wasm
+      - name: Debug standalone suite for named incremental stack
+        continue-on-error: true
+        run: |
+          cp build/sudoku-techniques-debug.wasm build/sudoku-techniques.wasm
+          node tests/standalone-finder-differential.mjs
+
       - name: Upload diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v4
