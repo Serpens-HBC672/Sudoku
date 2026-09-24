@@ -1,4 +1,17 @@
 import {
+  fireworkResetInput,
+  fireworkSetInputCell,
+  fireworkSetInputMask,
+  fireworkFind,
+  fireworkResultActionType,
+  fireworkResultPatternCount,
+  fireworkResultPatternAt,
+  fireworkResultEliminationCount,
+  fireworkResultEliminationAt,
+  fireworkResultMeta,
+} from "./firework-finders";
+
+import {
   sdcResetInput,
   sdcSetInputCell,
   sdcSetInputMask,
@@ -286,6 +299,7 @@ export function resetInput(): void {
   basicResetInput();
   aicResetInput();
   sdcResetInput();
+  fireworkResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
@@ -294,6 +308,7 @@ export function setInputCell(index: i32, digit: i32): void {
   basicSetInputCell(index, digit);
   aicSetInputCell(index, digit);
   sdcSetInputCell(index, digit);
+  fireworkSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
@@ -302,6 +317,7 @@ export function setInputMask(index: i32, mask: i32): void {
   basicSetInputMask(index, mask);
   aicSetInputMask(index, mask);
   sdcSetInputMask(index, mask);
+  fireworkSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -1686,6 +1702,14 @@ export function sdcFinderResultPatternAt(i:i32): i32 { return sdcResultPatternAt
 export function sdcFinderResultEliminationCount(): i32 { return sdcResultEliminationCount(); }
 export function sdcFinderResultEliminationAt(i:i32): i32 { return sdcResultEliminationAt(i); }
 export function sdcFinderResultMeta(i:i32): i32 { return sdcResultMeta(i); }
+
+export function runFireworkFinder(id:i32): i32 { return fireworkFind(id); }
+export function fireworkFinderResultActionType(): i32 { return fireworkResultActionType(); }
+export function fireworkFinderResultPatternCount(): i32 { return fireworkResultPatternCount(); }
+export function fireworkFinderResultPatternAt(i:i32): i32 { return fireworkResultPatternAt(i); }
+export function fireworkFinderResultEliminationCount(): i32 { return fireworkResultEliminationCount(); }
+export function fireworkFinderResultEliminationAt(i:i32): i32 { return fireworkResultEliminationAt(i); }
+export function fireworkFinderResultMeta(i:i32): i32 { return fireworkResultMeta(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
