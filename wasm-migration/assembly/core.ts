@@ -1193,6 +1193,207 @@ export function runDynamicUnaryFinder(budgetLimit: i32): i32 {
   return 0;
 }
 
+
+function initMultiCommonFromCurrent(): void {
+  copyU8(trueSeen, multiTrueSeen, FACT_COUNT);
+  copyU8(falseSeen, multiFalseSeen, FACT_COUNT);
+  copyU16(trueOrder, multiTrueOrder, FACT_COUNT);
+  copyU16(falseOrder, multiFalseOrder, FACT_COUNT);
+  multiTrueCount = trueCountValue;
+  multiFalseCount = falseCountValue;
+}
+
+function intersectMultiCommonWithCurrent(): void {
+  for (let i: i32 = 0; i < multiTrueCount; i++) {
+    const k = <i32>unchecked(multiTrueOrder[i]);
+    if (unchecked(multiTrueSeen[k]) != 0 && unchecked(trueSeen[k]) == 0) unchecked(multiTrueSeen[k] = 0);
+  }
+  for (let i: i32 = 0; i < multiFalseCount; i++) {
+    const k = <i32>unchecked(multiFalseOrder[i]);
+    if (unchecked(multiFalseSeen[k]) != 0 && unchecked(falseSeen[k]) == 0) unchecked(multiFalseSeen[k] = 0);
+  }
+}
+
+@inline
+function factR(k: i32): i32 {
+  const d = k % 9 + 1;
+  const q = (k - (d - 1)) / 9;
+  const c = q % 9;
+  return (q - c) / 9;
+}
+
+@inline
+function factC(k: i32): i32 {
+  const d = k % 9 + 1;
+  const q = (k - (d - 1)) / 9;
+  return q % 9;
+}
+
+@inline
+function factD(k: i32): i32 {
+  return k % 9 + 1;
+}
+
+function setFinderFillFromFact(k: i32): void {
+  finderActionType = 1;
+  finderDigit = factD(k);
+  finderC = factC(k);
+  finderR = factR(k);
+}
+
+function copyCommonFalseToFinder(): void {
+  finderEliminationCount = 0;
+  for (let i: i32 = 0; i < multiFalseCount; i++) {
+    const k = <i32>unchecked(multiFalseOrder[i]);
+    if (unchecked(multiFalseSeen[k]) == 0) continue;
+    unchecked(finderEliminations[finderEliminationCount++] = <u16>k);
+  }
+}
+
+function runDynamicCellMultipleFinder(): i32 {
+  for (let index: i32 = 0; index < CELL_COUNT; index++) {
+    if (unchecked(inputGrid[index]) != 0) continue;
+    const mask = unchecked(inputBaseMask[index]) & ALL_DIGITS;
+    if (countBits9(mask) < 3) continue;
+
+    let firstBranch: bool = true;
+    let anyContradiction: bool = false;
+    for (let d: i32 = 1; d <= 9; d++) {
+      if ((mask & bitForDigit(d)) == 0) continue;
+      runDynamicShared(index / 9, index % 9, d, true);
+      if (contradictionValue != 0) {
+        anyContradiction = true;
+        break;
+      }
+      if (firstBranch) {
+        initMultiCommonFromCurrent();
+        firstBranch = false;
+      } else {
+        intersectMultiCommonWithCurrent();
+      }
+    }
+    if (anyContradiction || firstBranch) continue;
+
+    // JS deletes every start-cell candidate from commonTrue after intersection.
+    for (let d: i32 = 1; d <= 9; d++) {
+      if ((mask & bitForDigit(d)) == 0) continue;
+      unchecked(multiTrueSeen[factIndex(index / 9, index % 9, d)] = 0);
+    }
+
+    let commonTrueFact: i32 = -1;
+    for (let i: i32 = 0; i < multiTrueCount; i++) {
+      const k = <i32>unchecked(multiTrueOrder[i]);
+      if (unchecked(multiTrueSeen[k]) != 0) { commonTrueFact = k; break; }
+    }
+
+    if (commonTrueFact >= 0) {
+      resetFinderResult();
+      finderKind = 1;
+      finderStartR = index / 9;
+      finderStartC = index % 9;
+      unchecked(finderPatternCells[0] = <u8>index);
+      finderPatternCellCount = 1;
+      setFinderFillFromFact(commonTrueFact);
+      return finderActionType;
+    }
+
+    copyCommonFalseToFinder();
+    if (finderEliminationCount > 0) {
+      finderActionType = 2;
+      finderKind = 1;
+      finderStartR = index / 9;
+      finderStartC = index % 9;
+      unchecked(finderPatternCells[0] = <u8>index);
+      finderPatternCellCount = 1;
+      return finderActionType;
+    }
+  }
+  return 0;
+}
+
+function runDynamicRegionMultipleFinder(): i32 {
+  for (let d: i32 = 1; d <= 9; d++) {
+    const bit = bitForDigit(d);
+    for (let unitType: i32 = 0; unitType < 3; unitType++) {
+      for (let idx: i32 = 0; idx < 9; idx++) {
+        const cells = new StaticArray<i32>(9);
+        let cellCount: i32 = 0;
+        for (let pos: i32 = 0; pos < 9; pos++) {
+          const index = unitCellIndex(unitType, idx, pos);
+          if (unchecked(inputGrid[index]) == 0 && (unchecked(inputBaseMask[index]) & bit) != 0) {
+            unchecked(cells[cellCount++] = index);
+          }
+        }
+        if (cellCount < 3) continue;
+
+        let firstBranch: bool = true;
+        let anyContradiction: bool = false;
+        for (let ci: i32 = 0; ci < cellCount; ci++) {
+          const index = unchecked(cells[ci]);
+          runDynamicShared(index / 9, index % 9, d, true);
+          if (contradictionValue != 0) {
+            anyContradiction = true;
+            break;
+          }
+          if (firstBranch) {
+            initMultiCommonFromCurrent();
+            firstBranch = false;
+          } else {
+            intersectMultiCommonWithCurrent();
+          }
+        }
+        if (anyContradiction || firstBranch) continue;
+
+        for (let ci: i32 = 0; ci < cellCount; ci++) {
+          const index = unchecked(cells[ci]);
+          unchecked(multiTrueSeen[factIndex(index / 9, index % 9, d)] = 0);
+        }
+
+        let commonTrueFact: i32 = -1;
+        for (let i: i32 = 0; i < multiTrueCount; i++) {
+          const k = <i32>unchecked(multiTrueOrder[i]);
+          if (unchecked(multiTrueSeen[k]) != 0) { commonTrueFact = k; break; }
+        }
+
+        if (commonTrueFact >= 0) {
+          resetFinderResult();
+          finderKind = 2;
+          finderUnitType = unitType;
+          finderUnitIdx = idx;
+          finderStartDigit = d;
+          finderPatternCellCount = cellCount;
+          for (let ci: i32 = 0; ci < cellCount; ci++) unchecked(finderPatternCells[ci] = <u8>unchecked(cells[ci]));
+          setFinderFillFromFact(commonTrueFact);
+          return finderActionType;
+        }
+
+        copyCommonFalseToFinder();
+        if (finderEliminationCount > 0) {
+          finderActionType = 2;
+          finderKind = 2;
+          finderUnitType = unitType;
+          finderUnitIdx = idx;
+          finderStartDigit = d;
+          finderPatternCellCount = cellCount;
+          for (let ci: i32 = 0; ci < cellCount; ci++) unchecked(finderPatternCells[ci] = <u8>unchecked(cells[ci]));
+          return finderActionType;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+export function runDynamicMultipleFinder(budgetLimit: i32): i32 {
+  resetFinderResult();
+  budgetCallsValue = 0;
+  budgetLimitValue = budgetLimit;
+
+  const cellResult = runDynamicCellMultipleFinder();
+  if (cellResult != 0) return cellResult;
+  return runDynamicRegionMultipleFinder();
+}
+
 export function finderResultActionType(): i32 {
   return finderActionType;
 }
@@ -1219,6 +1420,27 @@ export function finderResultStartC(): i32 {
 
 export function finderResultStartDigit(): i32 {
   return finderStartDigit;
+}
+
+export function finderResultKind(): i32 {
+  return finderKind;
+}
+
+export function finderResultUnitType(): i32 {
+  return finderUnitType;
+}
+
+export function finderResultUnitIdx(): i32 {
+  return finderUnitIdx;
+}
+
+export function finderResultPatternCellCount(): i32 {
+  return finderPatternCellCount;
+}
+
+export function finderResultPatternCellAt(index: i32): i32 {
+  if (index < 0 || index >= finderPatternCellCount) return -1;
+  return <i32>unchecked(finderPatternCells[index]);
 }
 
 export function finderResultEliminationCount(): i32 {
