@@ -106,15 +106,6 @@ for (const testCase of corpus) {
       key === "juniorExocet" || key === "seniorExocet"
         ? hostClone(oracle.validateFindingAgainstSolution(rawWasmFinding, testCase.solution))
         : rawWasmFinding;
-    if (key === "medusa3D" && jsFinding && !wasmFinding) {
-      const diag = jsFinding.context.coloring.map(({ r, c, d }) => {
-        const k = r * 81 + c * 9 + (d - 1);
-        const degree = core.medusaFinderDebugAdjCount(k);
-        const neighbors = Array.from({ length: Math.max(0, degree) }, (_, i) => core.medusaFinderDebugAdjAt(k, i));
-        return { r, c, d, k, degree, neighbors };
-      });
-      console.error("MEDUSA_DIAG", JSON.stringify({ caseId: testCase.id, diag }));
-    }
     const expectedFinding = hostClone(jsFinding);
     try {
       assert.deepEqual(
