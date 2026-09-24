@@ -1259,6 +1259,92 @@ function findGsp(): i32 {
   return 0;
 }
 
+
+const pomRows = new StaticArray<i32>(9);
+const pomRowMasks = new StaticArray<i32>(9);
+const pomChosen = new StaticArray<i32>(9);
+const pomCellCount = new StaticArray<i32>(81);
+let pomRowCount:i32=0;
+let pomPatternCount:i32=0;
+let pomSteps:i32=0;
+let pomBudgetExceeded:bool=false;
+
+function pomBacktrack(idx:i32, usedCols:i32, usedBoxes:i32):void{
+  if(pomBudgetExceeded)return;
+  pomSteps++;
+  if(pomSteps>300000){pomBudgetExceeded=true;return;}
+  if(idx==pomRowCount){
+    pomPatternCount++;
+    for(let i:i32=0;i<pomRowCount;i++){
+      const r=unchecked(pomRows[i]), c=unchecked(pomChosen[i]);
+      const index=r*9+c;
+      unchecked(pomCellCount[index]=unchecked(pomCellCount[index])+1);
+    }
+    return;
+  }
+  const r=unchecked(pomRows[idx]);
+  const avail=unchecked(pomRowMasks[r])&~usedCols;
+  for(let c:i32=0;c<9;c++){
+    const cBit=1<<c;if((avail&cBit)==0)continue;
+    const bBit=1<<boxIndex(r,c);if((usedBoxes&bBit)!=0)continue;
+    unchecked(pomChosen[idx]=c);
+    pomBacktrack(idx+1,usedCols|cBit,usedBoxes|bBit);
+    if(pomPatternCount>=4000||pomBudgetExceeded)return;
+  }
+}
+
+function findPom():i32{
+  for(let digit:i32=1;digit<=9;digit++){
+    const bit=bitForDigit(digit);
+    pomRowCount=0;pomPatternCount=0;pomSteps=0;pomBudgetExceeded=false;
+    for(let i:i32=0;i<81;i++)unchecked(pomCellCount[i]=0);
+    for(let r:i32=0;r<9;r++){
+      let already=false,colMask:i32=0;
+      for(let c:i32=0;c<9;c++){
+        const index=r*9+c;
+        if(<i32>unchecked(inputGrid[index])==digit){already=true;break;}
+        if(emptyAt(index)&&(maskAt(index)&bit)!=0)colMask|=1<<c;
+      }
+      if(already)continue;
+      if(colMask==0){pomRowCount=0;break;}
+      unchecked(pomRows[pomRowCount++]=r);
+      unchecked(pomRowMasks[r]=colMask);
+    }
+    if(pomRowCount==0)continue;
+    pomBacktrack(0,0,0);
+    if(pomBudgetExceeded||pomPatternCount==0)continue;
+
+    patternCount=0;
+    for(let index:i32=0;index<CELL_COUNT;index++){
+      if(emptyAt(index)&&(maskAt(index)&bit)!=0)appendPattern(index);
+    }
+
+    extraCellCount=0;
+    for(let pi:i32=0;pi<patternCount;pi++){
+      const index=<i32>unchecked(patternCells[pi]);
+      if(unchecked(pomCellCount[index])==pomPatternCount)unchecked(extraCells[extraCellCount++]=<u8>index);
+    }
+    if(extraCellCount>0){
+      const index=<i32>unchecked(extraCells[0]);
+      techniqueId=35;actionType=1;resultR=index/9;resultC=index%9;resultDigit=digit;
+      unchecked(meta[0]=digit);unchecked(meta[1]=pomPatternCount);unchecked(meta[2]=0);
+      return actionType;
+    }
+
+    eliminationCount=0;
+    for(let pi:i32=0;pi<patternCount;pi++){
+      const index=<i32>unchecked(patternCells[pi]);
+      if(unchecked(pomCellCount[index])==0)appendElimination(index,digit);
+    }
+    if(eliminationCount>0){
+      techniqueId=35;actionType=2;
+      unchecked(meta[0]=digit);unchecked(meta[1]=pomPatternCount);unchecked(meta[2]=1);
+      return actionType;
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -1289,6 +1375,7 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 25) return findWWing();
   if (id == 26) return findWing(4, 3, 26);
   if (id == 27) return findXYChain();
+  if (id == 35) return findPom();
   return 0;
 }
 
