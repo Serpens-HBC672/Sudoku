@@ -216,6 +216,11 @@ let finderPatternCellCount: i32 = 0;
 const finderEliminations = new StaticArray<u16>(FACT_COUNT);
 let finderEliminationCount: i32 = 0;
 
+const tridagonForceGuardians = new StaticArray<u16>(8);
+let tridagonForceGuardianCount: i32 = 0;
+let tridagonForceTripleMask: i32 = 0;
+const tridagonForceBlocks = new StaticArray<u8>(4);
+
 let budgetCallsValue: i32 = 0;
 let budgetLimitValue: i32 = 0;
 let abortedValue: i32 = 0;
@@ -1251,6 +1256,8 @@ function resetFinderResult(): void {
   finderUnitIdx = -1;
   finderPatternCellCount = 0;
   finderEliminationCount = 0;
+  tridagonForceGuardianCount = 0;
+  tridagonForceTripleMask = 0;
 }
 
 function copyOnBranchSets(): void {
@@ -1623,6 +1630,213 @@ function runMultipleRegionFinder(dynamicMode: bool): i32 {
   }
   return 0;
 }
+
+
+@inline
+function tridagonPairFirst(pairIndex: i32): i32 {
+  return pairIndex == 0 ? 0 : pairIndex == 1 ? 0 : 1;
+}
+
+@inline
+function tridagonPairSecond(pairIndex: i32): i32 {
+  return pairIndex == 0 ? 1 : 2;
+}
+
+function tridagonShapeLocal(orientation: i32, shape: i32, pos: i32): i32 {
+  // orientation 0=diag, 1=anti
+  if (orientation == 0) {
+    if (shape == 0) return pos == 0 ? 0 : pos == 1 ? 10 : 20;
+    if (shape == 1) return pos == 0 ? 1 : pos == 1 ? 11 : 18;
+    return pos == 0 ? 2 : pos == 1 ? 9 : 19;
+  }
+  if (shape == 0) return pos == 0 ? 0 : pos == 1 ? 11 : 19;
+  if (shape == 1) return pos == 0 ? 1 : pos == 1 ? 9 : 20;
+  return pos == 0 ? 2 : pos == 1 ? 10 : 18;
+}
+
+function tridagonForcePatternCell(
+  blockK: i32,
+  odd: i32,
+  oddUsesDiag: bool,
+  combo: i32,
+  b1: i32,
+  b2: i32,
+  s1: i32,
+  s2: i32,
+  pos: i32,
+): i32 {
+  let rest = combo;
+  let shape: i32 = 0;
+  for (let k: i32 = 0; k <= blockK; k++) {
+    shape = rest % 3;
+    rest /= 3;
+  }
+  const useDiag = (blockK == odd) == oddUsesDiag;
+  const local = tridagonShapeLocal(useDiag ? 0 : 1, shape, pos);
+  const lr = local / 9;
+  const lc = local % 9;
+  const br = blockK < 2 ? b1 : b2;
+  const bc = blockK == 0 || blockK == 2 ? s1 : s2;
+  return (br * 3 + lr) * 9 + (bc * 3 + lc);
+}
+
+function runTridagonForceBranchSet(
+  guardians: StaticArray<i32>,
+  guardianCount: i32,
+): bool {
+  let firstBranch: bool = true;
+  let anyContradiction: bool = false;
+
+  // JS uses guardianList.map(engine) before branches.some(...): execute every
+  // branch even if an earlier one contradicted.
+  for (let gi: i32 = 0; gi < guardianCount; gi++) {
+    const k = unchecked(guardians[gi]);
+    runStaticAssumption(factR(k), factC(k), factD(k), 1);
+    if (contradictionValue != 0) {
+      anyContradiction = true;
+      continue;
+    }
+    if (firstBranch) {
+      initMultiCommonFromCurrent();
+      firstBranch = false;
+    } else {
+      intersectMultiCommonWithCurrent();
+    }
+  }
+  if (anyContradiction || firstBranch) return false;
+
+  // Guardian candidates themselves are not an extra common-true conclusion.
+  for (let gi: i32 = 0; gi < guardianCount; gi++) {
+    unchecked(multiTrueSeen[unchecked(guardians[gi])] = 0);
+  }
+
+  for (let i: i32 = 0; i < multiTrueCount; i++) {
+    const k = <i32>unchecked(multiTrueOrder[i]);
+    if (unchecked(multiTrueSeen[k]) == 0) continue;
+    finderActionType = 1;
+    finderR = factR(k);
+    finderC = factC(k);
+    finderDigit = factD(k);
+    return true;
+  }
+
+  copyCommonFalseToFinder();
+  if (finderEliminationCount > 0) {
+    finderActionType = 2;
+    return true;
+  }
+  return false;
+}
+
+export function runTridagonForceFinder(): i32 {
+  resetFinderResult();
+  const cells = new StaticArray<i32>(12);
+  const cellMasks = new StaticArray<u16>(12);
+  const guardians = new StaticArray<i32>(8);
+
+  for (let bp: i32 = 0; bp < 3; bp++) {
+    const b1 = tridagonPairFirst(bp);
+    const b2 = tridagonPairSecond(bp);
+    for (let sp: i32 = 0; sp < 3; sp++) {
+      const s1 = tridagonPairFirst(sp);
+      const s2 = tridagonPairSecond(sp);
+
+      for (let odd: i32 = 0; odd < 4; odd++) {
+        for (let orientation: i32 = 0; orientation < 2; orientation++) {
+          const oddUsesDiag = orientation == 0; // JS [true,false]
+          for (let combo: i32 = 0; combo < 81; combo++) {
+            let usable: bool = true;
+            let bigCells: i32 = 0;
+            let unionAll: u16 = 0;
+            let ci: i32 = 0;
+
+            for (let blockK: i32 = 0; blockK < 4 && usable; blockK++) {
+              for (let pos: i32 = 0; pos < 3; pos++) {
+                const index = tridagonForcePatternCell(
+                  blockK, odd, oddUsesDiag, combo, b1, b2, s1, s2, pos
+                );
+                const m = <u16>(unchecked(inputBaseMask[index]) & ALL_DIGITS);
+                if (unchecked(inputGrid[index]) != 0 || m == 0 || (m & <u16>(m - 1)) == 0) {
+                  usable = false;
+                  break;
+                }
+                if (countBits9(m) > 4) bigCells++;
+                unionAll = <u16>(unionAll | m);
+                unchecked(cells[ci] = index);
+                unchecked(cellMasks[ci] = m);
+                ci++;
+              }
+            }
+            if (!usable || bigCells > 4) continue;
+
+            for (let triple: i32 = 0; triple < 512; triple++) {
+              const T = <u16>triple;
+              if (countBits9(T) != 3 || (unionAll & T) != T) continue;
+
+              let ok: bool = true;
+              let guardianCount: i32 = 0;
+              for (let i: i32 = 0; i < 12 && ok; i++) {
+                const m = unchecked(cellMasks[i]);
+                if ((m & T) == 0) {
+                  ok = false;
+                  break;
+                }
+                const extra = <u16>(m & <u16>(~T));
+                for (let d: i32 = 1; d <= 9; d++) {
+                  if ((extra & bitForDigit(d)) == 0) continue;
+                  if (guardianCount >= 8) {
+                    ok = false;
+                    break;
+                  }
+                  const index = unchecked(cells[i]);
+                  unchecked(guardians[guardianCount++] = factIndex(index / 9, index % 9, d));
+                }
+              }
+              if (!ok || guardianCount < 2) continue;
+
+              if (!runTridagonForceBranchSet(guardians, guardianCount)) continue;
+
+              finderPatternCellCount = 12;
+              for (let i: i32 = 0; i < 12; i++) {
+                unchecked(finderPatternCells[i] = <u8>unchecked(cells[i]));
+              }
+              tridagonForceGuardianCount = guardianCount;
+              for (let i: i32 = 0; i < guardianCount; i++) {
+                unchecked(tridagonForceGuardians[i] = <u16>unchecked(guardians[i]));
+              }
+              tridagonForceTripleMask = triple;
+              unchecked(tridagonForceBlocks[0] = <u8>(b1 * 3 + s1));
+              unchecked(tridagonForceBlocks[1] = <u8>(b1 * 3 + s2));
+              unchecked(tridagonForceBlocks[2] = <u8>(b2 * 3 + s1));
+              unchecked(tridagonForceBlocks[3] = <u8>(b2 * 3 + s2));
+              return finderActionType;
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+export function tridagonForceResultGuardianCount(): i32 {
+  return tridagonForceGuardianCount;
+}
+
+export function tridagonForceResultGuardianFactAt(index: i32): i32 {
+  if (index < 0 || index >= tridagonForceGuardianCount) return -1;
+  return <i32>unchecked(tridagonForceGuardians[index]);
+}
+
+export function tridagonForceResultTripleMask(): i32 {
+  return tridagonForceTripleMask;
+}
+
+export function tridagonForceResultBlockAt(index: i32): i32 {
+  if (index < 0 || index >= 4) return -1;
+  return <i32>unchecked(tridagonForceBlocks[index]);
+}
+
 
 export function runDynamicMultipleFinder(budgetLimit: i32): i32 {
   resetFinderResult();
