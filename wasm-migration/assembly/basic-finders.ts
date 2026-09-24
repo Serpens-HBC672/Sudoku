@@ -259,11 +259,163 @@ function findLockedCandidate(): i32 {
   return 0;
 }
 
+
+function initCombination(indices: StaticArray<i32>, k: i32): void {
+  for (let i: i32 = 0; i < k; i++) unchecked(indices[i] = i);
+}
+
+function advanceCombination(indices: StaticArray<i32>, n: i32, k: i32): bool {
+  let i = k - 1;
+  while (i >= 0 && unchecked(indices[i]) == n - k + i) i--;
+  if (i < 0) return false;
+  unchecked(indices[i] = unchecked(indices[i]) + 1);
+  for (let j = i + 1; j < k; j++) unchecked(indices[j] = unchecked(indices[j - 1]) + 1);
+  return true;
+}
+
+function comboContainsValue(values: StaticArray<i32>, combo: StaticArray<i32>, k: i32, value: i32): bool {
+  for (let i: i32 = 0; i < k; i++) {
+    if (unchecked(values[unchecked(combo[i])]) == value) return true;
+  }
+  return false;
+}
+
+function appendUniqueCell(cells: StaticArray<i32>, count: i32, index: i32): i32 {
+  for (let i: i32 = 0; i < count; i++) if (unchecked(cells[i]) == index) return count;
+  unchecked(cells[count] = index);
+  return count + 1;
+}
+
+function findNakedSubset(k: i32, id: i32): i32 {
+  const eligible = new StaticArray<i32>(9);
+  const combo = new StaticArray<i32>(9);
+
+  for (let unitType: i32 = 0; unitType < 3; unitType++) {
+    for (let idx: i32 = 0; idx < 9; idx++) {
+      let eligibleCount: i32 = 0;
+      for (let pos: i32 = 0; pos < 9; pos++) {
+        const index = unitCellIndex(unitType, idx, pos);
+        if (!emptyAt(index)) continue;
+        const n = countBits9(maskAt(index));
+        if (n >= 2 && n <= k) unchecked(eligible[eligibleCount++] = index);
+      }
+      if (eligibleCount < k) continue;
+
+      initCombination(combo, k);
+      while (true) {
+        let unionMask: u16 = 0;
+        for (let i: i32 = 0; i < k; i++) {
+          const index = unchecked(eligible[unchecked(combo[i])]);
+          unionMask = <u16>(unionMask | maskAt(index));
+        }
+        if (countBits9(unionMask) == k) {
+          eliminationCount = 0;
+          for (let pos: i32 = 0; pos < 9; pos++) {
+            const index = unitCellIndex(unitType, idx, pos);
+            if (!emptyAt(index) || comboContainsValue(eligible, combo, k, index)) continue;
+            const eliminateMask = <u16>(maskAt(index) & unionMask);
+            for (let d: i32 = 1; d <= 9; d++) {
+              if ((eliminateMask & bitForDigit(d)) != 0) appendElimination(index, d);
+            }
+          }
+          if (eliminationCount > 0) {
+            techniqueId = id; actionType = 2; subtype = unitType;
+            patternCount = 0;
+            for (let i: i32 = 0; i < k; i++) appendPattern(unchecked(eligible[unchecked(combo[i])]));
+            unchecked(meta[0] = unitType);
+            unchecked(meta[1] = idx);
+            unchecked(meta[2] = <i32>unionMask);
+            unchecked(meta[3] = k);
+            return actionType;
+          }
+        }
+        if (!advanceCombination(combo, eligibleCount, k)) break;
+      }
+    }
+  }
+  return 0;
+}
+
+function findHiddenSubset(k: i32, id: i32): i32 {
+  const eligibleDigits = new StaticArray<i32>(9);
+  const combo = new StaticArray<i32>(9);
+  const cells = new StaticArray<i32>(9);
+
+  for (let unitType: i32 = 0; unitType < 3; unitType++) {
+    for (let idx: i32 = 0; idx < 9; idx++) {
+      let present: u16 = 0;
+      for (let pos: i32 = 0; pos < 9; pos++) {
+        const v = <i32>unchecked(inputGrid[unitCellIndex(unitType, idx, pos)]);
+        if (v != 0) present = <u16>(present | bitForDigit(v));
+      }
+
+      let eligibleCount: i32 = 0;
+      for (let d: i32 = 1; d <= 9; d++) {
+        const bit = bitForDigit(d);
+        if ((present & bit) != 0) continue;
+        let positions: i32 = 0;
+        for (let pos: i32 = 0; pos < 9; pos++) {
+          const index = unitCellIndex(unitType, idx, pos);
+          if (emptyAt(index) && (maskAt(index) & bit) != 0) positions++;
+        }
+        if (positions >= 2 && positions <= k) unchecked(eligibleDigits[eligibleCount++] = d);
+      }
+      if (eligibleCount < k) continue;
+
+      initCombination(combo, k);
+      while (true) {
+        let cellCount: i32 = 0;
+        let digitMask: u16 = 0;
+        for (let ci: i32 = 0; ci < k; ci++) {
+          const d = unchecked(eligibleDigits[unchecked(combo[ci])]);
+          digitMask = <u16>(digitMask | bitForDigit(d));
+          const bit = bitForDigit(d);
+          for (let pos: i32 = 0; pos < 9; pos++) {
+            const index = unitCellIndex(unitType, idx, pos);
+            if (emptyAt(index) && (maskAt(index) & bit) != 0) {
+              cellCount = appendUniqueCell(cells, cellCount, index);
+            }
+          }
+        }
+
+        if (cellCount == k) {
+          eliminationCount = 0;
+          for (let i: i32 = 0; i < cellCount; i++) {
+            const index = unchecked(cells[i]);
+            const eliminateMask = <u16>(maskAt(index) & <u16>(~digitMask));
+            for (let d: i32 = 1; d <= 9; d++) {
+              if ((eliminateMask & bitForDigit(d)) != 0) appendElimination(index, d);
+            }
+          }
+          if (eliminationCount > 0) {
+            techniqueId = id; actionType = 2; subtype = unitType;
+            patternCount = 0;
+            for (let i: i32 = 0; i < cellCount; i++) appendPattern(unchecked(cells[i]));
+            unchecked(meta[0] = unitType);
+            unchecked(meta[1] = idx);
+            unchecked(meta[2] = <i32>digitMask);
+            unchecked(meta[3] = k);
+            return actionType;
+          }
+        }
+        if (!advanceCombination(combo, eligibleCount, k)) break;
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
   if (id == 1) return findHiddenSingle();
   if (id == 2) return findLockedCandidate();
+  if (id == 4) return findNakedSubset(2, 4);
+  if (id == 5) return findHiddenSubset(2, 5);
+  if (id == 6) return findNakedSubset(3, 6);
+  if (id == 7) return findHiddenSubset(3, 7);
+  if (id == 8) return findNakedSubset(4, 8);
+  if (id == 9) return findHiddenSubset(4, 9);
   return 0;
 }
 
