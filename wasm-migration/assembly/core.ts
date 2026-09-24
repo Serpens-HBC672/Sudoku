@@ -1,4 +1,17 @@
 import {
+  sdcResetInput,
+  sdcSetInputCell,
+  sdcSetInputMask,
+  sdcFind,
+  sdcResultActionType,
+  sdcResultPatternCount,
+  sdcResultPatternAt,
+  sdcResultEliminationCount,
+  sdcResultEliminationAt,
+  sdcResultMeta,
+} from "./sdc-finder";
+
+import {
   aicResetInput,
   aicSetInputCell,
   aicSetInputMask,
@@ -272,6 +285,7 @@ export function resetInput(): void {
   clearU16(inputBaseMask, CELL_COUNT);
   basicResetInput();
   aicResetInput();
+  sdcResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
@@ -279,6 +293,7 @@ export function setInputCell(index: i32, digit: i32): void {
   unchecked(inputGrid[index] = <u8>digit);
   basicSetInputCell(index, digit);
   aicSetInputCell(index, digit);
+  sdcSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
@@ -286,6 +301,7 @@ export function setInputMask(index: i32, mask: i32): void {
   unchecked(inputBaseMask[index] = <u16>(mask & 0x01ff));
   basicSetInputMask(index, mask);
   aicSetInputMask(index, mask);
+  sdcSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -1662,6 +1678,14 @@ export function aicFinderResultNodeCount(): i32 { return aicResultNodeCount(); }
 export function aicFinderResultNodeDigit(i:i32): i32 { return aicResultNodeDigit(i); }
 export function aicFinderResultNodeCellCount(i:i32): i32 { return aicResultNodeCellCount(i); }
 export function aicFinderResultNodeCellAt(i:i32,j:i32): i32 { return aicResultNodeCellAt(i,j); }
+
+export function runSueDeCoqFinder(): i32 { return sdcFind(); }
+export function sdcFinderResultActionType(): i32 { return sdcResultActionType(); }
+export function sdcFinderResultPatternCount(): i32 { return sdcResultPatternCount(); }
+export function sdcFinderResultPatternAt(i:i32): i32 { return sdcResultPatternAt(i); }
+export function sdcFinderResultEliminationCount(): i32 { return sdcResultEliminationCount(); }
+export function sdcFinderResultEliminationAt(i:i32): i32 { return sdcResultEliminationAt(i); }
+export function sdcFinderResultMeta(i:i32): i32 { return sdcResultMeta(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
