@@ -275,6 +275,12 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [0, "nakedSingle"],
   [1, "hiddenSingle"],
   [2, "lockedCandidate"],
+  [4, "nakedPair"],
+  [5, "hiddenPair"],
+  [6, "nakedTriple"],
+  [7, "hiddenTriple"],
+  [8, "nakedQuad"],
+  [9, "hiddenQuad"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -322,18 +328,36 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
     };
   }
 
-  const subtypeCode = core.standaloneResultSubtype();
-  const subtype = ["pointingRow", "pointingCol", "claimingRow", "claimingCol"][subtypeCode];
-  const box = core.standaloneResultMeta(0);
-  const line = core.standaloneResultMeta(1);
-  const lineType = core.standaloneResultMeta(2) === 0 ? "row" : "col";
-  const lockedDigit = core.standaloneResultMeta(3);
+  if (techniqueId === 2) {
+    const subtypeCode = core.standaloneResultSubtype();
+    const subtype = ["pointingRow", "pointingCol", "claimingRow", "claimingCol"][subtypeCode];
+    const box = core.standaloneResultMeta(0);
+    const line = core.standaloneResultMeta(1);
+    const lineType = core.standaloneResultMeta(2) === 0 ? "row" : "col";
+    const lockedDigit = core.standaloneResultMeta(3);
+    return {
+      actionType: "eliminate",
+      technique,
+      subtype,
+      patternCells: readStandalonePatternCells(core),
+      eliminations: readStandaloneEliminations(core),
+      context: { box, line, lineType, digit: lockedDigit },
+    };
+  }
+
+  const unitTypeCode = core.standaloneResultMeta(0);
+  const unitType = unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box";
+  const digitMask = core.standaloneResultMeta(2) & 0x1ff;
   return {
     actionType: "eliminate",
     technique,
-    subtype,
+    subtype: unitType,
     patternCells: readStandalonePatternCells(core),
     eliminations: readStandaloneEliminations(core),
-    context: { box, line, lineType, digit: lockedDigit },
+    context: {
+      unitType,
+      idx: core.standaloneResultMeta(1),
+      digits: maskToDigits(digitMask),
+    },
   };
 }
