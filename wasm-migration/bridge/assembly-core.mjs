@@ -1478,11 +1478,22 @@ function runTechniqueById(core, techniqueId, budgetLimit) {
 export function findNextStepWasm(core, options = {}) {
   const budgetLimit = options.budgetLimit ?? 6790;
   const validator = typeof options.validator === "function" ? options.validator : null;
-  for (let techniqueId = 0; techniqueId < 53; techniqueId++) {
+  let startId = 0;
+  while (startId < 53) {
+    const techniqueId =
+      typeof core.runFindNextTechniqueIdFrom === "function"
+        ? core.runFindNextTechniqueIdFrom(startId, budgetLimit)
+        : core.runFindNextTechniqueId(budgetLimit);
+    if (techniqueId < 0) return null;
+
+    // The WASM dispatcher already performed the expensive ordered search.
+    // Re-running only the selected finder here is temporary ABI materialization:
+    // it reconstructs the existing JS Finding object from the same deterministic
+    // technique, while avoiding 53 JS<->WASM boundary crossings.
     const finding = runTechniqueById(core, techniqueId, budgetLimit);
-    if (!finding) continue;
-    if (validator && !validator(finding)) continue;
-    return finding;
+    if (!finding) throw new Error("WASM selected technique " + techniqueId + " but adapter could not materialize its Finding");
+    if (!validator || validator(finding)) return finding;
+    startId = techniqueId + 1;
   }
   return null;
 }
