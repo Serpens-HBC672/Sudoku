@@ -373,6 +373,7 @@ export function resetInput(): void {
   clearU16(inputBaseMask, CELL_COUNT);
   basicResetInput();
   aicResetInput();
+  medusaResetInput();
   sdcResetInput();
   fireworkResetInput();
   alsAdvResetInput();
@@ -384,6 +385,7 @@ export function setInputCell(index: i32, digit: i32): void {
   unchecked(inputGrid[index] = <u8>digit);
   basicSetInputCell(index, digit);
   aicSetInputCell(index, digit);
+  medusaSetInputCell(index, digit);
   sdcSetInputCell(index, digit);
   fireworkSetInputCell(index, digit);
   alsAdvSetInputCell(index, digit);
@@ -395,6 +397,7 @@ export function setInputMask(index: i32, mask: i32): void {
   unchecked(inputBaseMask[index] = <u16>(mask & 0x01ff));
   basicSetInputMask(index, mask);
   aicSetInputMask(index, mask);
+  medusaSetInputMask(index, mask);
   sdcSetInputMask(index, mask);
   fireworkSetInputMask(index, mask);
   alsAdvSetInputMask(index, mask);
