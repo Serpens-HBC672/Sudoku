@@ -12216,11 +12216,17 @@ function renderStringPanels() {
     }
   }
 
+  function propagateStaticFromMasks(grid, masks, r, c, d, startTrue) {
+    const getCands = getCandsFromMasks(grid, masks);
+    return normalizeOracleValue(propagateAssumption(grid, getCands, r, c, d, !!startTrue));
+  }
+
   globalThis.__SUDOKU_WASM_MIGRATION_TEST_HOOKS__ = Object.freeze({
     version: 1,
     techniqueKeys: () => TECHNIQUE_CHAIN.map((entry) => entry.key),
     tracePuzzle,
     enumerateAvailableFromMasks,
+    propagateStaticFromMasks,
   });
 })();
 
