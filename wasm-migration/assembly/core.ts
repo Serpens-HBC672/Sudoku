@@ -998,6 +998,52 @@ export function runStaticAssumption(r: i32, c: i32, d: i32, startTrue: i32): i32
   return contradictionValue;
 }
 
+export function runDynamicAssumption(r: i32, c: i32, d: i32, startTrue: i32, budgetLimit: i32): i32 {
+  budgetCallsValue = 0;
+  budgetLimitValue = budgetLimit;
+  budgetCallsValue++; // propagateAssumptionCore increments at function entry
+  if (budgetCallsValue > budgetLimitValue) {
+    contradictionValue = 0;
+    abortedValue = 1;
+    trueCountValue = 0;
+    falseCountValue = 0;
+    return 0;
+  }
+
+  resetWork();
+  abortedValue = 0;
+
+  const initialOk = startTrue != 0 ? markTrue(r, c, d) : markFalse(r, c, d);
+  if (!initialOk) {
+    contradictionValue = 1;
+    return 1;
+  }
+  initMasks();
+
+  let guard: i32 = 0;
+  while (guard++ < 200) {
+    guardIterationsValue = guard;
+    const result = applyDynamicTechnique();
+    if (result == 0) break;
+    if (result < 0 || detectContradiction()) {
+      contradictionValue = 1;
+      return 1;
+    }
+    clearTouched();
+  }
+
+  contradictionValue = 0;
+  return 0;
+}
+
+export function resultBudgetCalls(): i32 {
+  return budgetCallsValue;
+}
+
+export function resultAborted(): i32 {
+  return abortedValue;
+}
+
 export function resultContradiction(): i32 {
   return contradictionValue;
 }
