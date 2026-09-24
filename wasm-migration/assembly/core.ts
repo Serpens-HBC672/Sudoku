@@ -1262,8 +1262,11 @@ function runDynamicCellMultipleFinder(): i32 {
       if ((mask & bitForDigit(d)) == 0) continue;
       runDynamicShared(index / 9, index % 9, d, true);
       if (contradictionValue != 0) {
+        // JS uses cands.map(engine) before branches.some(...), so every
+        // assumption consumes budget even when an earlier branch contradicted.
+        // Do not short-circuit here; only suppress the final Multiple finding.
         anyContradiction = true;
-        break;
+        continue;
       }
       if (firstBranch) {
         initMultiCommonFromCurrent();
@@ -1332,8 +1335,10 @@ function runDynamicRegionMultipleFinder(): i32 {
           const index = unchecked(cells[ci]);
           runDynamicShared(index / 9, index % 9, d, true);
           if (contradictionValue != 0) {
+            // JS constructs the full branches array before testing whether any
+            // branch contradicted, so region branches also never short-circuit.
             anyContradiction = true;
-            break;
+            continue;
           }
           if (firstBranch) {
             initMultiCommonFromCurrent();
