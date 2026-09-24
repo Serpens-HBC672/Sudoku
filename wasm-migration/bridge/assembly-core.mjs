@@ -298,6 +298,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [24, "xyzWing"],
   [25, "wWing"],
   [26, "wxyzWing"],
+  [27, "xyChain"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -514,6 +515,26 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
         elimDigit: core.standaloneResultMeta(1),
         unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
         idx: core.standaloneResultMeta(3),
+      },
+    };
+  }
+
+  if (techniqueId === 27) {
+    const patternCells = readStandalonePatternCells(core);
+    const chainLinkDigits = [];
+    for (let i = 0; i < core.standaloneResultExtraDigitCount(); i++) {
+      chainLinkDigits.push(core.standaloneResultExtraDigitAt(i));
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      chainCells: patternCells.map(([r, c]) => ({ r, c })),
+      chainLinkDigits,
+      context: {
+        digit: core.standaloneResultMeta(0),
+        chainLength: patternCells.length,
       },
     };
   }
