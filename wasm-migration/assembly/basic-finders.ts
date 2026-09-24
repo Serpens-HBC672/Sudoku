@@ -483,6 +483,228 @@ function findFish(k: i32, id: i32): i32 {
   return 0;
 }
 
+
+@inline
+function cellsSee(a: i32, b: i32): bool {
+  const ar = a / 9, ac = a % 9;
+  const br = b / 9, bc = b % 9;
+  return ar == br || ac == bc || boxIndex(ar, ac) == boxIndex(br, bc);
+}
+
+function findSkyscraper(): i32 {
+  const lineA = new StaticArray<i32>(9);
+  const lineB = new StaticArray<i32>(9);
+
+  for (let baseType: i32 = 0; baseType < 2; baseType++) {
+    for (let d: i32 = 1; d <= 9; d++) {
+      const bit = bitForDigit(d);
+      let lineCount: i32 = 0;
+      for (let idx: i32 = 0; idx < 9; idx++) {
+        let first: i32 = -1, second: i32 = -1, count: i32 = 0;
+        for (let pos: i32 = 0; pos < 9; pos++) {
+          const index = unitCellIndex(baseType, idx, pos);
+          if (!emptyAt(index) || (maskAt(index) & bit) == 0) continue;
+          if (count == 0) first = index;
+          else if (count == 1) second = index;
+          count++;
+        }
+        if (count == 2) {
+          unchecked(lineA[lineCount] = first);
+          unchecked(lineB[lineCount] = second);
+          lineCount++;
+        }
+      }
+      for (let i: i32 = 0; i < lineCount; i++) {
+        for (let j: i32 = i + 1; j < lineCount; j++) {
+          const a1 = unchecked(lineA[i]), a2 = unchecked(lineB[i]);
+          const b1 = unchecked(lineA[j]), b2 = unchecked(lineB[j]);
+          for (let cfg: i32 = 0; cfg < 4; cfg++) {
+            const x = cfg < 2 ? a1 : a2;
+            const y = (cfg == 0 || cfg == 2) ? b1 : b2;
+            const crossX = baseType == 0 ? x % 9 : x / 9;
+            const crossY = baseType == 0 ? y % 9 : y / 9;
+            if (crossX != crossY) continue;
+            const roof1 = x == a1 ? a2 : a1;
+            const roof2 = y == b1 ? b2 : b1;
+            if (roof1 == roof2) continue;
+
+            eliminationCount = 0;
+            for (let index: i32 = 0; index < CELL_COUNT; index++) {
+              if (!emptyAt(index) || (maskAt(index) & bit) == 0) continue;
+              if (index == roof1 || index == roof2) continue;
+              if (cellsSee(index, roof1) && cellsSee(index, roof2)) appendElimination(index, d);
+            }
+            if (eliminationCount > 0) {
+              techniqueId = 12; actionType = 2; subtype = -1; patternCount = 0;
+              appendPattern(x); appendPattern(y); appendPattern(roof1); appendPattern(roof2);
+              unchecked(meta[0] = d);
+              unchecked(meta[1] = baseType);
+              return actionType;
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function findTwoStringKite(): i32 {
+  const rowA = new StaticArray<i32>(9), rowB = new StaticArray<i32>(9);
+  const colA = new StaticArray<i32>(9), colB = new StaticArray<i32>(9);
+
+  for (let d: i32 = 1; d <= 9; d++) {
+    const bit = bitForDigit(d);
+    let rowCount: i32 = 0, colCount: i32 = 0;
+    for (let i: i32 = 0; i < 9; i++) {
+      let a: i32 = -1, b: i32 = -1, count: i32 = 0;
+      for (let c: i32 = 0; c < 9; c++) {
+        const index = i * 9 + c;
+        if (emptyAt(index) && (maskAt(index) & bit) != 0) {
+          if (count == 0) a = index; else if (count == 1) b = index; count++;
+        }
+      }
+      if (count == 2) { unchecked(rowA[rowCount] = a); unchecked(rowB[rowCount] = b); rowCount++; }
+
+      a = -1; b = -1; count = 0;
+      for (let r: i32 = 0; r < 9; r++) {
+        const index = r * 9 + i;
+        if (emptyAt(index) && (maskAt(index) & bit) != 0) {
+          if (count == 0) a = index; else if (count == 1) b = index; count++;
+        }
+      }
+      if (count == 2) { unchecked(colA[colCount] = a); unchecked(colB[colCount] = b); colCount++; }
+    }
+
+    for (let ri: i32 = 0; ri < rowCount; ri++) {
+      const r1 = unchecked(rowA[ri]), r2 = unchecked(rowB[ri]);
+      for (let ci: i32 = 0; ci < colCount; ci++) {
+        const c1 = unchecked(colA[ci]), c2 = unchecked(colB[ci]);
+        for (let cfg: i32 = 0; cfg < 4; cfg++) {
+          const near1 = cfg < 2 ? r1 : r2;
+          const far1 = cfg < 2 ? r2 : r1;
+          const near2 = (cfg == 0 || cfg == 2) ? c1 : c2;
+          const far2 = (cfg == 0 || cfg == 2) ? c2 : c1;
+          if (boxIndex(near1 / 9, near1 % 9) != boxIndex(near2 / 9, near2 % 9)) continue;
+          if (near1 == near2 || far1 == far2) continue;
+
+          eliminationCount = 0;
+          for (let index: i32 = 0; index < CELL_COUNT; index++) {
+            if (!emptyAt(index) || (maskAt(index) & bit) == 0) continue;
+            if (index == far1 || index == far2 || index == near1 || index == near2) continue;
+            if (cellsSee(index, far1) && cellsSee(index, far2)) appendElimination(index, d);
+          }
+          if (eliminationCount > 0) {
+            techniqueId = 13; actionType = 2; patternCount = 0;
+            appendPattern(near1); appendPattern(near2); appendPattern(far1); appendPattern(far2);
+            unchecked(meta[0] = d);
+            return actionType;
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function findEmptyRectangle(): i32 {
+  const boxCells = new StaticArray<i32>(9);
+  for (let d: i32 = 1; d <= 9; d++) {
+    const bit = bitForDigit(d);
+    for (let box: i32 = 0; box < 9; box++) {
+      const br = (box / 3) * 3, bc = (box % 3) * 3;
+      let boxCount: i32 = 0;
+      for (let rr: i32 = br; rr < br + 3; rr++) {
+        for (let cc: i32 = bc; cc < bc + 3; cc++) {
+          const index = rr * 9 + cc;
+          if (emptyAt(index) && (maskAt(index) & bit) != 0) unchecked(boxCells[boxCount++] = index);
+        }
+      }
+      if (boxCount < 2) continue;
+
+      for (let R: i32 = br; R < br + 3; R++) {
+        for (let C: i32 = bc; C < bc + 3; C++) {
+          let allCross = true, hasRow = false, hasCol = false;
+          for (let i: i32 = 0; i < boxCount; i++) {
+            const index = unchecked(boxCells[i]), r = index / 9, c = index % 9;
+            if (r != R && c != C) { allCross = false; break; }
+            if (r == R) hasRow = true;
+            if (c == C) hasCol = true;
+          }
+          if (!allCross || !hasRow || !hasCol) continue;
+
+          let near: i32 = -1, outsideCount: i32 = 0;
+          for (let r: i32 = 0; r < 9; r++) {
+            if (r >= br && r < br + 3) continue;
+            const index = r * 9 + C;
+            if (emptyAt(index) && (maskAt(index) & bit) != 0) { near = index; outsideCount++; }
+          }
+          if (outsideCount == 1) {
+            const row = near / 9;
+            let p1: i32 = -1, p2: i32 = -1, count: i32 = 0;
+            for (let c: i32 = 0; c < 9; c++) {
+              const index = row * 9 + c;
+              if (emptyAt(index) && (maskAt(index) & bit) != 0) {
+                if (count == 0) p1 = index; else if (count == 1) p2 = index; count++;
+              }
+            }
+            if (count == 2) {
+              const far = p1 % 9 == C ? p2 : p1;
+              const farC = far % 9;
+              if (farC < bc || farC >= bc + 3) {
+                const target = R * 9 + farC;
+                const inBox = target / 9 >= br && target / 9 < br + 3 && target % 9 >= bc && target % 9 < bc + 3;
+                if (emptyAt(target) && (maskAt(target) & bit) != 0 && !inBox) {
+                  techniqueId = 14; actionType = 2; patternCount = 0; eliminationCount = 0;
+                  for (let i: i32 = 0; i < boxCount; i++) appendPattern(unchecked(boxCells[i]));
+                  appendPattern(near); appendPattern(far); appendElimination(target, d);
+                  unchecked(meta[0] = d); unchecked(meta[1] = box);
+                  unchecked(meta[2] = R); unchecked(meta[3] = C);
+                  return actionType;
+                }
+              }
+            }
+          }
+
+          near = -1; outsideCount = 0;
+          for (let c: i32 = 0; c < 9; c++) {
+            if (c >= bc && c < bc + 3) continue;
+            const index = R * 9 + c;
+            if (emptyAt(index) && (maskAt(index) & bit) != 0) { near = index; outsideCount++; }
+          }
+          if (outsideCount == 1) {
+            const col = near % 9;
+            let p1: i32 = -1, p2: i32 = -1, count: i32 = 0;
+            for (let r: i32 = 0; r < 9; r++) {
+              const index = r * 9 + col;
+              if (emptyAt(index) && (maskAt(index) & bit) != 0) {
+                if (count == 0) p1 = index; else if (count == 1) p2 = index; count++;
+              }
+            }
+            if (count == 2) {
+              const far = p1 / 9 == R ? p2 : p1;
+              const farR = far / 9;
+              if (farR < br || farR >= br + 3) {
+                const target = farR * 9 + C;
+                const inBox = target / 9 >= br && target / 9 < br + 3 && target % 9 >= bc && target % 9 < bc + 3;
+                if (emptyAt(target) && (maskAt(target) & bit) != 0 && !inBox) {
+                  techniqueId = 14; actionType = 2; patternCount = 0; eliminationCount = 0;
+                  for (let i: i32 = 0; i < boxCount; i++) appendPattern(unchecked(boxCells[i]));
+                  appendPattern(near); appendPattern(far); appendElimination(target, d);
+                  unchecked(meta[0] = d); unchecked(meta[1] = box);
+                  unchecked(meta[2] = R); unchecked(meta[3] = C);
+                  return actionType;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -496,6 +718,9 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 9) return findHiddenSubset(4, 9);
   if (id == 10) return findFish(2, 10);
   if (id == 11) return findFish(3, 11);
+  if (id == 12) return findSkyscraper();
+  if (id == 13) return findTwoStringKite();
+  if (id == 14) return findEmptyRectangle();
   if (id == 15) return findFish(4, 15);
   if (id == 16) return findFish(5, 16);
   return 0;
