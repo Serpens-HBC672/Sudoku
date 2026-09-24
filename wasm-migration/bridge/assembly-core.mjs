@@ -275,6 +275,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [0, "nakedSingle"],
   [1, "hiddenSingle"],
   [2, "lockedCandidate"],
+  [3, "gsp"],
   [4, "nakedPair"],
   [5, "hiddenPair"],
   [6, "nakedTriple"],
@@ -343,6 +344,33 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
       digit,
       unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
       idx: core.standaloneResultMeta(1),
+    };
+  }
+
+  if (techniqueId === 3) {
+    const symmetry = ["central", "diagonal", "antidiagonal"][core.standaloneResultMeta(0)];
+    if (actionType === 1) {
+      const pairedIndex = core.standaloneResultMeta(1);
+      return {
+        actionType: "fill",
+        technique,
+        r,
+        c,
+        digit,
+        context: {
+          symmetry,
+          pairedWith: [Math.floor(pairedIndex / 9), pairedIndex % 9],
+          pairedDigit: core.standaloneResultMeta(2),
+        },
+      };
+    }
+    const kind = core.standaloneResultMeta(3) === 1 ? "axis" : "mirror";
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells: [],
+      eliminations: readStandaloneEliminations(core),
+      context: { symmetry, kind },
     };
   }
 
