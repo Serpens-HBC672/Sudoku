@@ -14,7 +14,8 @@
     "oracle": "node benchmark/generate-oracle-traces.mjs",
     "test:dynamic": "node tests/dynamic-differential.mjs",
     "test:dynamic-finders": "node tests/dynamic-finder-differential.mjs",
-    "benchmark:dfc": "node benchmark/benchmark-dfc.mjs"
+    "benchmark:dfc": "node benchmark/benchmark-dfc.mjs",
+    "corpus": "node benchmark/generate-corpus.mjs"
   },
   "devDependencies": {
     "assemblyscript": "0.27.31"
