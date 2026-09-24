@@ -20,6 +20,9 @@ const TECHNIQUES = [
   [9, "hiddenQuad"],
   [10, "xWing"],
   [11, "swordfish"],
+  [12, "skyscraper"],
+  [13, "twoStringKite"],
+  [14, "emptyRectangle"],
   [15, "jellyfish"],
   [16, "squirmbagFish"],
 ];
