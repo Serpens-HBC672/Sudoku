@@ -324,6 +324,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [38, "alsChain"],
   [39, "deathBlossom"],
   [40, "medusa3D"],
+  [41, "tridagon"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -382,6 +383,85 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
       patternCells,
       eliminations,
       context,
+    };
+  }
+
+  if (techniqueId === 41) {
+    core.runTridagonFinder();
+    if (core.tridagonFinderResultActionType() === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.tridagonFinderResultPatternCount(); i++) {
+      const index = core.tridagonFinderResultPatternAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.tridagonFinderResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.tridagonFinderResultEliminationAt(i)));
+    }
+    const guardianCells = [];
+    for (let i = 0; i < core.tridagonFinderResultGuardianCount(); i++) {
+      const index = core.tridagonFinderResultGuardianAt(i);
+      guardianCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const blocks = Array.from({ length: 4 }, (_, i) => core.tridagonFinderResultBlockAt(i));
+    const tripleDigits = maskToDigits(core.tridagonFinderResultMeta(0) & 0x1ff);
+    const guardianDigits = maskToDigits(core.tridagonFinderResultMeta(1) & 0x1ff);
+    const variant = core.tridagonFinderResultVariant();
+
+    if (variant === 1) {
+      const targetIndex = core.tridagonFinderResultMeta(2);
+      return {
+        actionType: "eliminate",
+        technique,
+        patternCells,
+        eliminations,
+        context: {
+          variant: 1,
+          digits: tripleDigits,
+          targetCell: [Math.floor(targetIndex / 9), targetIndex % 9],
+          guardianDigits,
+          blocks,
+        },
+      };
+    }
+    if (variant === 2) {
+      return {
+        actionType: "eliminate",
+        technique,
+        patternCells,
+        eliminations,
+        context: {
+          variant: 2,
+          digits: tripleDigits,
+          guardianCells,
+          guardianDigit: core.tridagonFinderResultMeta(3),
+          blocks,
+        },
+      };
+    }
+
+    const subsetCells = [];
+    for (let i = 0; i < core.tridagonFinderResultSubsetCount(); i++) {
+      const index = core.tridagonFinderResultSubsetAt(i);
+      subsetCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const unitTypeCode = core.tridagonFinderResultMeta(4);
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: {
+        variant: 3,
+        digits: tripleDigits,
+        guardianCells,
+        guardianDigits,
+        houseType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
+        houseIndex: core.tridagonFinderResultMeta(5),
+        subsetCells,
+        subsetDigits: maskToDigits(core.tridagonFinderResultMeta(6) & 0x1ff),
+        blocks,
+      },
     };
   }
 
