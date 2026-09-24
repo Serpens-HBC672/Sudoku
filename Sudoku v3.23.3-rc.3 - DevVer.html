@@ -12272,6 +12272,26 @@ function renderStringPanels() {
     }
   }
 
+  function findDynamicMultipleFromMasks(grid, masks, budgetLimit = DFC_BUDGET) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const engine = (g, gc, r, c, d, st) => propagateAssumptionDynamic(g, gc, r, c, d, st, budget);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      const finding =
+        findCellForcingChain(grid, getCands, engine, "dynamicMultipleChain") ||
+        findRegionForcingChain(grid, getCands, engine, "dynamicMultipleChain");
+      return {
+        finding: normalizeOracleValue(finding),
+        budgetCalls: budget.calls,
+        budgetLimit: budget.limit,
+      };
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
   globalThis.__SUDOKU_WASM_MIGRATION_TEST_HOOKS__ = Object.freeze({
     version: 1,
     techniqueKeys: () => TECHNIQUE_CHAIN.map((entry) => entry.key),
@@ -12282,6 +12302,7 @@ function renderStringPanels() {
     propagateDynamicFromMasks,
     findDynamicNishioFromMasks,
     findDynamicUnaryFromMasks,
+    findDynamicMultipleFromMasks,
   });
 })();
 
