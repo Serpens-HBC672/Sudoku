@@ -1,4 +1,18 @@
 import {
+  skResetInput,
+  skSetInputCell,
+  skSetInputMask,
+  skLoopFind,
+  skResultPatternCount,
+  skResultPatternAt,
+  skResultEliminationCount,
+  skResultEliminationAt,
+  skResultRowAt,
+  skResultColAt,
+  skResultBoxAt,
+} from "./skloop-finder";
+
+import {
   tridagonResetInput,
   tridagonSetInputCell,
   tridagonSetInputMask,
@@ -378,6 +392,7 @@ export function resetInput(): void {
   fireworkResetInput();
   alsAdvResetInput();
   tridagonResetInput();
+  skResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
@@ -390,6 +405,7 @@ export function setInputCell(index: i32, digit: i32): void {
   fireworkSetInputCell(index, digit);
   alsAdvSetInputCell(index, digit);
   tridagonSetInputCell(index, digit);
+  skSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
@@ -402,6 +418,7 @@ export function setInputMask(index: i32, mask: i32): void {
   fireworkSetInputMask(index, mask);
   alsAdvSetInputMask(index, mask);
   tridagonSetInputMask(index, mask);
+  skSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -2048,6 +2065,15 @@ export function tridagonFinderResultSubsetCount(): i32 { return tridagonResultSu
 export function tridagonFinderResultSubsetAt(i:i32): i32 { return tridagonResultSubsetAt(i); }
 export function tridagonFinderResultBlockAt(i:i32): i32 { return tridagonResultBlockAt(i); }
 export function tridagonFinderResultMeta(i:i32): i32 { return tridagonResultMeta(i); }
+
+export function runSkLoopFinder(): i32 { return skLoopFind(); }
+export function skLoopResultPatternCount(): i32 { return skResultPatternCount(); }
+export function skLoopResultPatternAt(i:i32): i32 { return skResultPatternAt(i); }
+export function skLoopResultEliminationCount(): i32 { return skResultEliminationCount(); }
+export function skLoopResultEliminationAt(i:i32): i32 { return skResultEliminationAt(i); }
+export function skLoopResultRowAt(i:i32): i32 { return skResultRowAt(i); }
+export function skLoopResultColAt(i:i32): i32 { return skResultColAt(i); }
+export function skLoopResultBoxAt(i:i32): i32 { return skResultBoxAt(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
