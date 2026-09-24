@@ -7,6 +7,8 @@ import {
   runDynamicNishioFinder,
   runDynamicUnaryFinder,
   runDynamicMultipleFinder,
+  findNextStepWasm,
+  findAllAvailableStepsWasm,
 } from "../bridge/sudoku-wasm-adapter.js";
 
 let core = null;
@@ -26,6 +28,8 @@ parentPort.on("message", async (message) => {
     }
     let result;
     if (message.type === "standalone") result = runStandaloneTechniqueFinder(core, message.techniqueId);
+    else if (message.type === "findNext") result = findNextStepWasm(core, { budgetLimit: message.budgetLimit });
+    else if (message.type === "findAll") result = findAllAvailableStepsWasm(core, { budgetLimit: message.budgetLimit });
     else if (message.type === "dynamicNishio") result = runDynamicNishioFinder(core, message.budgetLimit);
     else if (message.type === "dynamicUnary") result = runDynamicUnaryFinder(core, message.budgetLimit);
     else if (message.type === "dynamicMultiple") result = runDynamicMultipleFinder(core, message.budgetLimit);
