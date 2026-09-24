@@ -65,7 +65,7 @@ function tripleKey(unitType: i32, idx: i32, d: i32): i32 {
 
 @inline
 function bitForDigit(d: i32): u16 {
-  return <u16>(1 << (d - 1));
+  return <u16>(1 << <u32>(d - 1));
 }
 
 @inline
@@ -160,7 +160,7 @@ function clearUnitPositionsOnly(index: i32, d: i32): void {
 
   let ui = unitMaskIndex(0, r, d);
   let m = unchecked(unitDigitMask[ui]);
-  const rowBit = <u16>(1 << c);
+  const rowBit = <u16>(1 << <u32>c);
   if ((m & rowBit) != 0) {
     unchecked(unitDigitMask[ui] = <u16>(m & ~rowBit));
     markTripleTouched(0, r, d);
@@ -168,7 +168,7 @@ function clearUnitPositionsOnly(index: i32, d: i32): void {
 
   ui = unitMaskIndex(1, c, d);
   m = unchecked(unitDigitMask[ui]);
-  const colBit = <u16>(1 << r);
+  const colBit = <u16>(1 << <u32>r);
   if ((m & colBit) != 0) {
     unchecked(unitDigitMask[ui] = <u16>(m & ~colBit));
     markTripleTouched(1, c, d);
@@ -176,7 +176,7 @@ function clearUnitPositionsOnly(index: i32, d: i32): void {
 
   ui = unitMaskIndex(2, box, d);
   m = unchecked(unitDigitMask[ui]);
-  const boxBit = <u16>(1 << posInBox);
+  const boxBit = <u16>(1 << <u32>posInBox);
   if ((m & boxBit) != 0) {
     unchecked(unitDigitMask[ui] = <u16>(m & ~boxBit));
     markTripleTouched(2, box, d);
@@ -332,11 +332,11 @@ function initMasks(): void {
       const bit = bitForDigit(d);
       if ((mask & bit) == 0) continue;
       let ui = unitMaskIndex(0, r, d);
-      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << c)));
+      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << <u32>c)));
       ui = unitMaskIndex(1, c, d);
-      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << r)));
+      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << <u32>r)));
       ui = unitMaskIndex(2, box, d);
-      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << posInBox)));
+      unchecked(unitDigitMask[ui] = <u16>(unchecked(unitDigitMask[ui]) | <u16>(1 << <u32>posInBox)));
     }
   }
 
