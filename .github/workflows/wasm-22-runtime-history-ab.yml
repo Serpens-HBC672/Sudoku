@@ -1,0 +1,57 @@
+name: WASM #22 Runtime History A-B
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/wasm-22-runtime-history-ab
+    paths:
+      - "wasm-migration/tests/benchmark-22-runtime-history-ab.mjs"
+      - ".github/workflows/wasm-22-runtime-history-ab.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  controlled-ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify historical solver/build lineage
+        run: |
+          git merge-base --is-ancestor 3fb98015986848e20025f8d1b1881f28fa6978e4 HEAD
+          echo "Files changed from historical target:"
+          git diff --name-only 3fb98015986848e20025f8d1b1881f28fa6978e4..HEAD
+
+      - name: Install historical migration toolchain
+        run: npm install --no-audit --no-fund
+
+      - name: Build historical stub-runtime core
+        run: npm run build
+
+      - name: Arm A - fresh core exact-state single MSLS call
+        run: node tests/benchmark-22-runtime-history-ab.mjs A
+
+      - name: Arm B - accumulated core exact-state single MSLS call
+        run: node tests/benchmark-22-runtime-history-ab.mjs B
+
+      - name: Upload A-B evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-22-runtime-history-ab
+          path: |
+            wasm-migration/runtime-history-ab-results/A-fresh-core.json
+            wasm-migration/runtime-history-ab-results/B-accumulated-core.json
+          if-no-files-found: warn
