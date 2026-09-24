@@ -60,6 +60,9 @@ jobs:
       - name: Run static forcing-chain finder differential suite
         run: npm run test:static-finders
 
+      - name: Run shared main-thread Worker parity
+        run: npm run test:worker
+
       - name: Build SIMD-enabled profile
         run: npm run build:simd
 
