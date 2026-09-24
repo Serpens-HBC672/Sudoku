@@ -1489,6 +1489,147 @@ function findAlsXZ():i32{
   return 0;
 }
 
+
+const AHS_CAP:i32=4096;
+const ahsUnitType=new StaticArray<u8>(AHS_CAP);
+const ahsUnitIdx=new StaticArray<u8>(AHS_CAP);
+const ahsCellCount=new StaticArray<u8>(AHS_CAP);
+const ahsCells=new StaticArray<u8>(AHS_CAP*5);
+const ahsDigitCount=new StaticArray<u8>(AHS_CAP);
+const ahsDigits=new StaticArray<u8>(AHS_CAP*4);
+const ahsMask=new StaticArray<u16>(AHS_CAP);
+let ahsCount:i32=0;
+
+@inline
+function ahsCellAt(ai:i32,pos:i32):i32{return <i32>unchecked(ahsCells[ai*5+pos]);}
+@inline
+function ahsDigitAt(ai:i32,pos:i32):i32{return <i32>unchecked(ahsDigits[ai*4+pos]);}
+
+function sameAhs(digitMask:u16,cells:StaticArray<i32>,cellCount:i32,ai:i32):bool{
+  if(unchecked(ahsMask[ai])!=digitMask||<i32>unchecked(ahsCellCount[ai])!=cellCount)return false;
+  // JS dedupe key sorts cells, but all coordinates are single digits.
+  // Compare as a set to preserve stored insertion order while matching that key.
+  for(let i:i32=0;i<cellCount;i++){
+    const cell=unchecked(cells[i]);let found=false;
+    for(let j:i32=0;j<cellCount;j++)if(ahsCellAt(ai,j)==cell){found=true;break;}
+    if(!found)return false;
+  }
+  return true;
+}
+
+function addAhs(unitType:i32,idx:i32,digits:StaticArray<i32>,digitCount:i32,cells:StaticArray<i32>,cellCount:i32,digitMask:u16):void{
+  for(let ai:i32=0;ai<ahsCount;ai++)if(sameAhs(digitMask,cells,cellCount,ai))return;
+  if(ahsCount>=AHS_CAP)return;
+  unchecked(ahsUnitType[ahsCount]=<u8>unitType);unchecked(ahsUnitIdx[ahsCount]=<u8>idx);
+  unchecked(ahsCellCount[ahsCount]=<u8>cellCount);unchecked(ahsDigitCount[ahsCount]=<u8>digitCount);unchecked(ahsMask[ahsCount]=digitMask);
+  for(let i:i32=0;i<cellCount;i++)unchecked(ahsCells[ahsCount*5+i]=<u8>unchecked(cells[i]));
+  for(let i:i32=0;i<digitCount;i++)unchecked(ahsDigits[ahsCount*4+i]=<u8>unchecked(digits[i]));
+  ahsCount++;
+}
+
+function enumerateAhs():void{
+  ahsCount=0;
+  const unplaced=new StaticArray<i32>(9);
+  const combo=new StaticArray<i32>(4);
+  const digits=new StaticArray<i32>(4);
+  const cells=new StaticArray<i32>(9);
+  for(let unitType:i32=0;unitType<3;unitType++){
+    for(let idx:i32=0;idx<9;idx++){
+      let present:u16=0;
+      for(let pos:i32=0;pos<9;pos++){const v=<i32>unchecked(inputGrid[unitCellIndex(unitType,idx,pos)]);if(v!=0)present=<u16>(present|bitForDigit(v));}
+      let unplacedCount:i32=0;
+      for(let d:i32=1;d<=9;d++)if((present&bitForDigit(d))==0)unchecked(unplaced[unplacedCount++]=d);
+      const maxSize=unplacedCount<4?unplacedCount:4;
+      for(let size:i32=1;size<=maxSize;size++){
+        initCombination(combo,size);
+        while(true){
+          let cellCount:i32=0,digitMask:u16=0;
+          for(let ci:i32=0;ci<size;ci++){
+            const d=unchecked(unplaced[unchecked(combo[ci])]);unchecked(digits[ci]=d);digitMask=<u16>(digitMask|bitForDigit(d));
+            const bit=bitForDigit(d);
+            for(let pos:i32=0;pos<9;pos++){
+              const index=unitCellIndex(unitType,idx,pos);
+              if(!emptyAt(index)||(maskAt(index)&bit)==0)continue;
+              let seen=false;for(let k:i32=0;k<cellCount;k++)if(unchecked(cells[k])==index){seen=true;break;}
+              if(!seen)unchecked(cells[cellCount++]=index);
+            }
+          }
+          if(cellCount==size+1)addAhs(unitType,idx,digits,size,cells,cellCount,digitMask);
+          if(!advanceCombination(combo,unplacedCount,size))break;
+        }
+      }
+    }
+  }
+}
+
+function ahsContainsCell(ai:i32,index:i32):bool{
+  const n=<i32>unchecked(ahsCellCount[ai]);
+  for(let i:i32=0;i<n;i++)if(ahsCellAt(ai,i)==index)return true;
+  return false;
+}
+
+function appendAhsPattern(ai:i32):void{
+  const n=<i32>unchecked(ahsCellCount[ai]);for(let i:i32=0;i<n;i++)appendPattern(ahsCellAt(ai,i));
+}
+
+function appendAhsDigitsToExtra(ai:i32):void{
+  const n=<i32>unchecked(ahsDigitCount[ai]);for(let i:i32=0;i<n;i++)unchecked(extraDigits[extraDigitCount++]=<u8>ahsDigitAt(ai,i));
+}
+
+function findAhsXZ():i32{
+  enumerateAhs();
+  const overlap=new StaticArray<i32>(5),xCells=new StaticArray<i32>(5),zCells=new StaticArray<i32>(5);
+  for(let a:i32=0;a<ahsCount-1;a++){
+    for(let b:i32=a+1;b<ahsCount;b++){
+      let overlapCount:i32=0;
+      const an=<i32>unchecked(ahsCellCount[a]);
+      for(let i:i32=0;i<an;i++){const cell=ahsCellAt(a,i);if(ahsContainsCell(b,cell))unchecked(overlap[overlapCount++]=cell);}
+      if(overlapCount==0)continue;
+      const shared=<u16>(unchecked(ahsMask[a])&unchecked(ahsMask[b]));
+      let xCount:i32=0,zCount:i32=0;
+      for(let i:i32=0;i<overlapCount;i++){
+        const cell=unchecked(overlap[i]);
+        if((maskAt(cell)&shared)!=0)unchecked(zCells[zCount++]=cell);else unchecked(xCells[xCount++]=cell);
+      }
+      eliminationCount=0;
+      if(xCount>=1&&zCount>=1){
+        const keep=<u16>(unchecked(ahsMask[a])|unchecked(ahsMask[b]));
+        for(let i:i32=0;i<zCount;i++){
+          const cell=unchecked(zCells[i]),remove=<u16>(maskAt(cell)&<u16>(~keep));
+          for(let d:i32=1;d<=9;d++)if((remove&bitForDigit(d))!=0)appendElimination(cell,d);
+        }
+      }
+      if(xCount>=2){
+        for(let which:i32=0;which<2;which++){
+          const ai=which==0?a:b;
+          const n=<i32>unchecked(ahsCellCount[ai]), ownMask=unchecked(ahsMask[ai]);
+          for(let i:i32=0;i<n;i++){
+            const cell=ahsCellAt(ai,i);let inOverlap=false;
+            for(let oi:i32=0;oi<overlapCount;oi++)if(unchecked(overlap[oi])==cell){inOverlap=true;break;}
+            if(inOverlap)continue;
+            const remove=<u16>(maskAt(cell)&<u16>(~ownMask));
+            for(let d:i32=1;d<=9;d++)if((remove&bitForDigit(d))!=0)appendElimination(cell,d);
+          }
+        }
+      }
+      if(eliminationCount>0){
+        techniqueId=37;actionType=2;patternCount=0;extraCellCount=0;extraDigitCount=0;
+        appendAhsPattern(a);appendAhsPattern(b);
+        // auxiliary cells: overlap, then X, then Z; counts in meta.
+        for(let i:i32=0;i<overlapCount;i++)unchecked(extraCells[extraCellCount++]=<u8>unchecked(overlap[i]));
+        for(let i:i32=0;i<xCount;i++)unchecked(extraCells[extraCellCount++]=<u8>unchecked(xCells[i]));
+        for(let i:i32=0;i<zCount;i++)unchecked(extraCells[extraCellCount++]=<u8>unchecked(zCells[i]));
+        appendAhsDigitsToExtra(a);appendAhsDigitsToExtra(b);
+        unchecked(meta[0]=an);unchecked(meta[1]=<i32>unchecked(ahsCellCount[b]));
+        unchecked(meta[2]=<i32>unchecked(ahsDigitCount[a]));unchecked(meta[3]=<i32>unchecked(ahsDigitCount[b]));
+        unchecked(meta[4]=overlapCount);unchecked(meta[5]=xCount);unchecked(meta[6]=zCount);
+        return actionType;
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -1521,6 +1662,7 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 27) return findXYChain();
   if (id == 35) return findPom();
   if (id == 36) return findAlsXZ();
+  if (id == 37) return findAhsXZ();
   return 0;
 }
 
