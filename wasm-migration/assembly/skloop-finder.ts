@@ -78,7 +78,7 @@ export function skLoopFind():i32{
   const boxes=new StaticArray<i32>(4);
   const digitSeen=new StaticArray<u8>(10);
   const digitOrder=new StaticArray<u8>(9);
-  const pairMasks=new StaticArray<u8>(9*32); // <=16 intersection occurrences per digit
+  const pairMasks=new StaticArray<u8>(10*32); // digit-indexed 1..9; <=16 intersection occurrences per digit
   const pairCount=new StaticArray<u8>(10);
   const coverMask=new StaticArray<u8>(10);
 

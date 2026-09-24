@@ -9,6 +9,7 @@ on:
       - "wasm-migration/tests/senior-exocet-incremental-diagnostic.mjs"
       - "wasm-migration/assembly/exocet-finder.ts"
       - "wasm-migration/assembly/aic-finder.ts"
+      - "wasm-migration/assembly/skloop-finder.ts"
 
 permissions:
   contents: read
