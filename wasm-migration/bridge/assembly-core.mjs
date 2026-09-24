@@ -39,8 +39,7 @@ export function decodeFact(k) {
   return { r, c, digit };
 }
 
-export function runStaticAssumption(core, r, c, digit, startTrue) {
-  const contradiction = !!core.runStaticAssumption(r, c, digit, startTrue ? 1 : 0);
+function readPropagationResult(core, contradiction) {
   const trueFacts = [];
   const falseFacts = [];
   for (let i = 0; i < core.resultTrueCount(); i++) trueFacts.push(core.resultTrueFactAt(i));
@@ -51,10 +50,26 @@ export function runStaticAssumption(core, r, c, digit, startTrue) {
   );
 
   return {
-    contradiction,
+    contradiction: !!contradiction,
+    aborted: typeof core.resultAborted === "function" ? !!core.resultAborted() : false,
+    budgetCalls: typeof core.resultBudgetCalls === "function" ? core.resultBudgetCalls() : null,
     guardIterations: core.resultGuardIterations(),
     trueFacts,
     falseFacts,
     grid,
   };
+}
+
+export function runStaticAssumption(core, r, c, digit, startTrue) {
+  return readPropagationResult(
+    core,
+    core.runStaticAssumption(r, c, digit, startTrue ? 1 : 0),
+  );
+}
+
+export function runDynamicAssumption(core, r, c, digit, startTrue, budgetLimit = 6790) {
+  return readPropagationResult(
+    core,
+    core.runDynamicAssumption(r, c, digit, startTrue ? 1 : 0, budgetLimit),
+  );
 }
