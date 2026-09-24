@@ -2143,6 +2143,65 @@ export function exocetFinderResultTargetAt(i:i32): i32 { return exocetResultTarg
 export function exocetFinderResultBaseMask(): i32 { return exocetResultBaseMask(); }
 export function exocetFinderResultTrueBaseDigit(): i32 { return exocetResultTrueBaseDigit(); }
 
+// Coarse first-match dispatcher. Technique ids are zero-based TECHNIQUE_CHAIN
+// positions from the frozen JS oracle. Each finder preserves its own raw result
+// buffer; the JS compatibility adapter decodes that buffer without re-running
+// the search.
+export function runFindNextTechniqueId(budgetLimit: i32 = 6790): i32 {
+  for (let id: i32 = 0; id < 53; id++) {
+    let found = false;
+    if (id <= 27 || (id >= 35 && id <= 39)) {
+      found = basicRunTechniqueFinder(id) != 0;
+    } else if (id == 28) {
+      aicFind();
+      found = aicResultNodeCount() > 0;
+    } else if (id == 29) {
+      niceLoopFind();
+      found = aicResultNodeCount() > 0;
+    } else if (id == 30) {
+      sdcFind();
+      found = sdcResultActionType() != 0;
+    } else if (id >= 31 && id <= 34) {
+      fireworkFind(id);
+      found = fireworkResultActionType() != 0;
+    } else if (id == 40) {
+      medusaFind();
+      found = medusaResultActionType() != 0;
+    } else if (id == 41) {
+      tridagonFind();
+      found = tridagonResultActionType() != 0;
+    } else if (id == 42) {
+      found = runStaticUnaryFinder() != 0;
+    } else if (id == 43) {
+      found = runStaticNishioFinder() != 0;
+    } else if (id == 44) {
+      found = runStaticMultipleFinder() != 0;
+    } else if (id == 45) {
+      found = runTridagonForceFinder() != 0;
+    } else if (id == 46) {
+      skLoopFind();
+      found = skLoopResultEliminationCount() > 0;
+    } else if (id == 47) {
+      mslsFind();
+      found = mslsResultEliminationCount() > 0;
+    } else if (id == 48) {
+      juniorExocetFind();
+      found = exocetResultTechnique() != 0;
+    } else if (id == 49) {
+      seniorExocetFind();
+      found = exocetResultTechnique() != 0;
+    } else if (id == 50) {
+      found = runDynamicNishioFinder(budgetLimit) != 0;
+    } else if (id == 51) {
+      found = runDynamicUnaryFinder(budgetLimit) != 0;
+    } else if (id == 52) {
+      found = runDynamicMultipleFinder(budgetLimit) != 0;
+    }
+    if (found) return id;
+  }
+  return -1;
+}
+
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
 export function candidateKernelChecksum(iterations: i32): i32 {
