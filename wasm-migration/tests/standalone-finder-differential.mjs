@@ -59,6 +59,24 @@ const TECHNIQUES = [
   [49, "seniorExocet"],
 ];
 
+function firstSemanticDifference(a, b, path = "$") {
+  if (Object.is(a, b)) return null;
+  if (typeof a !== typeof b) return { path, actual: a, expected: b, kind: "type" };
+  if (a == null || b == null || typeof a !== "object") {
+    return { path, actual: a, expected: b, kind: "value", actualIsNegativeZero: Object.is(a, -0), expectedIsNegativeZero: Object.is(b, -0) };
+  }
+  const ak = Reflect.ownKeys(a);
+  const bk = Reflect.ownKeys(b);
+  if (ak.length !== bk.length || ak.some((k, i) => k !== bk[i])) {
+    return { path, actualKeys: ak, expectedKeys: bk, kind: "keys" };
+  }
+  for (const k of ak) {
+    const diff = firstSemanticDifference(a[k], b[k], path + "." + String(k));
+    if (diff) return diff;
+  }
+  return { path, kind: "prototype", actualPrototype: Object.getPrototypeOf(a)?.constructor?.name, expectedPrototype: Object.getPrototypeOf(b)?.constructor?.name };
+}
+
 function hostClone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
@@ -97,11 +115,17 @@ for (const testCase of corpus) {
       });
       console.error("MEDUSA_DIAG", JSON.stringify({ caseId: testCase.id, diag }));
     }
-    assert.deepEqual(
-      wasmFinding,
-      hostClone(jsFinding),
-      "#" + testCase.id + " " + key + ": raw Finding mismatch",
-    );
+    const expectedFinding = hostClone(jsFinding);
+    try {
+      assert.deepEqual(
+        wasmFinding,
+        expectedFinding,
+        "#" + testCase.id + " " + key + ": raw Finding mismatch",
+      );
+    } catch (error) {
+      console.error("FINDING_DIFF", JSON.stringify(firstSemanticDifference(wasmFinding, expectedFinding)));
+      throw error;
+    }
     if (jsFinding) positive.set(key, positive.get(key) + 1);
     comparisons++;
   }
