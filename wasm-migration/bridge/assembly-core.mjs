@@ -326,6 +326,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [40, "medusa3D"],
   [41, "tridagon"],
   [45, "tridagonForce"],
+  [46, "skLoop"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -348,6 +349,31 @@ function readStandaloneEliminations(core) {
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId === 46) {
+    core.runSkLoopFinder();
+    if (core.skLoopResultEliminationCount() === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.skLoopResultPatternCount(); i++) {
+      const index = core.skLoopResultPatternAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.skLoopResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.skLoopResultEliminationAt(i)));
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: {
+        rows: [core.skLoopResultRowAt(0), core.skLoopResultRowAt(1)],
+        cols: [core.skLoopResultColAt(0), core.skLoopResultColAt(1)],
+        boxes: Array.from({ length: 4 }, (_, i) => core.skLoopResultBoxAt(i)),
+      },
+    };
+  }
 
   if (techniqueId === 45) {
     core.runTridagonForceFinder();
