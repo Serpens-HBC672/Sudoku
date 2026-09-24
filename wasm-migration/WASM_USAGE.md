@@ -1,84 +1,141 @@
-# WASM prototype usage
+# WASM_USAGE.md
 
-This directory is intentionally isolated from the production HTML. The prototype does not change UI/UX and does not touch the MRV puzzle generator.
+## Module
 
-## Build
+Compiled module: `sudoku-techniques.wasm`.
 
-From `wasm-migration/`:
+The owner can instantiate the binary directly. No generated AssemblyScript JS loader is mandatory.
 
-```bash
-npm install
-npm run build
-npm run build:simd
-```
-
-Outputs:
-
-- `build/sudoku-techniques.wasm`
-- `build/sudoku-techniques-simd.wasm`
-
-The SIMD profile only enables the WebAssembly SIMD feature. The current milestone does not claim an explicit vectorized algorithm; see `PERFORMANCE_NOTES.md`.
-
-## Differential test
-
-```bash
-npm test
-```
-
-The test:
-
-1. loads the readable DevVer solver as the JS behavioral oracle;
-2. confirms the current registry contains 53 techniques;
-3. parses all 57 benchmark boards;
-4. snapshots each board's 9-bit candidate masks;
-5. runs deterministic true/false static forcing-chain assumptions in JS and WASM;
-6. compares contradiction result, true-fact insertion order, false-fact insertion order, and the propagated grid.
-
-Any mismatch fails the run.
-
-## Generate JS oracle traces
-
-All boards:
-
-```bash
-npm run oracle -- --ids all
-```
-
-Selected boards:
-
-```bash
-npm run oracle -- --ids 22,23,39,44,56
-```
-
-Add the existing "list all available techniques" scan to recorded states:
-
-```bash
-npm run oracle -- --ids 42,55 --coverage
-```
-
-The full coverage scan calls `findAllAvailableSteps()` and can be extremely expensive on Dynamic Forcing Chain states. Use `--coverage-stride N` or `--coverage-max-states N` to bound it.
-
-Generated JSON records preserve:
-
-- pre-step grid;
-- all 81 candidate masks;
-- exact first-match raw Finding;
-- post-step grid;
-- post-step candidate masks;
-- the shared soundness-gate result;
-- optional all-technique findings for coverage states.
-
-## JS adapter
-
-`bridge/assembly-core.mjs` is the prototype loader/adapter. It deliberately uses per-cell setters rather than a new production memory ABI. That keeps the first compiled milestone auditable; a bulk linear-memory ABI should be introduced only after the static propagation differential gate is green.
-
-## Base64 embedding
-
-The repository owner plans to inline the final WASM bytes later. The migration does not require that during development. Once a final binary is approved, the adapter can instantiate decoded bytes with:
+Required import:
 
 ```js
-const bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
-const { instance } = await WebAssembly.instantiate(bytes, imports);
+{
+  env: {
+    abort(messagePtr, filePtr, line, column) { ... }
+  }
+}
 ```
 
-The final Base64 packaging step is intentionally separate from algorithm verification.
+The supplied adapters provide this import and call `WebAssembly.instantiate` directly.
+
+## Initialization
+
+Node/test adapter:
+
+```js
+import { instantiateCore } from "./bridge/assembly-core.mjs";
+const core = await instantiateCore(wasmBytesOrFileUrl);
+```
+
+Browser-safe adapter:
+
+```js
+import { instantiateCore } from "./bridge/sudoku-wasm-adapter.js";
+const core = await instantiateCore(wasmBytes);
+```
+
+The same compiled module is used by the main-thread adapter and Worker adapter.
+
+## Input layout
+
+The integration intentionally uses a narrow explicit setter ABI rather than exposing AssemblyScript object layouts.
+
+A solver state consists of:
+
+- 81 grid cells, row-major, digit `0..9`;
+- 81 candidate masks, row-major;
+- optional immutable 81-cell given grid for techniques such as GSP.
+
+Candidate mask invariant:
+
+```text
+(mask & ~0x1FF) == 0
+bit 0 -> digit 1
+...
+bit 8 -> digit 9
+```
+
+The JS adapter loads a position with:
+
+```js
+loadPosition(core, grid9x9, masks81);
+loadGivenGrid(core, givenGrid9x9);
+```
+
+Internally the authoritative candidate representation remains a 9-bit mask. Digit arrays are only derived views used when recreating the existing JS Finding/context shape.
+
+## Coarse search API
+
+Preferred main-thread entry:
+
+```js
+const finding = findNextStepWasm(core, {
+  budgetLimit: 6790,
+  validator, // optional; used for the existing Exocet solution validator in tests
+});
+```
+
+Search order is performed inside the module by `runFindNextTechniqueIdFrom`, following the frozen 53-entry `TECHNIQUE_CHAIN`.
+
+For the UI option that lists all available techniques:
+
+```js
+const findings = findAllAvailableStepsWasm(core, { budgetLimit: 6790, validator });
+```
+
+The module first scans the full registry in one call and exposes two availability bitmasks. JS then materializes only techniques that actually produced a finding. This avoids 53 JS→WASM search calls.
+
+Lower-level migration/test APIs remain available for exact per-technique differential tests and propagation tests. They are not the preferred application boundary.
+
+## Finding ABI
+
+WASM keeps technique-specific packed result buffers: action kind, cell/digit fields, packed fact ids, pattern-cell indexes and tagged metadata.
+
+The JS compatibility adapter reconstructs the existing Finding contract:
+
+```text
+packed WASM result
+    -> JS compatibility adapter
+    -> existing Finding shape
+    -> existing wrapFinding / renderer / UI
+```
+
+The UI does not need to understand WASM offsets, masks, technique ids or internal metadata.
+
+No semantically meaningful ordering is sorted or normalized by the adapter. Pattern cells, eliminations, chain nodes, combination-derived arrays and contexts retain oracle order.
+
+## Memory ownership and lifetime
+
+Input state is copied into module-owned fixed buffers through explicit setters. JS retains ownership of its input arrays.
+
+Returned Finding objects are ordinary JS objects reconstructed from scalar exports and result buffers; they do not borrow pointers into WASM memory.
+
+The AssemblyScript module uses the minimal runtime so temporary managed allocations can be reclaimed during long solver sessions. Application code must not retain raw pointers into module memory.
+
+## Worker
+
+Worker bridge: `bridge/sudoku-wasm-worker.js`.
+
+Conceptual architecture:
+
+```text
+                    -> main-thread adapter
+same sudoku-techniques.wasm
+                    -> Worker adapter
+```
+
+Worker commands include loading a position and coarse `findNext` / `findAll` searches as well as lower-level migration diagnostics. Main-thread and Worker parity is covered by `tests/worker-parity.mjs`.
+
+The Worker should receive the same `.wasm` bytes (for example as a transferred `ArrayBuffer`) and instantiate the module locally. It must not fall back to the old JS solver as a second computational authority.
+
+## Future Base64 embedding
+
+Base64 embedding is intentionally outside this migration.
+
+A future packager may:
+
+1. Base64-encode the exact validated `.wasm` bytes.
+2. Decode them at runtime into a `Uint8Array`.
+3. Pass that byte array to the same `instantiateCore` function.
+
+No solver code, candidate representation, Finding conversion, technique ordering, DFC budget or Worker behavior needs to change.
