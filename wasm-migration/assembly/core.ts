@@ -1018,9 +1018,7 @@ export function runStaticAssumption(r: i32, c: i32, d: i32, startTrue: i32): i32
   return contradictionValue;
 }
 
-export function runDynamicAssumption(r: i32, c: i32, d: i32, startTrue: i32, budgetLimit: i32): i32 {
-  budgetCallsValue = 0;
-  budgetLimitValue = budgetLimit;
+function runDynamicShared(r: i32, c: i32, d: i32, startTrue: bool): i32 {
   budgetCallsValue++; // propagateAssumptionCore increments at function entry
   if (budgetCallsValue > budgetLimitValue) {
     contradictionValue = 0;
@@ -1033,7 +1031,7 @@ export function runDynamicAssumption(r: i32, c: i32, d: i32, startTrue: i32, bud
   resetWork();
   abortedValue = 0;
 
-  const initialOk = startTrue != 0 ? markTrue(r, c, d) : markFalse(r, c, d);
+  const initialOk = startTrue ? markTrue(r, c, d) : markFalse(r, c, d);
   if (!initialOk) {
     contradictionValue = 1;
     return 1;
@@ -1054,6 +1052,12 @@ export function runDynamicAssumption(r: i32, c: i32, d: i32, startTrue: i32, bud
 
   contradictionValue = 0;
   return 0;
+}
+
+export function runDynamicAssumption(r: i32, c: i32, d: i32, startTrue: i32, budgetLimit: i32): i32 {
+  budgetCallsValue = 0;
+  budgetLimitValue = budgetLimit;
+  return runDynamicShared(r, c, d, startTrue != 0);
 }
 
 export function resultBudgetCalls(): i32 {
