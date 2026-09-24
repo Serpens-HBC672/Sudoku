@@ -38,6 +38,7 @@ const TECHNIQUES = [
   [25, "wWing"],
   [26, "wxyzWing"],
   [27, "xyChain"],
+  [35, "pom"],
 ];
 
 function hostClone(value) {
