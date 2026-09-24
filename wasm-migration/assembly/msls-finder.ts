@@ -154,6 +154,24 @@ function minVertexCover(
 const interA=new StaticArray<u8>(MAX_INTERSECTIONS);
 const interB=new StaticArray<u8>(MAX_INTERSECTIONS);
 
+// Reusable scratch storage. MSLS enumerates tens of thousands of configurations;
+// with AssemblyScript's stub runtime, allocating these arrays inside the hot
+// loops monotonically consumes linear memory and can trap before the scan ends.
+const impliedBoxes=new StaticArray<i32>(9);
+const bands=new StaticArray<i32>(3);
+const stacks=new StaticArray<i32>(3);
+const digitSeen=new StaticArray<u8>(10);
+const digitOrder=new StaticArray<u8>(9);
+const coverCountByDigit=new StaticArray<u8>(10);
+const coverByDigit=new StaticArray<u8>(10*32);
+const usedA=new StaticArray<i32>(32);
+const usedB=new StaticArray<i32>(32);
+const cover=new StaticArray<i32>(32);
+const sizesR=new StaticArray<i32>(6);
+const sizesC=new StaticArray<i32>(6);
+const rowCombo=new StaticArray<i32>(5);
+const colCombo=new StaticArray<i32>(5);
+
 function sectorCell(
   sector:i32,pos:i32,
   rows:StaticArray<i32>,rowCount:i32,
@@ -172,7 +190,7 @@ function tryConfiguration(
   useBoxes:bool
 ):bool{
   patternCount=0;
-  const impliedBoxes=new StaticArray<i32>(9);
+  // scratch arrays are module-scoped to avoid stub-runtime allocation growth
   let impliedBoxCount:i32=0;
   let sideACount:i32=rowCount+colCount;
 
@@ -186,7 +204,6 @@ function tryConfiguration(
       patternCount++;
     }
   }else{
-    const bands=new StaticArray<i32>(3),stacks=new StaticArray<i32>(3);
     let bandCount:i32=0,stackCount:i32=0;
     for(let ri:i32=0;ri<rowCount;ri++)bandCount=uniqueAppend(bands,bandCount,unchecked(rows[ri])/3);
     for(let ci:i32=0;ci<colCount;ci++)stackCount=uniqueAppend(stacks,stackCount,unchecked(cols[ci])/3);
@@ -229,7 +246,6 @@ function tryConfiguration(
   }
   if(patternCount==0)return false;
 
-  const digitSeen=new StaticArray<u8>(10),digitOrder=new StaticArray<u8>(9);
   let digitCount:i32=0;
   for(let d:i32=1;d<=9;d++)unchecked(digitSeen[d]=0);
   for(let pi:i32=0;pi<patternCount;pi++){
@@ -239,10 +255,7 @@ function tryConfiguration(
     }
   }
 
-  const coverCountByDigit=new StaticArray<u8>(10);
-  const coverByDigit=new StaticArray<u8>(10*32);
   let totalLinks:i32=0;
-  const usedA=new StaticArray<i32>(32),usedB=new StaticArray<i32>(32),cover=new StaticArray<i32>(32);
 
   for(let oi:i32=0;oi<digitCount;oi++){
     const d=<i32>unchecked(digitOrder[oi]),db=bit(d);
@@ -284,14 +297,12 @@ function tryConfiguration(
 
 export function mslsFind():i32{
   patternCount=0;eliminationCount=0;rowsOutCount=0;colsOutCount=0;boxesOutCount=0;
-  const sizesR=new StaticArray<i32>(6),sizesC=new StaticArray<i32>(6);
   unchecked(sizesR[0]=3);unchecked(sizesC[0]=3);
   unchecked(sizesR[1]=3);unchecked(sizesC[1]=4);
   unchecked(sizesR[2]=4);unchecked(sizesC[2]=3);
   unchecked(sizesR[3]=4);unchecked(sizesC[3]=4);
   unchecked(sizesR[4]=4);unchecked(sizesC[4]=5);
   unchecked(sizesR[5]=5);unchecked(sizesC[5]=4);
-  const rowCombo=new StaticArray<i32>(5),colCombo=new StaticArray<i32>(5);
   for(let si:i32=0;si<6;si++){
     const rn=unchecked(sizesR[si]),cn=unchecked(sizesC[si]);
     for(let mode:i32=0;mode<2;mode++){
