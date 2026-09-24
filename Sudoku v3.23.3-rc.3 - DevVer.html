@@ -12134,7 +12134,7 @@ function renderStringPanels() {
     };
   }
 
-  function tracePuzzle(startGrid, solution, maxSteps = 512) {
+  function tracePuzzle(startGrid, solution, maxSteps = 512, stopAtFirstDynamic = false) {
     const givenGrid = cloneGrid(startGrid);
     const g = cloneGrid(startGrid);
     const tracker = makeEliminationTracker();
@@ -12181,6 +12181,12 @@ function renderStringPanels() {
         });
         if (problem) {
           soundnessProblem = problem;
+          break;
+        }
+        if (
+          stopAtFirstDynamic &&
+          (finding.technique === "dynamicNishioChain" || finding.technique === "dynamicUnaryChain")
+        ) {
           break;
         }
       }
