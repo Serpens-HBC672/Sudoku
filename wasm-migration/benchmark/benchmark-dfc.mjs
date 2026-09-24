@@ -60,7 +60,7 @@ for (const id of ids) {
   if (!testCase) throw new Error("Unknown benchmark id #" + id);
 
   const traceStart = performance.now();
-  const trace = oracle.tracePuzzle(testCase.puzzle, testCase.solution);
+  const trace = oracle.tracePuzzle(testCase.puzzle, testCase.solution, 512, true);
   const traceMs = performance.now() - traceStart;
   if (trace.soundnessProblem) {
     throw new Error("#" + id + " JS oracle soundness failure: " + JSON.stringify(trace.soundnessProblem));
