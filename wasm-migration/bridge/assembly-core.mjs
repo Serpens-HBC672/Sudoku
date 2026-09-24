@@ -1461,3 +1461,41 @@ export function runStaticMultipleFinder(core) {
     ? { actionType: "fill", technique: "multipleChain", r, c, digit, patternCells, context }
     : { actionType: "eliminate", technique: "multipleChain", patternCells, eliminations, context };
 }
+
+
+function runTechniqueById(core, techniqueId, budgetLimit) {
+  if (techniqueId >= 0 && techniqueId <= 41) return runStandaloneTechniqueFinder(core, techniqueId);
+  if (techniqueId === 42) return runStaticUnaryFinder(core);
+  if (techniqueId === 43) return runStaticNishioFinder(core);
+  if (techniqueId === 44) return runStaticMultipleFinder(core);
+  if (techniqueId >= 45 && techniqueId <= 49) return runStandaloneTechniqueFinder(core, techniqueId);
+  if (techniqueId === 50) return runDynamicNishioFinder(core, budgetLimit).finding;
+  if (techniqueId === 51) return runDynamicUnaryFinder(core, budgetLimit).finding;
+  if (techniqueId === 52) return runDynamicMultipleFinder(core, budgetLimit).finding;
+  throw new RangeError("Unknown TECHNIQUE_CHAIN id: " + techniqueId);
+}
+
+export function findNextStepWasm(core, options = {}) {
+  const budgetLimit = options.budgetLimit ?? 6790;
+  const validator = typeof options.validator === "function" ? options.validator : null;
+  for (let techniqueId = 0; techniqueId < 53; techniqueId++) {
+    const finding = runTechniqueById(core, techniqueId, budgetLimit);
+    if (!finding) continue;
+    if (validator && !validator(finding)) continue;
+    return finding;
+  }
+  return null;
+}
+
+export function findAllAvailableStepsWasm(core, options = {}) {
+  const budgetLimit = options.budgetLimit ?? 6790;
+  const validator = typeof options.validator === "function" ? options.validator : null;
+  const findings = [];
+  for (let techniqueId = 0; techniqueId < 53; techniqueId++) {
+    const finding = runTechniqueById(core, techniqueId, budgetLimit);
+    if (!finding) continue;
+    if (validator && !validator(finding)) continue;
+    findings.push(finding);
+  }
+  return findings;
+}
