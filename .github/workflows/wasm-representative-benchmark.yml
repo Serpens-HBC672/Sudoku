@@ -1,0 +1,54 @@
+name: WASM Representative Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/wasm-human-techniques-migration
+    paths:
+      - wasm-migration/BENCHMARK_TRIGGER
+
+permissions:
+  contents: read
+
+jobs:
+  representative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install migration toolchain
+        run: npm install --no-audit --no-fund
+      - name: Build AssemblyScript core
+        run: npm run build
+      - name: Run correctness gates before benchmark
+        run: |
+          npm run test:static
+          npm run test:dynamic
+          npm run test:dynamic-finders
+          npm run test:standalone
+          npm run test:static-finders
+      - name: Benchmark representative corpus workloads
+        run: node benchmark/benchmark-representative.mjs --ids 57,11,22,23,56,27,42 --out representative-results
+      - name: Build SIMD profile and compare bytes
+        run: |
+          npm run build:simd
+          sha256sum build/sudoku-techniques.wasm build/sudoku-techniques-simd.wasm
+          cmp -s build/sudoku-techniques.wasm build/sudoku-techniques-simd.wasm && echo "SIMD_BYTES_IDENTICAL=1" | tee representative-results/simd.txt || echo "SIMD_BYTES_IDENTICAL=0" | tee representative-results/simd.txt
+          wc -c build/sudoku-techniques.wasm build/sudoku-techniques-simd.wasm | tee representative-results/sizes.txt
+      - name: Upload representative benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-representative-benchmark
+          path: |
+            wasm-migration/representative-results/results.json
+            wasm-migration/representative-results/BENCHMARK.generated.md
+            wasm-migration/representative-results/simd.txt
+            wasm-migration/representative-results/sizes.txt
+          if-no-files-found: error

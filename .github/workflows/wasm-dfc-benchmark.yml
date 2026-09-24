@@ -1,0 +1,56 @@
+name: WASM DFC Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/wasm-human-techniques-migration
+    paths:
+      - "wasm-migration/benchmark/dfc-benchmark-trigger.txt"
+  pull_request:
+    paths:
+      - "wasm-migration/benchmark/dfc-benchmark-trigger.txt"
+      - ".github/workflows/wasm-dfc-benchmark.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  golden-nugget-dfc:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wasm-migration
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install isolated migration toolchain
+        run: npm install --no-audit --no-fund
+
+      - name: Build AssemblyScript core
+        run: npm run build
+
+      - name: Re-run fast correctness gates
+        run: |
+          npm run test:static
+          npm run test:dynamic
+          npm run test:dynamic-finders
+
+      - name: Benchmark Golden Nugget first real DFC state
+        run: npm run benchmark:dfc -- --ids 22 --out benchmark-results
+
+      - name: Upload benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-dfc-benchmark
+          path: |
+            wasm-migration/benchmark-results/dfc-benchmark.json
+            wasm-migration/benchmark-results/dfc-benchmark.md
+          if-no-files-found: error

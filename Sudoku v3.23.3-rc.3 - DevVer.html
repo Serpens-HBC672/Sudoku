@@ -9031,7 +9031,7 @@ function estimateDifficulty(startGrid, solution, onProgress) {
       for (const { r, c, digit } of finding.eliminations) tracker.markErased(r, c, digit);
     }
     if (solution) {
-      const problem = verifySoundnessAfterApply(finding, solution);
+      const problem = verifySoundnessAfterApply(finding, solution, g, getCands);
       if (problem) {
         const afterSnapshot = snapshotCandidatesGrid(g, getCands);
         return buildSoundnessErrorReport(finding, beforeSnapshot, afterSnapshot, problem);
@@ -9939,24 +9939,60 @@ function formatCandidatesGridText(snapshot) {
   }
   return lines.join("\n");
 }
-// 核对一步finding有没有跟真实解矛盾。fill/fix/advanced类的看填的
-// 数字对不对;eliminate类的看划掉的候选数字,有没有哪一个恰好就是
-// 真实解——是的话就是把正确答案当成假的划掉了,这是最危险的一种错误
-// (填错数字至少还有机会靠后续矛盾检测出来,消除类的错误会让盘面
-// 悄悄失去唯一解,可能要走出很远才会暴露)。返回null表示没问题。
-function verifySoundnessAfterApply(ph, solution) {
-  if (!solution) return null; // 没有真实解可对照(理论上不该发生),不做检查
-  if (ph.actionType === "eliminate") {
-    for (const e of ph.eliminations) {
-      if (solution[e.r][e.c] === e.digit) {
-        return { kind: "badElimination", cell: { r: e.r, c: e.c }, digit: e.digit, correctDigit: solution[e.r][e.c] };
+// 核对一步finding有没有破坏盘面正确性。这里故意把三类错误放在
+// 同一个门禁里,迁移/差分测试也复用这套判据,避免生产路径和测试路径
+// 各自维护一份“什么算错误”的定义:
+//   1) eliminate把某格的真实答案候选划掉;
+//   2) fill/fix/advanced填入了与真实解不同的数字;
+//   3) 这一步执行后,某个受影响的仍为空的格子候选数变成0。
+// 第3项以前只会在错误报告快照里显示成“×”,并没有真的触发报错;
+// WASM迁移开始前把它补成正式门禁,这样行为对拍时能更早抓到候选传播
+// 被破坏的问题。grid/getCands是执行完finding后的实时状态。
+function verifySoundnessAfterApply(ph, solution, grid, getCands) {
+  if (solution) {
+    if (ph.actionType === "eliminate") {
+      for (const e of ph.eliminations) {
+        if (solution[e.r][e.c] === e.digit) {
+          return { kind: "badElimination", cell: { r: e.r, c: e.c }, digit: e.digit, correctDigit: solution[e.r][e.c] };
+        }
+      }
+    } else {
+      // fill / fix / advanced
+      if (solution[ph.r][ph.c] !== ph.digit) {
+        return { kind: "badFill", cell: { r: ph.r, c: ph.c }, digit: ph.digit, correctDigit: solution[ph.r][ph.c] };
       }
     }
-    return null;
   }
-  // fill / fix / advanced
-  if (solution[ph.r][ph.c] !== ph.digit) {
-    return { kind: "badFill", cell: { r: ph.r, c: ph.c }, digit: ph.digit, correctDigit: solution[ph.r][ph.c] };
+
+  // 没有执行后的盘面/候选读取器时只能做上面两项;生产路径和迁移
+  // oracle都会传这两个参数。只检查“本步可能碰到”的格子,不做81格
+  // 全盘扫描,避免给测难度的每一步增加不必要的固定开销。
+  if (!grid || !getCands) return null;
+  const affected = new Set();
+  const add = (r, c) => affected.add(r * 9 + c);
+  if (ph.actionType === "eliminate") {
+    for (const e of ph.eliminations) add(e.r, e.c);
+  } else if (Number.isInteger(ph.r) && Number.isInteger(ph.c)) {
+    // 定性填入只会让同行/同列/同宫的候选发生客观变化。
+    for (const key of collectUnitPeers(ph.r, ph.c)) {
+      const [r, c] = key.split(",").map(Number);
+      add(r, c);
+    }
+  }
+
+  // row-major检查,让同一异常在JS/WASM差分里总是报同一个“第一个格子”。
+  const ordered = [...affected].sort((a, b) => a - b);
+  for (const idx of ordered) {
+    const r = Math.floor(idx / 9);
+    const c = idx % 9;
+    if (grid[r][c] !== 0) continue;
+    if (getCands(r, c).length === 0) {
+      return {
+        kind: "zeroCandidates",
+        cell: { r, c },
+        correctDigit: solution ? solution[r][c] : null,
+      };
+    }
   }
   return null;
 }
@@ -9971,6 +10007,8 @@ function buildSoundnessErrorReport(ph, beforeSnapshot, afterSnapshot, problem) {
   const problemText =
     problem.kind === "badElimination"
       ? `!! 严重: 格子(${problem.cell.r},${problem.cell.c})的真实解是${problem.correctDigit},但这一步把候选数${problem.digit}当成假的划掉了,而${problem.digit}恰好就是真实解本身。`
+      : problem.kind === "zeroCandidates"
+      ? `!! 严重: 这一步执行后,格子(${problem.cell.r},${problem.cell.c})仍然是空格,但全部候选数都被划掉了${problem.correctDigit ? `,真实解应为${problem.correctDigit}` : ""}。`
       : `!! 严重: 格子(${problem.cell.r},${problem.cell.c})被填成了${problem.digit},但真实解是${problem.correctDigit}。`;
   return [
     "==== 数独求解器 · 盘面正确性检查失败 ====",
@@ -10030,7 +10068,7 @@ function applyPendingHint(ph) {
     pushHistory("play");
     if (!state.showCandidates) state.showCandidates = true; // 消除得让人看得见才有意义
     markCellsErased(state.play.notes, ph.eliminations);
-    const problem = verifySoundnessAfterApply(ph, state.play.solution);
+    const problem = verifySoundnessAfterApply(ph, state.play.solution, state.play.grid, (r, c) => liveCandidatesAt(state.play.grid, state.play.notes, r, c));
     if (problem) {
       const afterSnapshot = snapshotCandidatesGrid(state.play.grid, (r, c) => liveCandidatesAt(state.play.grid, state.play.notes, r, c));
       state.play.soundnessError = { report: buildSoundnessErrorReport(ph, beforeSnapshot, afterSnapshot, problem) };
@@ -10055,7 +10093,7 @@ function applyPendingHint(ph) {
   pushHistory("play");
   const beforeFillSnapshot = snapshotCandidatesGrid(state.play.grid, (rr, cc) => liveCandidatesAt(state.play.grid, state.play.notes, rr, cc));
   commitFill(state.play.grid, state.play.notes, r, c, digit);
-  const fillProblem = verifySoundnessAfterApply(ph, state.play.solution);
+  const fillProblem = verifySoundnessAfterApply(ph, state.play.solution, state.play.grid, (r, c) => liveCandidatesAt(state.play.grid, state.play.notes, r, c));
   if (fillProblem) {
     const afterFillSnapshot = snapshotCandidatesGrid(state.play.grid, (rr, cc) => liveCandidatesAt(state.play.grid, state.play.notes, rr, cc));
     state.play.soundnessError = { report: buildSoundnessErrorReport(ph, beforeFillSnapshot, afterFillSnapshot, fillProblem) };
@@ -12030,6 +12068,265 @@ function renderStringPanels() {
     document.getElementById("play-string-box").value = formatPuzzleStringForDisplay(str);
   }
 }
+
+/* -------------------- WASM迁移差分测试钩子 --------------------
+   只提供机器可读的只读/离线测试入口,不参与UI行为。迁移测试通过它把
+   当前JS实现固定成oracle:逐步记录first-match finding和候选掩码;
+   需要技巧覆盖率时,再用enumerateAvailableFromMasks()调用现成的
+   findAllAvailableSteps(),对某个已记录状态完整扫描53技巧。把“完整
+   扫描”与“正常逐步求解”分开,避免Golden Nugget/Platinum Blonde
+   这类重盘每一步都额外跑53个技巧而把基准时间放大到失去意义。
+   ------------------------------------------------------------ */
+(function installWasmMigrationTestHooks() {
+  if (typeof globalThis === "undefined") return;
+
+  function normalizeOracleValue(value, seen = new WeakSet()) {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== "object") return value;
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    if (value instanceof Set) {
+      const out = { __type: "Set", values: [...value].map((v) => normalizeOracleValue(v, seen)) };
+      seen.delete(value);
+      return out;
+    }
+    if (value instanceof Map) {
+      const out = {
+        __type: "Map",
+        entries: [...value.entries()].map(([k, v]) => [normalizeOracleValue(k, seen), normalizeOracleValue(v, seen)]),
+      };
+      seen.delete(value);
+      return out;
+    }
+    if (Array.isArray(value)) {
+      const out = value.map((v) => normalizeOracleValue(v, seen));
+      seen.delete(value);
+      return out;
+    }
+    const out = {};
+    for (const key of Object.keys(value)) out[key] = normalizeOracleValue(value[key], seen);
+    seen.delete(value);
+    return out;
+  }
+
+  function candidateMasksSnapshot(grid, getCands) {
+    const masks = new Array(81).fill(0);
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (grid[r][c] !== 0) continue;
+        masks[r * 9 + c] = candMaskAt(getCands, r, c) & 0x1ff;
+      }
+    }
+    return masks;
+  }
+
+  function getCandsFromMasks(grid, masks) {
+    return (r, c) => {
+      const out = [];
+      if (grid[r][c] !== 0) {
+        out.mask = 0;
+        return out;
+      }
+      const mask = masks[r * 9 + c] & 0x1ff;
+      for (let d = 1; d <= 9; d++) if (mask & (1 << (d - 1))) out.push(d);
+      out.mask = mask;
+      return out;
+    };
+  }
+
+  function tracePuzzle(startGrid, solution, maxSteps = 512, stopAtFirstDynamic = false) {
+    const givenGrid = cloneGrid(startGrid);
+    const g = cloneGrid(startGrid);
+    const tracker = makeEliminationTracker();
+    const getCands = (r, c) => trackedCandidatesAt(g, tracker, r, c);
+    const trace = [];
+    let stalled = false;
+    let soundnessProblem = null;
+
+    // 迁移oracle不记录“为展示而重算”的chain detail;它会改变finding的
+    // 附带说明数据但不改变技巧判定。真正迁chain detail时再单独做契约
+    // 测试,这里先固定求解核心本身。
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
+        if (!g.some((row) => row.some((v) => v === 0))) break;
+        const beforeGrid = gridToPuzzleString(g);
+        const beforeMasks = candidateMasksSnapshot(g, getCands);
+        const finding = findNextStep(g, getCands, undefined, givenGrid, (f) => exocetFindingMatchesSolution(f, solution));
+        if (!finding) {
+          stalled = true;
+          break;
+        }
+
+        if (finding.actionType === "fill") {
+          g[finding.r][finding.c] = finding.digit;
+        } else if (finding.actionType === "eliminate") {
+          for (const { r, c, digit } of finding.eliminations) tracker.markErased(r, c, digit);
+        } else {
+          throw new Error("oracle trace encountered unsupported actionType: " + finding.actionType);
+        }
+
+        const problem = verifySoundnessAfterApply(finding, solution, g, getCands);
+        const afterGrid = gridToPuzzleString(g);
+        const afterMasks = candidateMasksSnapshot(g, getCands);
+        trace.push({
+          step: stepIndex,
+          beforeGrid,
+          beforeMasks,
+          finding: normalizeOracleValue(finding),
+          afterGrid,
+          afterMasks,
+          soundnessProblem: normalizeOracleValue(problem),
+        });
+        if (problem) {
+          soundnessProblem = problem;
+          break;
+        }
+        if (
+          stopAtFirstDynamic &&
+          (finding.technique === "dynamicNishioChain" || finding.technique === "dynamicUnaryChain")
+        ) {
+          break;
+        }
+      }
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+
+    return {
+      techniqueKeys: TECHNIQUE_CHAIN.map((entry) => entry.key),
+      givenGrid: gridToPuzzleString(givenGrid),
+      finalGrid: gridToPuzzleString(g),
+      complete: !g.some((row) => row.some((v) => v === 0)),
+      stalled,
+      soundnessProblem: normalizeOracleValue(soundnessProblem),
+      trace,
+    };
+  }
+
+  function enumerateAvailableFromMasks(grid, masks, givenGrid, solution) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      const findings = findAllAvailableSteps(
+        grid,
+        getCands,
+        givenGrid,
+        (f) => exocetFindingMatchesSolution(f, solution)
+      );
+      return findings.map((finding) => normalizeOracleValue(finding));
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
+  function findTechniqueFromMasks(key, grid, masks, givenGrid, solution) {
+    const entry = TECHNIQUE_CHAIN.find((candidate) => candidate.key === key);
+    if (!entry) throw new Error("Unknown technique key: " + key);
+    const getCands = getCandsFromMasks(grid, masks);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      const finding = callTechniqueFn(entry.fn, grid, getCands, givenGrid);
+      if (!finding || !exocetFindingMatchesSolution(finding, solution)) return null;
+      return normalizeOracleValue(finding);
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
+  function validateFindingAgainstSolution(finding, solution) {
+    if (!finding) return null;
+    return exocetFindingMatchesSolution(finding, solution) ? normalizeOracleValue(finding) : null;
+  }
+
+  function propagateStaticFromMasks(grid, masks, r, c, d, startTrue) {
+    const getCands = getCandsFromMasks(grid, masks);
+    return normalizeOracleValue(propagateAssumption(grid, getCands, r, c, d, !!startTrue));
+  }
+
+  function propagateDynamicFromMasks(grid, masks, r, c, d, startTrue, budgetLimit = DFC_BUDGET) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const result = propagateAssumptionDynamic(grid, getCands, r, c, d, !!startTrue, budget);
+    return {
+      result: normalizeOracleValue(result),
+      budgetCalls: budget.calls,
+      budgetLimit: budget.limit,
+    };
+  }
+
+  function findDynamicNishioFromMasks(grid, masks, budgetLimit = DFC_BUDGET) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const engine = (g, gc, r, c, d, st) => propagateAssumptionDynamic(g, gc, r, c, d, st, budget);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      return {
+        finding: normalizeOracleValue(findNishioChain(grid, getCands, engine, "dynamicNishioChain")),
+        budgetCalls: budget.calls,
+        budgetLimit: budget.limit,
+      };
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
+  function findDynamicUnaryFromMasks(grid, masks, budgetLimit = DFC_BUDGET) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const engine = (g, gc, r, c, d, st) => propagateAssumptionDynamic(g, gc, r, c, d, st, budget);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      return {
+        finding: normalizeOracleValue(findUnaryChain(grid, getCands, engine, "dynamicUnaryChain")),
+        budgetCalls: budget.calls,
+        budgetLimit: budget.limit,
+      };
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
+  function findDynamicMultipleFromMasks(grid, masks, budgetLimit = DFC_BUDGET) {
+    const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const engine = (g, gc, r, c, d, st) => propagateAssumptionDynamic(g, gc, r, c, d, st, budget);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      const finding =
+        findCellForcingChain(grid, getCands, engine, "dynamicMultipleChain") ||
+        findRegionForcingChain(grid, getCands, engine, "dynamicMultipleChain");
+      return {
+        finding: normalizeOracleValue(finding),
+        budgetCalls: budget.calls,
+        budgetLimit: budget.limit,
+      };
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
+  globalThis.__SUDOKU_WASM_MIGRATION_TEST_HOOKS__ = Object.freeze({
+    version: 1,
+    techniqueKeys: () => TECHNIQUE_CHAIN.map((entry) => entry.key),
+    candidateMasksForGrid: (grid) => candidateMasksSnapshot(grid, (r, c) => candidatesAt(grid, r, c)),
+    tracePuzzle,
+    enumerateAvailableFromMasks,
+    findTechniqueFromMasks,
+    validateFindingAgainstSolution,
+    propagateStaticFromMasks,
+    propagateDynamicFromMasks,
+    findDynamicNishioFromMasks,
+    findDynamicUnaryFromMasks,
+    findDynamicMultipleFromMasks,
+  });
+})();
 
 /* ------------------------------ 事件绑定(只绑一次,靠事件委托应对每次 render 重建的子节点) ------------------------------ */
 
