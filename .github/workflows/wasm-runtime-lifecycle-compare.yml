@@ -1,0 +1,112 @@
+name: WASM Runtime Lifecycle Comparison
+
+on:
+  push:
+    branches:
+      - codex/wasm-runtime-lifecycle-compare
+    paths:
+      - ".github/workflows/wasm-runtime-lifecycle-compare.yml"
+      - "wasm-migration/tests/runtime-lifecycle-comparison.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  compare-runtimes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: wasm-migration
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify historical solver lineage
+        run: |
+          git merge-base --is-ancestor 3fb98015986848e20025f8d1b1881f28fa6978e4 HEAD
+          echo "Files changed from historical solver target:"
+          git diff --name-only 3fb98015986848e20025f8d1b1881f28fa6978e4..HEAD
+
+      - name: Install historical toolchain
+        run: npm install --no-audit --no-fund
+
+      - name: Build stub baseline
+        run: |
+          mkdir -p build/runtime-compare
+          ./node_modules/.bin/asc assembly/core.ts             --runtime stub             --optimizeLevel 3             --shrinkLevel 0             --exportRuntime             --outFile build/runtime-compare/stub.wasm
+
+      - name: Build incremental candidate
+        run: |
+          ./node_modules/.bin/asc assembly/core.ts             --runtime incremental             --optimizeLevel 3             --shrinkLevel 0             --exportRuntime             --outFile build/runtime-compare/incremental.wasm
+
+      - name: Build minimal candidate
+        run: |
+          ./node_modules/.bin/asc assembly/core.ts             --runtime minimal             --optimizeLevel 3             --shrinkLevel 0             --exportRuntime             --outFile build/runtime-compare/minimal.wasm
+
+      - name: A - shared-instance stub baseline
+        run: |
+          node tests/runtime-lifecycle-comparison.mjs             --runtime stub             --wasm build/runtime-compare/stub.wasm             --out runtime-lifecycle-results
+
+      - name: B - shared-instance incremental
+        run: |
+          node tests/runtime-lifecycle-comparison.mjs             --runtime incremental             --wasm build/runtime-compare/incremental.wasm             --out runtime-lifecycle-results
+
+      - name: Probe minimal boundary collector
+        id: minimal_probe
+        shell: bash
+        run: |
+          if node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const mod = new WebAssembly.Module(readFileSync("build/runtime-compare/minimal.wasm"));
+            const names = WebAssembly.Module.exports(mod).map((x) => x.name);
+            console.log(JSON.stringify({ exportsCollect: names.includes("__collect"), exportCount: names.length }));
+            process.exit(names.includes("__collect") ? 0 : 2);
+          '; then
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: C - shared-instance minimal with safe boundary collection
+        if: steps.minimal_probe.outputs.supported == 'true'
+        run: |
+          node tests/runtime-lifecycle-comparison.mjs             --runtime minimal-boundary-collect             --wasm build/runtime-compare/minimal.wasm             --out runtime-lifecycle-results             --collect-at-puzzle-boundary
+
+      - name: Record unsupported minimal collector
+        if: steps.minimal_probe.outputs.supported != 'true'
+        run: |
+          mkdir -p runtime-lifecycle-results
+          node --input-type=module -e '
+            import { statSync, writeFileSync } from "node:fs";
+            const result = {
+              schema: "sudoku-wasm-runtime-lifecycle-comparison/v1",
+              historicalImplementation: "3fb98015986848e20025f8d1b1881f28fa6978e4",
+              runtime: "minimal-boundary-collect",
+              supportedCleanly: false,
+              reason: "__collect is not exported by AssemblyScript 0.27.31 minimal runtime with --exportRuntime; no intrusive runtime changes were made",
+              binarySizeBytes: statSync("build/runtime-compare/minimal.wasm").size
+            };
+            writeFileSync(
+              "runtime-lifecycle-results/minimal-boundary-collect.json",
+              JSON.stringify(result, null, 2) + "\n",
+              "utf8"
+            );
+            console.log("RUNTIME_RESULT " + JSON.stringify(result));
+          '
+
+      - name: Upload comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-runtime-lifecycle-comparison
+          path: |
+            wasm-migration/runtime-lifecycle-results/*.json
+            wasm-migration/build/runtime-compare/*.wasm
+          if-no-files-found: warn
