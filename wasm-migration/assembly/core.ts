@@ -101,22 +101,7 @@ import {
   medusaResultReasonCount,
   medusaResultReasonNode,
   medusaResultReasonColor,
-  medusaDebugAdjCount,
-  medusaDebugAdjAt,
 } from "./medusa-finder";
-
-import {
-  fireworkResetInput,
-  fireworkSetInputCell,
-  fireworkSetInputMask,
-  fireworkFind,
-  fireworkResultActionType,
-  fireworkResultPatternCount,
-  fireworkResultPatternAt,
-  fireworkResultEliminationCount,
-  fireworkResultEliminationAt,
-  fireworkResultMeta,
-} from "./firework-finder";
 
 import {
   fireworkResetInput,
@@ -2069,8 +2054,6 @@ export function medusaFinderResultColoringColor(i:i32): i32 { return medusaResul
 export function medusaFinderResultReasonCount(): i32 { return medusaResultReasonCount(); }
 export function medusaFinderResultReasonNode(i:i32): i32 { return medusaResultReasonNode(i); }
 export function medusaFinderResultReasonColor(i:i32): i32 { return medusaResultReasonColor(i); }
-export function medusaFinderDebugAdjCount(k:i32): i32 { return medusaDebugAdjCount(k); }
-export function medusaFinderDebugAdjAt(k:i32,i:i32): i32 { return medusaDebugAdjAt(k,i); }
 
 export function runFireworkFinder(id:i32): i32 { return fireworkFind(id); }
 export function fireworkFinderResultActionType(): i32 { return fireworkResultActionType(); }
