@@ -1,0 +1,54 @@
+name: Incremental Senior Exocet Diagnostic
+
+on:
+  push:
+    branches:
+      - codex/wasm-incremental-runtime-integration
+    paths:
+      - ".github/workflows/wasm-senior-exocet-diagnostic.yml"
+      - "wasm-migration/tests/senior-exocet-incremental-diagnostic.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install migration toolchain
+        run: npm install --no-audit --no-fund
+      - name: Build release incremental core
+        run: npm run build
+      - name: Build debug incremental core with names/source map/text
+        run: |
+          ./node_modules/.bin/asc assembly/core.ts             --runtime incremental             --optimizeLevel 3             --shrinkLevel 0             --exportRuntime             --debug             --sourceMap             --textFile build/sudoku-techniques-debug.wat             --outFile build/sudoku-techniques-debug.wasm
+      - name: Capture exact case-4 target input
+        run: node tests/senior-exocet-incremental-diagnostic.mjs capture
+      - name: Fresh release core exact Senior Exocet call
+        continue-on-error: true
+        run: node tests/senior-exocet-incremental-diagnostic.mjs fresh ../build/sudoku-techniques.wasm
+      - name: Accumulated release core exact standalone-suite history
+        continue-on-error: true
+        run: node tests/senior-exocet-incremental-diagnostic.mjs accumulated ../build/sudoku-techniques.wasm
+      - name: Accumulated debug core exact standalone-suite history
+        continue-on-error: true
+        run: node tests/senior-exocet-incremental-diagnostic.mjs accumulated ../build/sudoku-techniques-debug.wasm
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: incremental-senior-exocet-diagnostic
+          path: |
+            wasm-migration/senior-exocet-diagnostic-results/*.json
+            wasm-migration/build/sudoku-techniques-debug.wat
+            wasm-migration/build/sudoku-techniques-debug.wasm
+            wasm-migration/build/sudoku-techniques-debug.wasm.map
+          if-no-files-found: warn
