@@ -161,3 +161,111 @@ export function runDynamicUnaryFinder(core, budgetLimit = 6790) {
     budgetLimit,
   };
 }
+
+
+function maskToDigits(mask) {
+  const digits = [];
+  for (let d = 1; d <= 9; d++) if (mask & (1 << (d - 1))) digits.push(d);
+  return digits;
+}
+
+function readFinderPatternCells(core) {
+  const cells = [];
+  for (let i = 0; i < core.finderResultPatternCellCount(); i++) {
+    const index = core.finderResultPatternCellAt(i);
+    cells.push([Math.floor(index / 9), index % 9]);
+  }
+  return cells;
+}
+
+export function runDynamicMultipleFinder(core, budgetLimit = 6790) {
+  core.runDynamicMultipleFinder(budgetLimit);
+  const actionType = core.finderResultActionType();
+  const budgetCalls = core.resultBudgetCalls();
+  if (actionType === 0) return { finding: null, budgetCalls, budgetLimit };
+
+  const kindCode = core.finderResultKind();
+  const patternCells = readFinderPatternCells(core);
+  const eliminations = actionType === 2 ? readFinderEliminations(core) : null;
+  const resultR = core.finderResultR();
+  const resultC = core.finderResultC();
+  const resultDigit = core.finderResultDigit();
+
+  let context;
+  if (kindCode === 1) {
+    const startR = core.finderResultStartR();
+    const startC = core.finderResultStartC();
+    const startDigits = maskToDigits(core.getInputMask(startR * 9 + startC) & 0x1ff);
+    context = actionType === 1
+      ? {
+          kind: "cell",
+          startCell: [startR, startC],
+          startDigits,
+          concludeCell: [resultR, resultC],
+          concludeDigit: resultDigit,
+          branches: null,
+        }
+      : {
+          kind: "cell",
+          startCell: [startR, startC],
+          startDigits,
+          eliminationCount: eliminations.length,
+          branches: null,
+        };
+  } else if (kindCode === 2) {
+    const unitTypeCode = core.finderResultUnitType();
+    const unitType = unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box";
+    const unitIdx = core.finderResultUnitIdx();
+    const digit = core.finderResultStartDigit();
+    context = actionType === 1
+      ? {
+          kind: "region",
+          unitType,
+          unitIdx,
+          digit,
+          startCells: patternCells.map((cell) => [...cell]),
+          concludeCell: [resultR, resultC],
+          concludeDigit: resultDigit,
+          branches: null,
+        }
+      : {
+          kind: "region",
+          unitType,
+          unitIdx,
+          digit,
+          startCells: patternCells.map((cell) => [...cell]),
+          eliminationCount: eliminations.length,
+          branches: null,
+        };
+  } else {
+    throw new Error("Unexpected Dynamic Multiple finder kind: " + kindCode);
+  }
+
+  if (actionType === 1) {
+    return {
+      finding: {
+        actionType: "fill",
+        technique: "dynamicMultipleChain",
+        r: resultR,
+        c: resultC,
+        digit: resultDigit,
+        patternCells,
+        context,
+      },
+      budgetCalls,
+      budgetLimit,
+    };
+  }
+
+  return {
+    finding: {
+      actionType: "eliminate",
+      technique: "dynamicMultipleChain",
+      patternCells,
+      eliminations,
+      context,
+    },
+    budgetCalls,
+    budgetLimit,
+  };
+}
