@@ -72,6 +72,15 @@ for (const testCase of corpus) {
       key, testCase.puzzle, masks, testCase.puzzle, testCase.solution,
     );
     const wasmFinding = runStandaloneTechniqueFinder(core, id);
+    if (key === "medusa3D" && jsFinding && !wasmFinding) {
+      const diag = jsFinding.context.coloring.map(({ r, c, d }) => {
+        const k = r * 81 + c * 9 + (d - 1);
+        const degree = core.medusaFinderDebugAdjCount(k);
+        const neighbors = Array.from({ length: Math.max(0, degree) }, (_, i) => core.medusaFinderDebugAdjAt(k, i));
+        return { r, c, d, k, degree, neighbors };
+      });
+      console.error("MEDUSA_DIAG", JSON.stringify({ caseId: testCase.id, diag }));
+    }
     assert.deepEqual(
       wasmFinding,
       hostClone(jsFinding),
