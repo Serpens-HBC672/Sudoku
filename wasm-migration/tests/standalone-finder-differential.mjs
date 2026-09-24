@@ -86,7 +86,7 @@ for (const testCase of corpus) {
     }
     const wasmFinding =
       key === "juniorExocet" || key === "seniorExocet"
-        ? oracle.validateFindingAgainstSolution(rawWasmFinding, testCase.solution)
+        ? hostClone(oracle.validateFindingAgainstSolution(rawWasmFinding, testCase.solution))
         : rawWasmFinding;
     if (key === "medusa3D" && jsFinding && !wasmFinding) {
       const diag = jsFinding.context.coloring.map(({ r, c, d }) => {
