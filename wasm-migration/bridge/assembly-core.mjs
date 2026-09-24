@@ -291,6 +291,13 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [17, "finnedXWing"],
   [18, "finnedSwordfish"],
   [19, "finnedJellyfish"],
+  [20, "uniqueRectangleType1"],
+  [21, "uniqueRectangleType2"],
+  [22, "hiddenUniqueRectangle"],
+  [23, "bugPlusOne"],
+  [24, "xyzWing"],
+  [25, "wWing"],
+  [26, "wxyzWing"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -405,6 +412,108 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
         near: [...near],
         far: [...far],
         target,
+      },
+    };
+  }
+
+  if (techniqueId === 20) {
+    const patternCells = readStandalonePatternCells(core);
+    const digits = maskToDigits(core.standaloneResultMeta(0) & 0x1ff);
+    const extraCell = patternCells[core.standaloneResultMeta(1)];
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: { digits, extraCell: [...extraCell] },
+    };
+  }
+
+  if (techniqueId === 21) {
+    const patternCells = readStandalonePatternCells(core);
+    const roofCells = [];
+    for (let i = 0; i < core.standaloneResultExtraCellCount(); i++) {
+      const index = core.standaloneResultExtraCellAt(i);
+      roofCells.push([Math.floor(index / 9), index % 9]);
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        digits: maskToDigits(core.standaloneResultMeta(0) & 0x1ff),
+        extraDigit: core.standaloneResultMeta(1),
+        roofCells,
+      },
+    };
+  }
+
+  if (techniqueId === 22) {
+    const patternCells = readStandalonePatternCells(core);
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        digits: maskToDigits(core.standaloneResultMeta(0) & 0x1ff),
+        floorCell: [...patternCells[core.standaloneResultMeta(1)]],
+        targetCell: [...patternCells[core.standaloneResultMeta(2)]],
+        strongDigit: core.standaloneResultMeta(3),
+      },
+    };
+  }
+
+  if (techniqueId === 23) {
+    const unitTypeCode = core.standaloneResultMeta(1);
+    return {
+      actionType: "fill",
+      technique,
+      r,
+      c,
+      digit,
+      context: {
+        tripleDigits: maskToDigits(core.standaloneResultMeta(0) & 0x1ff),
+        oddUnit: {
+          unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
+          idx: core.standaloneResultMeta(2),
+        },
+      },
+    };
+  }
+
+  if (techniqueId === 24 || techniqueId === 26) {
+    const patternCells = readStandalonePatternCells(core);
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        hinge: [...patternCells[0]],
+        outliers: patternCells.slice(1).map((cell) => [...cell]),
+        digit: core.standaloneResultMeta(0),
+        hingeDigits: maskToDigits(core.standaloneResultMeta(1) & 0x1ff),
+      },
+    };
+  }
+
+  if (techniqueId === 25) {
+    const patternCells = readStandalonePatternCells(core);
+    const unitTypeCode = core.standaloneResultMeta(2);
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        biValueCells: patternCells.slice(0, 2).map((cell) => [...cell]),
+        strongLinkCells: patternCells.slice(2, 4).map((cell) => [...cell]),
+        strongDigit: core.standaloneResultMeta(0),
+        elimDigit: core.standaloneResultMeta(1),
+        unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
+        idx: core.standaloneResultMeta(3),
       },
     };
   }
