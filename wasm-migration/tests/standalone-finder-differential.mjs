@@ -48,6 +48,7 @@ const TECHNIQUES = [
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
+  [40, "medusa3D"],
 ];
 
 function hostClone(value) {
