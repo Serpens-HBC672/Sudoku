@@ -62,3 +62,31 @@ Using the same one-instance #1→#22 workload and exact selected-Finding oracle:
 - `minimal` + puzzle-boundary `__collect()`: completed all 22 puzzles with **1867/1867 exact selected-Finding parity**; peak/final linear memory **2147483648 bytes / 32768 pages**; elapsed **362714 ms**; WASM size **118413 bytes**; requires explicit collection at safe puzzle boundaries.
 
 Measured conclusion: `incremental` is the preferred migration runtime. `stub` is unsuitable for the long-lived shared solver instance. `minimal` remains diagnostic evidence only and is not the documented production runtime.
+
+
+## Incremental Senior Exocet lifetime diagnosis
+
+Bounded diagnostic workflow: `36024183156`.
+
+Exact failing target from the standalone suite:
+- benchmark case: `#4`
+- technique: `49 / seniorExocet`
+- standalone-suite invocation ordinal: `188`
+- JS oracle result: `null`
+- exact grid/masks/givens captured in the diagnostic artifact.
+
+Observed A/B:
+- fresh incremental core: exact target returns `null`, exact oracle parity, 4 pages before and after the call;
+- accumulated incremental core after the exact preceding 187 standalone-suite calls: same input and target trap with `RuntimeError: memory access out of bounds` at 8 pages.
+
+Named/debug stack:
+`~lib/rt/tlsf/insertBlock -> ~lib/rt/itcms/step -> ~lib/rt/itcms/__new -> StaticArray<i32>#constructor -> exocet-finder/appearingTimes -> exactAppearingTimes -> seniorRow -> seniorExocetFind`.
+
+The failing access occurs while the incremental runtime is allocating a fixed temporary `StaticArray<i32>` inside `appearingTimes`; this evidence does not by itself establish a GC bug, leak, or Senior Exocet algorithm defect.
+
+Smallest behavior-preserving implementation/lifetime fix under validation:
+- move only the three fixed scratch arrays used by `appearingTimes` (active/combo/chosen) to module scope and reuse them;
+- preserve all loops, ordering, masks, first-match behavior, and result materialization;
+- no Sudoku technique condition or algorithm is changed.
+
+Fast-gate and exact-reproduction validation is required before incremental runtime promotion.

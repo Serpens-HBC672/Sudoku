@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/wasm-senior-exocet-diagnostic.yml"
       - "wasm-migration/tests/senior-exocet-incremental-diagnostic.mjs"
+      - "wasm-migration/assembly/exocet-finder.ts"
 
 permissions:
   contents: read

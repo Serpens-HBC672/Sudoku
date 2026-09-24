@@ -19,6 +19,14 @@ const resultElims=new StaticArray<u16>(FACT_COUNT);
 let resultElimCount:i32=0;
 const resultBase=new StaticArray<u8>(2);
 const resultTargets=new StaticArray<u8>(2);
+
+// Fixed scratch used by appearingTimes. Keeping these buffers at module scope
+// avoids repeated managed StaticArray allocation at this non-reentrant helper
+// without changing enumeration, counts, or result semantics.
+const appearingActiveScratch=new StaticArray<i32>(32);
+const appearingComboScratch=new StaticArray<i32>(3);
+const appearingChosenScratch=new StaticArray<i32>(3);
+
 let resultBaseMask:i32=0;
 let resultTrueBaseDigit:i32=0;
 let rejectedRaw:bool=false;
@@ -72,13 +80,13 @@ function comboNext(idx:StaticArray<i32>,n:i32,k:i32):bool{
 // AppearingTimesOf without materializing peer Sets. "covered by combo peers"
 // is exactly "equals or sees at least one combo member".
 function appearingTimes(d:i32,cells:StaticArray<i32>,cellCount:i32,transpose:bool):i32{
-  const db=bit(d),active=new StaticArray<i32>(32);let activeCount:i32=0,inactive:i32=0;
+  const db=bit(d),active=appearingActiveScratch;let activeCount:i32=0,inactive:i32=0;
   for(let i:i32=0;i<cellCount;i++){
     const v=unchecked(cells[i]),gv=vGrid(v,transpose);
     if(gv==d)inactive++;
     else if(gv==0&&(vMask(v,transpose)&db)!=0)unchecked(active[activeCount++]=v);
   }
-  const maxK=activeCount<3?activeCount:3,combo=new StaticArray<i32>(3),chosen=new StaticArray<i32>(3);
+  const maxK=activeCount<3?activeCount:3,combo=appearingComboScratch,chosen=appearingChosenScratch;
   for(let k:i32=maxK;k>=1;k--){
     comboInit(combo,k);
     while(true){
