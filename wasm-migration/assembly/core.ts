@@ -9,6 +9,19 @@ import {
   fireworkResultEliminationCount,
   fireworkResultEliminationAt,
   fireworkResultMeta,
+} from "./firework-finder";
+
+import {
+  fireworkResetInput,
+  fireworkSetInputCell,
+  fireworkSetInputMask,
+  fireworkFind,
+  fireworkResultActionType,
+  fireworkResultPatternCount,
+  fireworkResultPatternAt,
+  fireworkResultEliminationCount,
+  fireworkResultEliminationAt,
+  fireworkResultMeta,
 } from "./firework-finders";
 
 import {
