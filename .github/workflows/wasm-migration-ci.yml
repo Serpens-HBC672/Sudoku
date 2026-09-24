@@ -51,8 +51,11 @@ jobs:
       - name: Run bounded JS-WASM dynamic propagation differential suite
         run: npm run test:dynamic
 
-      - name: Run exact Dynamic Nishio-Unary finder differential suite
+      - name: Run exact Dynamic Nishio-Unary-Multiple finder differential suite
         run: npm run test:dynamic-finders
+
+      - name: Run standalone technique finder differential suite
+        run: npm run test:standalone
 
       - name: Build SIMD-enabled profile
         run: npm run build:simd
