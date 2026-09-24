@@ -214,3 +214,12 @@ The same structural risk exists for other finder groups that share module result
 - preserve registry order, candidate input, first-match/discovery semantics, Finding ordering, and the public JS/Worker API.
 
 `findNextStepWasm` is unchanged because its dispatcher stops at the selected technique, so that selected finder result remains current for immediate materialization.
+
+
+## Canonical promotion eligibility
+
+The incremental runtime fast gates passed on the exact promotion candidate.
+
+- WASM Migration CI run `36027696019`: **SUCCESS**.
+- Incremental Senior Exocet Diagnostic run `36027696132`: **SUCCESS**.
+- The incremental runtime is eligible for canonical promotion.
