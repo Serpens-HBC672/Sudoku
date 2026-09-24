@@ -12222,6 +12222,21 @@ function renderStringPanels() {
     }
   }
 
+  function findTechniqueFromMasks(key, grid, masks, givenGrid, solution) {
+    const entry = TECHNIQUE_CHAIN.find((candidate) => candidate.key === key);
+    if (!entry) throw new Error("Unknown technique key: " + key);
+    const getCands = getCandsFromMasks(grid, masks);
+    const savedShowChainDetail = state.settings.showChainDetail;
+    state.settings.showChainDetail = false;
+    try {
+      const finding = callTechniqueFn(entry.fn, grid, getCands, givenGrid);
+      if (!finding || !exocetFindingMatchesSolution(finding, solution)) return null;
+      return normalizeOracleValue(finding);
+    } finally {
+      state.settings.showChainDetail = savedShowChainDetail;
+    }
+  }
+
   function propagateStaticFromMasks(grid, masks, r, c, d, startTrue) {
     const getCands = getCandsFromMasks(grid, masks);
     return normalizeOracleValue(propagateAssumption(grid, getCands, r, c, d, !!startTrue));
@@ -12298,6 +12313,7 @@ function renderStringPanels() {
     candidateMasksForGrid: (grid) => candidateMasksSnapshot(grid, (r, c) => candidatesAt(grid, r, c)),
     tracePuzzle,
     enumerateAvailableFromMasks,
+    findTechniqueFromMasks,
     propagateStaticFromMasks,
     propagateDynamicFromMasks,
     findDynamicNishioFromMasks,
