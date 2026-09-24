@@ -1,0 +1,48 @@
+name: Incremental Worker FindNext Diagnostic
+
+on:
+  push:
+    branches:
+      - codex/wasm-incremental-worker-parity-diagnostic
+    paths:
+      - ".github/workflows/wasm-worker-findnext-diagnostic.yml"
+      - "wasm-migration/tests/worker-findnext-diagnostic.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install migration toolchain
+        run: npm install --no-audit --no-fund
+      - name: Build release incremental core
+        run: npm run build
+      - name: Build debug incremental core
+        run: |
+          ./node_modules/.bin/asc assembly/core.ts             --runtime incremental             --optimizeLevel 3             --shrinkLevel 0             --exportRuntime             --debug             --sourceMap             --textFile build/sudoku-techniques-debug.wat             --outFile build/sudoku-techniques-debug.wasm
+      - name: Release coarse findNext reproduction
+        continue-on-error: true
+        run: node tests/worker-findnext-diagnostic.mjs ../build/sudoku-techniques.wasm
+      - name: Debug coarse findNext reproduction
+        continue-on-error: true
+        run: node tests/worker-findnext-diagnostic.mjs ../build/sudoku-techniques-debug.wasm
+      - name: Upload debug evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: incremental-worker-findnext-diagnostic
+          path: |
+            wasm-migration/build/sudoku-techniques-debug.wat
+            wasm-migration/build/sudoku-techniques-debug.wasm
+            wasm-migration/build/sudoku-techniques-debug.wasm.map
+          if-no-files-found: warn
