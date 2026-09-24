@@ -1,4 +1,21 @@
 import {
+  mslsResetInput,
+  mslsSetInputCell,
+  mslsSetInputMask,
+  mslsFind,
+  mslsResultPatternCount,
+  mslsResultPatternAt,
+  mslsResultEliminationCount,
+  mslsResultEliminationAt,
+  mslsResultRowCount,
+  mslsResultRowAt,
+  mslsResultColCount,
+  mslsResultColAt,
+  mslsResultBoxCount,
+  mslsResultBoxAt,
+} from "./msls-finder";
+
+import {
   skResetInput,
   skSetInputCell,
   skSetInputMask,
@@ -393,6 +410,7 @@ export function resetInput(): void {
   alsAdvResetInput();
   tridagonResetInput();
   skResetInput();
+  mslsResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
@@ -406,6 +424,7 @@ export function setInputCell(index: i32, digit: i32): void {
   alsAdvSetInputCell(index, digit);
   tridagonSetInputCell(index, digit);
   skSetInputCell(index, digit);
+  mslsSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
@@ -419,6 +438,7 @@ export function setInputMask(index: i32, mask: i32): void {
   alsAdvSetInputMask(index, mask);
   tridagonSetInputMask(index, mask);
   skSetInputMask(index, mask);
+  mslsSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -2074,6 +2094,18 @@ export function skLoopResultEliminationAt(i:i32): i32 { return skResultEliminati
 export function skLoopResultRowAt(i:i32): i32 { return skResultRowAt(i); }
 export function skLoopResultColAt(i:i32): i32 { return skResultColAt(i); }
 export function skLoopResultBoxAt(i:i32): i32 { return skResultBoxAt(i); }
+
+export function runMslsFinder(): i32 { return mslsFind(); }
+export function mslsFinderResultPatternCount(): i32 { return mslsResultPatternCount(); }
+export function mslsFinderResultPatternAt(i:i32): i32 { return mslsResultPatternAt(i); }
+export function mslsFinderResultEliminationCount(): i32 { return mslsResultEliminationCount(); }
+export function mslsFinderResultEliminationAt(i:i32): i32 { return mslsResultEliminationAt(i); }
+export function mslsFinderResultRowCount(): i32 { return mslsResultRowCount(); }
+export function mslsFinderResultRowAt(i:i32): i32 { return mslsResultRowAt(i); }
+export function mslsFinderResultColCount(): i32 { return mslsResultColCount(); }
+export function mslsFinderResultColAt(i:i32): i32 { return mslsResultColAt(i); }
+export function mslsFinderResultBoxCount(): i32 { return mslsResultBoxCount(); }
+export function mslsFinderResultBoxAt(i:i32): i32 { return mslsResultBoxAt(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
