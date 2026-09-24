@@ -18,6 +18,10 @@ const TECHNIQUES = [
   [7, "hiddenTriple"],
   [8, "nakedQuad"],
   [9, "hiddenQuad"],
+  [10, "xWing"],
+  [11, "swordfish"],
+  [15, "jellyfish"],
+  [16, "squirmbagFish"],
 ];
 
 function hostClone(value) {
