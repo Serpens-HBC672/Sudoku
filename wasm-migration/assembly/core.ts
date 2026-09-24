@@ -59,6 +59,13 @@ const branchFalseOrder = new StaticArray<u16>(FACT_COUNT);
 let branchTrueCount: i32 = 0;
 let branchFalseCount: i32 = 0;
 
+const multiTrueSeen = new StaticArray<u8>(FACT_COUNT);
+const multiFalseSeen = new StaticArray<u8>(FACT_COUNT);
+const multiTrueOrder = new StaticArray<u16>(FACT_COUNT);
+const multiFalseOrder = new StaticArray<u16>(FACT_COUNT);
+let multiTrueCount: i32 = 0;
+let multiFalseCount: i32 = 0;
+
 // Raw finder result ABI for the migration adapter.
 let finderActionType: i32 = 0; // 0 none, 1 fill, 2 eliminate
 let finderR: i32 = -1;
