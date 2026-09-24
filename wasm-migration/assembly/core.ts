@@ -2158,7 +2158,7 @@ function runTechniqueSearchById(id: i32, budgetLimit: i32): bool {
   return false;
 }
 
-export function runFindNextTechniqueIdFrom(startId: i32, budgetLimit: i32 = 6790): i32 {
+export function runFindNextTechniqueIdFrom(startId: i32, budgetLimit: i32): i32 {
   let first = startId;
   if (first < 0) first = 0;
   if (first > 53) first = 53;
@@ -2168,13 +2168,13 @@ export function runFindNextTechniqueIdFrom(startId: i32, budgetLimit: i32 = 6790
   return -1;
 }
 
-export function runFindNextTechniqueId(budgetLimit: i32 = 6790): i32 {
+export function runFindNextTechniqueId(budgetLimit: i32): i32 {
   return runFindNextTechniqueIdFrom(0, budgetLimit);
 }
 
 // Full availability scan remains one coarse WASM call. Two u32 masks expose
 // the 53 registered technique ids without requiring i64/BigInt glue.
-export function runScanAvailableTechniques(budgetLimit: i32 = 6790): i32 {
+export function runScanAvailableTechniques(budgetLimit: i32): i32 {
   availableTechniqueMaskLow = 0;
   availableTechniqueMaskHigh = 0;
   let count: i32 = 0;

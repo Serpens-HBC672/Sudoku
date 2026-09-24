@@ -10,6 +10,7 @@ on:
       - "wasm-migration/assembly/exocet-finder.ts"
       - "wasm-migration/assembly/aic-finder.ts"
       - "wasm-migration/assembly/skloop-finder.ts"
+      - "wasm-migration/assembly/core.ts"
 
 permissions:
   contents: read

@@ -168,3 +168,28 @@ Behavior-preserving fix:
 The earlier Exocet/AIC scratch-hoisting experiments were diagnostic workarounds for later allocator manifestations, not the root cause. They are reverted in the final bounded fix so the solver change remains minimal: only the SK Loop scratch capacity is changed.
 
 Incremental runtime remains a candidate only until the exact Senior Exocet reproduction and all specified fast gates pass on this minimal fix.
+
+
+### Incremental coarse-dispatch ABI diagnosis
+
+Fast-gate run `36025366014` passed static propagation, dynamic propagation, dynamic finder, standalone finder, Exocet report, and static forcing-chain checks after the SK Loop capacity correction, but Worker parity trapped before comparing results.
+
+Focused diagnostic workflow: `36026246748`.
+
+Exact failure:
+- benchmark case: `#22`;
+- main-thread parity setup ran standalone ids `0,1,2,28,35,40,41,46,47,48,49` successfully;
+- the following coarse `findNextStepWasm(..., budgetLimit=64)` call trapped with `RuntimeError: unreachable`;
+- `debugLastTechniqueSearchId()` remained `-1`, proving the real dispatcher body had not started.
+
+Debug stack:
+`assembly/core/runFindNextTechniqueIdFrom@varargs -> findNextStepWasm`.
+
+Generated WAT shows that AssemblyScript emitted a varargs/default-argument wrapper for the exported function. That wrapper checks the runtime `~argumentsLength` global and executes `unreachable` for an out-of-range argument count. This project instantiates WebAssembly directly and calls exports directly; it does not use the AssemblyScript loader to update `__setArgumentsLength` before ordinary export calls.
+
+Boundary-only fix:
+- remove default values from exported `runFindNextTechniqueIdFrom`, `runFindNextTechniqueId`, and `runScanAvailableTechniques` parameters;
+- all production adapter calls already supply explicit budget values;
+- this removes generated `@varargs` wrappers while leaving technique order, budget semantics, first-match behavior, and solver logic unchanged.
+
+The fix is an ABI/integration correction, not a Sudoku algorithm change.
