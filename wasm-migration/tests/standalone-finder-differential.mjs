@@ -25,6 +25,9 @@ const TECHNIQUES = [
   [14, "emptyRectangle"],
   [15, "jellyfish"],
   [16, "squirmbagFish"],
+  [17, "finnedXWing"],
+  [18, "finnedSwordfish"],
+  [19, "finnedJellyfish"],
 ];
 
 function hostClone(value) {
