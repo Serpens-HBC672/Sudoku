@@ -3,6 +3,7 @@ import {
   aicSetInputCell,
   aicSetInputMask,
   aicFind,
+  niceLoopFind,
   aicResultSubtype,
   aicResultEliminationCount,
   aicResultEliminationAt,
@@ -1653,6 +1654,7 @@ export function standaloneResultExtraDigitCount(): i32 { return basicExtraDigitC
 export function standaloneResultExtraDigitAt(i: i32): i32 { return basicExtraDigitAt(i); }
 
 export function runAicFinder(): i32 { return aicFind(); }
+export function runNiceLoopFinder(): i32 { return niceLoopFind(); }
 export function aicFinderResultSubtype(): i32 { return aicResultSubtype(); }
 export function aicFinderResultEliminationCount(): i32 { return aicResultEliminationCount(); }
 export function aicFinderResultEliminationAt(i:i32): i32 { return aicResultEliminationAt(i); }
