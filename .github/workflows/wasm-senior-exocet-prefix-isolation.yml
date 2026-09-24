@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/wasm-senior-exocet-prefix-isolation.yml"
       - "wasm-migration/tests/senior-exocet-prefix-isolation.mjs"
+      - "wasm-migration/tests/senior-exocet-transition-isolation.mjs"
 
 permissions:
   contents: read
@@ -29,10 +30,15 @@ jobs:
         run: npm run build
       - name: Isolate exact history prefix before Senior Exocet
         run: node tests/senior-exocet-prefix-isolation.mjs
+      - name: Locate first corrupting standalone prefix
+        run: node tests/senior-exocet-transition-isolation.mjs
+
       - name: Upload prefix evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: incremental-senior-exocet-prefix-isolation
-          path: wasm-migration/senior-exocet-prefix-results/prefix-isolation.json
+          path: |
+            wasm-migration/senior-exocet-prefix-results/prefix-isolation.json
+            wasm-migration/senior-exocet-transition-results/transition.json
           if-no-files-found: error
