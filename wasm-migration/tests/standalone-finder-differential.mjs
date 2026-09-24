@@ -38,6 +38,7 @@ const TECHNIQUES = [
   [25, "wWing"],
   [26, "wxyzWing"],
   [27, "xyChain"],
+  [28, "aic"],
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
