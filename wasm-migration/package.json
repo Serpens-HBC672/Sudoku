@@ -1,0 +1,20 @@
+{
+  "name": "sudoku-human-techniques-wasm-migration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime stub --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --outFile build/sudoku-techniques.wasm",
+    "build:simd": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime stub --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --enable simd --outFile build/sudoku-techniques-simd.wasm",
+    "test:static": "node tests/static-differential.mjs",
+    "test": "npm run build && npm run test:static",
+    "oracle": "node benchmark/generate-oracle-traces.mjs",
+    "benchmark:static": "node benchmark/benchmark-static.mjs"
+  },
+  "devDependencies": {
+    "assemblyscript": "0.27.31"
+  }
+}
