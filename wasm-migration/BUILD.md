@@ -21,7 +21,7 @@ The minified/mangled distribution source on `main` is not a migration input.
 - CI runner: Ubuntu 24.04 / current `ubuntu-latest` where stated by the workflow
 - package metadata: `wasm-migration/package.json`
 
-The module uses AssemblyScript's **minimal runtime**, not the non-reclaiming stub runtime. The initial stub prototype was behaviorally correct on short runs but accumulated temporary managed allocations across long multi-technique sessions and trapped during the benchmark corpus. The minimal runtime retains direct WebAssembly instantiation while allowing managed scratch allocations to be reclaimed.
+The module uses AssemblyScript's **incremental runtime**. Controlled shared-instance #1→#22 evidence (workflow `36018679055`) showed the historical `stub` runtime trapping at #22 after linear memory reached 4 GiB, while `incremental` completed all 22 puzzles with exact 1867/1867 selected-Finding parity, peak/final linear memory of 524288 bytes (8 pages), no explicit boundary collection, and a 142447-byte WASM binary. `minimal` with explicit `__collect()` at safe puzzle boundaries also completed with exact parity, but still reached 2 GiB and requires lifecycle integration at puzzle boundaries, so it is not the documented production runtime.
 
 ## Reproducible build
 
@@ -36,7 +36,7 @@ Equivalent scalar compiler invocation:
 
 ```sh
 asc assembly/core.ts \
-  --runtime minimal \
+  --runtime incremental \
   --optimizeLevel 3 \
   --shrinkLevel 0 \
   --exportRuntime \
@@ -53,7 +53,7 @@ Equivalent command:
 
 ```sh
 asc assembly/core.ts \
-  --runtime minimal \
+  --runtime incremental \
   --optimizeLevel 3 \
   --shrinkLevel 0 \
   --exportRuntime \
