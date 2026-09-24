@@ -17,6 +17,10 @@ let eliminationCount:i32=0;
 const pathDigits=new StaticArray<u8>(MAX_NODES);
 const pathCounts=new StaticArray<u8>(MAX_NODES);
 const pathCells=new StaticArray<u8>(MAX_NODES*MAX_NODE_CELLS);
+
+// Fixed non-reentrant scratch for strongPartners. Reuse avoids repeated
+// managed StaticArray allocation without changing partner enumeration.
+const strongPartnerRemScratch=new StaticArray<i32>(9);
 let pathCount:i32=0;
 
 @inline function bit(d:i32):u16 {
@@ -147,7 +151,7 @@ function strongPartners(
     }
     if(!inUnit)continue;
 
-    const rem=new StaticArray<i32>(9); let rn:i32=0;
+    const rem=strongPartnerRemScratch; let rn:i32=0;
     for(let pos:i32=0;pos<9;pos++){
       const cell=unitCell(unitType,idx,pos);
       if(!empty(cell)||(maskAt(cell)&db)==0||nodeContains(node,cell))continue;

@@ -8,6 +8,7 @@ on:
       - ".github/workflows/wasm-senior-exocet-diagnostic.yml"
       - "wasm-migration/tests/senior-exocet-incremental-diagnostic.mjs"
       - "wasm-migration/assembly/exocet-finder.ts"
+      - "wasm-migration/assembly/aic-finder.ts"
 
 permissions:
   contents: read

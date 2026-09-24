@@ -90,3 +90,15 @@ Smallest behavior-preserving implementation/lifetime fix under validation:
 - no Sudoku technique condition or algorithm is changed.
 
 Fast-gate and exact-reproduction validation is required before incremental runtime promotion.
+
+
+### Follow-on named-stack evidence: Nice Loop
+
+After the first Exocet scratch-lifetime fix, the exact original case-#4 Senior Exocet reproduction passed under the accumulated 187-call history, but the full standalone differential progressed further and then trapped at case #5, technique `29 / niceLoop`.
+
+Named/debug incremental stack:
+`~lib/rt/tlsf/insertBlock -> ~lib/rt/itcms/step -> ~lib/rt/itcms/__new -> StaticArray<i32>#constructor -> aic-finder/strongPartners -> niceDfs -> niceDfs -> niceLoopFind`.
+
+Source inspection identifies the allocation at `strongPartners` as its fixed local `StaticArray<i32>(9)` remainder buffer. `strongPartners` is non-reentrant: it fully constructs the partner list and returns before recursive DFS continues. The bounded follow-on fix therefore reuses one module-scoped 9-entry scratch buffer for that helper only. Partner discovery, traversal order, recursion, first-match behavior, and Finding materialization are unchanged.
+
+Validation remains required before incremental runtime promotion.
