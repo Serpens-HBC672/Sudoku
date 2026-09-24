@@ -34,6 +34,26 @@ let falseCountValue: i32 = 0;
 const touchedCells = new StaticArray<u8>(CELL_COUNT);
 const touchedTriples = new StaticArray<u8>(TRIPLE_COUNT);
 
+// Dynamic propagation nests exactly one STATIC propagation level. Preserve the
+// outer frame by explicit snapshot/restore rather than introducing an undo-log
+// algorithm that the JS oracle does not use.
+const backupInputGrid = new StaticArray<u8>(CELL_COUNT);
+const backupInputBaseMask = new StaticArray<u16>(CELL_COUNT);
+const backupGrid = new StaticArray<u8>(CELL_COUNT);
+const backupCellMask = new StaticArray<u16>(CELL_COUNT);
+const backupUnitDigitMask = new StaticArray<u16>(UNIT_DIGIT_COUNT);
+const backupPlacedMask = new StaticArray<u16>(PLACED_COUNT);
+const backupTrueSeen = new StaticArray<u8>(FACT_COUNT);
+const backupFalseSeen = new StaticArray<u8>(FACT_COUNT);
+const backupTrueOrder = new StaticArray<u16>(FACT_COUNT);
+const backupFalseOrder = new StaticArray<u16>(FACT_COUNT);
+const backupTouchedCells = new StaticArray<u8>(CELL_COUNT);
+const backupTouchedTriples = new StaticArray<u8>(TRIPLE_COUNT);
+
+let budgetCallsValue: i32 = 0;
+let budgetLimitValue: i32 = 0;
+let abortedValue: i32 = 0;
+
 let initialized: bool = false;
 let contradictionValue: i32 = 0;
 let guardIterationsValue: i32 = 0;
