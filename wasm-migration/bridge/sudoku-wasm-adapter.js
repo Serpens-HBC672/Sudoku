@@ -1474,3 +1474,48 @@ export function runStaticMultipleFinder(core) {
     ? { actionType: "fill", technique: "multipleChain", r, c, digit, patternCells, context }
     : { actionType: "eliminate", technique: "multipleChain", patternCells, eliminations, context };
 }
+
+
+function runTechniqueById(core, techniqueId, budgetLimit) {
+  if (techniqueId >= 0 && techniqueId <= 41) return runStandaloneTechniqueFinder(core, techniqueId);
+  if (techniqueId === 42) return runStaticUnaryFinder(core);
+  if (techniqueId === 43) return runStaticNishioFinder(core);
+  if (techniqueId === 44) return runStaticMultipleFinder(core);
+  if (techniqueId >= 45 && techniqueId <= 49) return runStandaloneTechniqueFinder(core, techniqueId);
+  if (techniqueId === 50) return runDynamicNishioFinder(core, budgetLimit).finding;
+  if (techniqueId === 51) return runDynamicUnaryFinder(core, budgetLimit).finding;
+  if (techniqueId === 52) return runDynamicMultipleFinder(core, budgetLimit).finding;
+  throw new RangeError("Unknown TECHNIQUE_CHAIN id: " + techniqueId);
+}
+
+export function findNextStepWasm(core, options = {}) {
+  const budgetLimit = options.budgetLimit ?? 6790;
+  const validator = typeof options.validator === "function" ? options.validator : null;
+  let startId = 0;
+  while (startId < 53) {
+    const techniqueId = core.runFindNextTechniqueIdFrom(startId, budgetLimit);
+    if (techniqueId < 0) return null;
+    const finding = runTechniqueById(core, techniqueId, budgetLimit);
+    if (!finding) throw new Error("WASM selected technique " + techniqueId + " but adapter could not materialize its Finding");
+    if (!validator || validator(finding)) return finding;
+    startId = techniqueId + 1;
+  }
+  return null;
+}
+
+export function findAllAvailableStepsWasm(core, options = {}) {
+  const budgetLimit = options.budgetLimit ?? 6790;
+  const validator = typeof options.validator === "function" ? options.validator : null;
+  core.runScanAvailableTechniques(budgetLimit);
+  const low = core.resultAvailableTechniqueMaskLow() >>> 0;
+  const high = core.resultAvailableTechniqueMaskHigh() >>> 0;
+  const findings = [];
+  for (let id = 0; id < 53; id++) {
+    const available = id < 32 ? !!(low & (1 << id)) : !!(high & (1 << (id - 32)));
+    if (!available) continue;
+    const finding = runTechniqueById(core, id, budgetLimit);
+    if (!finding) throw new Error("WASM availability scan marked technique " + id + " but adapter could not materialize its Finding");
+    if (!validator || validator(finding)) findings.push(finding);
+  }
+  return findings;
+}
