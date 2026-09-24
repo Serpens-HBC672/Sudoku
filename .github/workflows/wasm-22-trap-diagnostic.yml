@@ -1,0 +1,42 @@
+name: WASM #22 Trap Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/wasm-22-trap-diagnostic
+    paths:
+      - "wasm-migration/tests/benchmark-22-trap-diagnostic.mjs"
+      - "wasm-migration/bridge/assembly-core.mjs"
+      - ".github/workflows/wasm-22-trap-diagnostic.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark-22-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install historical migration toolchain
+        run: npm install --no-audit --no-fund
+      - name: Build historical stub-runtime core
+        run: npm run build
+      - name: Reproduce benchmark #22 only with pre-call breadcrumbs
+        run: node tests/benchmark-22-trap-diagnostic.mjs
+      - name: Upload #22 diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-22-trap-diagnostic
+          path: |
+            wasm-migration/diagnostic-results/benchmark-22-standalone-breadcrumbs.jsonl
+            wasm-migration/diagnostic-results/benchmark-22-trap-result.json
+          if-no-files-found: warn
