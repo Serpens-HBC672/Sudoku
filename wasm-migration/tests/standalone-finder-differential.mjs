@@ -28,6 +28,13 @@ const TECHNIQUES = [
   [17, "finnedXWing"],
   [18, "finnedSwordfish"],
   [19, "finnedJellyfish"],
+  [20, "uniqueRectangleType1"],
+  [21, "uniqueRectangleType2"],
+  [22, "hiddenUniqueRectangle"],
+  [23, "bugPlusOne"],
+  [24, "xyzWing"],
+  [25, "wWing"],
+  [26, "wxyzWing"],
 ];
 
 function hostClone(value) {
