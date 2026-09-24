@@ -321,6 +321,8 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
+  [38, "alsChain"],
+  [39, "deathBlossom"],
   [40, "medusa3D"],
 ]);
 
@@ -380,6 +382,71 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
       patternCells,
       eliminations,
       context,
+    };
+  }
+
+  if (techniqueId === 38 || techniqueId === 39) {
+    core.runAlsAdvancedFinder(techniqueId);
+    if (core.alsAdvancedResultKind() === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.alsAdvancedResultPatternCount(); i++) {
+      const index = core.alsAdvancedResultPatternAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.alsAdvancedResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.alsAdvancedResultEliminationAt(i)));
+    }
+    const auxDigits = [];
+    for (let i = 0; i < core.alsAdvancedResultExtraDigitCount(); i++) {
+      auxDigits.push(core.alsAdvancedResultExtraDigitAt(i));
+    }
+
+    if (techniqueId === 38) {
+      const s0 = core.alsAdvancedResultMeta(0);
+      const s1 = core.alsAdvancedResultMeta(1);
+      const s2 = core.alsAdvancedResultMeta(2);
+      return {
+        actionType: "eliminate",
+        technique,
+        patternCells,
+        eliminations,
+        context: {
+          chainLength: 3,
+          elimDigit: core.alsAdvancedResultMeta(3),
+          alsChain: [
+            patternCells.slice(0, s0).map((cell) => [...cell]),
+            patternCells.slice(s0, s0 + s1).map((cell) => [...cell]),
+            patternCells.slice(s0 + s1, s0 + s1 + s2).map((cell) => [...cell]),
+          ],
+          linkRccDigits: auxDigits,
+        },
+      };
+    }
+
+    const stemCell = [...patternCells[0]];
+    const petalCount = core.alsAdvancedResultMeta(2);
+    const petals = [];
+    let offset = 1;
+    for (let p = 0; p < petalCount; p++) {
+      const size = core.alsAdvancedResultMeta(4 + p);
+      petals.push({
+        digit: auxDigits[p],
+        cells: patternCells.slice(offset, offset + size).map((cell) => [...cell]),
+      });
+      offset += size;
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: {
+        stemCell,
+        stemDigits: maskToDigits(core.alsAdvancedResultMeta(1) & 0x1ff),
+        petals,
+        elimDigit: core.alsAdvancedResultMeta(3),
+      },
     };
   }
 
