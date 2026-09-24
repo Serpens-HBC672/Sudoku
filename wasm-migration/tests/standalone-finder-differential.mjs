@@ -39,6 +39,7 @@ const TECHNIQUES = [
   [26, "wxyzWing"],
   [27, "xyChain"],
   [28, "aic"],
+  [29, "niceLoop"],
   [35, "pom"],
   [36, "alsXZ"],
   [37, "ahsXZ"],
