@@ -1,3 +1,21 @@
+import {
+  basicResetInput,
+  basicSetInputCell,
+  basicSetInputMask,
+  runBasicTechniqueFinder as basicRunTechniqueFinder,
+  basicResultActionType as basicActionType,
+  basicResultTechniqueId as basicTechniqueId,
+  basicResultSubtype as basicSubtype,
+  basicResultR as basicR,
+  basicResultC as basicC,
+  basicResultDigit as basicDigit,
+  basicResultPatternCount as basicPatternCount,
+  basicResultPatternAt as basicPatternAt,
+  basicResultEliminationCount as basicEliminationCount,
+  basicResultEliminationAt as basicEliminationAt,
+  basicResultMeta as basicMeta,
+} from "./basic-finders";
+
 // AssemblyScript hotspot prototype for the human-technique solver.
 //
 // Scope is intentionally narrow: this module ports the exact static
@@ -232,16 +250,19 @@ function restoreOuterFrame(): void {
 export function resetInput(): void {
   clearU8(inputGrid, CELL_COUNT);
   clearU16(inputBaseMask, CELL_COUNT);
+  basicResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
   if (index < 0 || index >= CELL_COUNT) return;
   unchecked(inputGrid[index] = <u8>digit);
+  basicSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
   if (index < 0 || index >= CELL_COUNT) return;
   unchecked(inputBaseMask[index] = <u16>(mask & 0x01ff));
+  basicSetInputMask(index, mask);
 }
 
 export function getInputCell(index: i32): i32 {
@@ -1500,6 +1521,20 @@ export function resultCandidateMask(index: i32): i32 {
   if (index < 0 || index >= CELL_COUNT) return 0;
   return <i32>unchecked(cellMask[index]);
 }
+
+// Standalone raw-Finding ABI for individually migrated TECHNIQUE_CHAIN entries.
+export function runStandaloneTechniqueFinder(techniqueId: i32): i32 { return basicRunTechniqueFinder(techniqueId); }
+export function standaloneResultActionType(): i32 { return basicActionType(); }
+export function standaloneResultTechniqueId(): i32 { return basicTechniqueId(); }
+export function standaloneResultSubtype(): i32 { return basicSubtype(); }
+export function standaloneResultR(): i32 { return basicR(); }
+export function standaloneResultC(): i32 { return basicC(); }
+export function standaloneResultDigit(): i32 { return basicDigit(); }
+export function standaloneResultPatternCount(): i32 { return basicPatternCount(); }
+export function standaloneResultPatternAt(i: i32): i32 { return basicPatternAt(i); }
+export function standaloneResultEliminationCount(): i32 { return basicEliminationCount(); }
+export function standaloneResultEliminationAt(i: i32): i32 { return basicEliminationAt(i); }
+export function standaloneResultMeta(i: i32): i32 { return basicMeta(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
