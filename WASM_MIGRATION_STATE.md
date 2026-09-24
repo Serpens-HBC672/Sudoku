@@ -7,7 +7,7 @@
 - migration branch: `codex/wasm-human-techniques-migration`
 - recovery checkpoint before the bounded task: `7e23d42e249959ebeeb5690ddabe2b34d036f602`
 - focused diagnostic harness commit: `9a147e240e388cff53ceca9012a898abc963fed2`
-- current task status: bounded shared-instance #1→#22 historical reproduction complete; the historical `unreachable` reproduced at #22 step 5 during standalone technique 47/MSLS after #1-#21 left linear memory at 2 GiB; no solver fix was made
+- current task status: controlled exact-state fresh-vs-accumulated A/B complete; identical #22 step-5 state and technique 47/MSLS succeeds on a fresh core and traps after historical #1-#21/#22-prelude allocator history; no solver fix was made
 - scope remains human-style technique WASM migration only; MRV, UI/UX, Android packaging, and unrelated application logic remain out of scope
 
 ## Recovered commits since the previously visible checkpoint
@@ -409,5 +409,103 @@ Interpretation:
 - the same MSLS call/state succeeds with a fresh runtime at a smaller linear-memory size;
 - the evidence therefore supports accumulated non-collecting runtime/allocation history as a necessary differentiating condition in these two runs;
 - do not equate linear-memory size with live bytes, do not label this a proven leak, and do not infer allocator causation beyond the observed correlation without a separately authorized experiment.
+
+No fix was made. Do not continue the migration automatically.
+
+
+## Controlled exact-state runtime-history A/B (latest bounded task)
+
+Goal: hold the Sudoku input and target technique constant while varying only prior WASM runtime/allocation history.
+
+Diagnostic branch/run:
+- branch: `codex/wasm-22-runtime-history-ab`
+- historical implementation lineage: `3fb98015986848e20025f8d1b1881f28fa6978e4`
+- harness commit: `f2f24b069845f62f389ab3484bb65af83d5ea2ea`
+- workflow commit: `e625f4330ad84d6eba11f68ec6a9cf9ad7359211`
+- workflow run: `36013831556` (success)
+- artifact: `sudoku-wasm-22-runtime-history-ab` / artifact id `10813867511`
+
+Both arms used the same built historical WASM core and the same exact saved target:
+- benchmark `#22`
+- solver step `5`
+- technique `47 / msls`
+- state id `bb8d5eee4b435209`
+- `beforeGrid`: `000000039000010005003005800008009006070020000100400000009008050020000600400700000`
+- `beforeMasks`: `[80,185,123,162,232,106,11,0,0,482,424,106,422,0,110,74,106,0,354,297,0,290,360,0,0,107,75,22,28,0,21,84,0,95,75,0,308,0,56,181,0,37,285,393,141,0,308,50,0,244,100,342,450,198,100,37,0,39,44,0,79,0,75,212,0,81,277,284,13,0,457,205,0,181,49,0,308,39,263,387,135]`
+
+The two arms were executed in separate Node processes in the same workflow job so the fresh Arm A core could not remain live and contaminate Arm B.
+
+### Arm A — fresh core, one direct MSLS call
+
+Arm A:
+- instantiated a new historical core
+- loaded exactly the saved grid/masks and #22 givens
+- executed no preceding #22 WASM technique calls
+- called `runStandaloneTechniqueFinder(core, 47)` exactly once
+
+Measurements:
+- memory before load: `262144` bytes / `4` pages
+- memory after load: `262144` bytes / `4` pages
+- memory immediately before MSLS: `262144` bytes / `4` pages
+- memory immediately after MSLS: `268435456` bytes / `4096` pages
+
+Outcome:
+- MSLS returned normally
+- result: `null`
+- no `RuntimeError`
+
+### Arm B — accumulated historical core, exact target call
+
+Arm B:
+- instantiated a separate new historical core
+- reproduced #1-#21 on one shared core using the historical `findNextStepWasm` path, validator, selected-Finding comparison, `loadPosition`, and `resetInput`
+- completed `1729` warm-up trace steps through #21
+- advanced #22 through steps 0-4 using the same historical path
+- at saved step 5, reproduced the historical technique traversal only through ids 0-46
+- verified immediately before the target call:
+  - `beforeGrid` exact match: `true`
+  - all 81 `beforeMasks` exact match: `true`
+  - target technique id `47`: `true`
+  - standalone ordinal at target: `278`: verified
+- then called `runStandaloneTechniqueFinder(core, 47)` once and stopped
+
+Measurements:
+- memory after #21: `2147483648` bytes / `32768` pages
+- memory before loading the saved step-5 state: `2147483648` bytes / `32768` pages
+- memory after loading the saved state: `2147483648` bytes / `32768` pages
+- memory immediately before MSLS: `2147483648` bytes / `32768` pages
+- memory immediately after MSLS: unavailable because the call trapped
+- memory when the exception was caught: `4294967296` bytes / `65536` pages
+
+Outcome:
+- `RuntimeError: unreachable`
+- target pre-call identity was exactly:
+  - step `5`
+  - standalone ordinal `278`
+  - technique `47 / msls`
+  - state id `bb8d5eee4b435209`
+
+### Controlled interpretation
+
+This A/B establishes the requested sufficient reproduction condition under this harness:
+
+- Arm A succeeds;
+- Arm B fails;
+- both use the same historical WASM implementation;
+- both use the exact same grid, all 81 candidate masks, #22 givens, and technique id 47;
+- the material experimental difference is the accumulated prior runtime/allocation history in Arm B.
+
+Therefore accumulated runtime/allocation history is demonstrated as a sufficient condition for reproducing this failure under the tested harness.
+
+This does **not** establish:
+- an MSLS algorithm/logic defect;
+- which specific prior allocation(s) are responsible;
+- live managed-byte count;
+- unreachable-object count;
+- a memory leak.
+
+Linear-memory size and allocator history remain distinct from live-object reachability.
+
+The failing Arm B call entered at 32768 pages / 2 GiB and the catch observed 65536 pages / 4 GiB. `65536` WebAssembly pages is the wasm32 4 GiB linear-memory ceiling. This supports the conclusion that the failure occurs in a runtime state that reaches that address-space ceiling during the target call, but no stronger allocator/leak causation is claimed here.
 
 No fix was made. Do not continue the migration automatically.
