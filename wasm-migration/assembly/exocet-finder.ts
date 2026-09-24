@@ -21,6 +21,7 @@ const resultBase=new StaticArray<u8>(2);
 const resultTargets=new StaticArray<u8>(2);
 let resultBaseMask:i32=0;
 let resultTrueBaseDigit:i32=0;
+let rejectedRaw:bool=false;
 
 @inline function bit(d:i32):u16{
   switch(d){
@@ -39,9 +40,13 @@ let resultTrueBaseDigit:i32=0;
 @inline function vSees(a:i32,b:i32):bool{return a/9==b/9||a%9==b%9||vBox(a)==vBox(b);}
 @inline function fact(v:i32,d:i32):i32{return v*9+(d-1);}
 function pop9(value:u16):i32{let m=<u16>(value&ALL),n:i32=0;while(m!=0){m=<u16>(m&<u16>(m-1));n++;}return n;}
+function singleDigit9(mask:u16):i32{
+  for(let d:i32=1;d<=9;d++)if((mask&bit(d))!=0)return d;
+  return 0;
+}
 function appendFact(buf:StaticArray<u16>,count:i32,v:i32,d:i32):i32{unchecked(buf[count]=<u16>fact(v,d));return count+1;}
 function resetResult():void{
-  resultTechnique=0;resultSubtype=-1;resultOrientation=0;resultPatternCount=0;resultElimCount=0;resultBaseMask=0;resultTrueBaseDigit=0;
+  resultTechnique=0;resultSubtype=-1;resultOrientation=0;resultPatternCount=0;resultElimCount=0;resultBaseMask=0;resultTrueBaseDigit=0;rejectedRaw=false;
 }
 
 export function exocetResetInput():void{for(let i:i32=0;i<CELL_COUNT;i++){unchecked(grid[i]=0);unchecked(masks[i]=0);}}
@@ -166,7 +171,8 @@ function saveCommonResult(
   base1:i32,base2:i32,baseMask:u16,target1:i32,target2:i32,
   trueBaseDigit:i32=0
 ):i32{
-  if(elimCount==0||!sanitize(elims,elimCount,transpose))return 0;
+  if(elimCount==0)return 0;
+  if(!sanitize(elims,elimCount,transpose)){rejectedRaw=true;return 0;}
   resultTechnique=technique;resultSubtype=subtype;resultOrientation=transpose?1:0;
   resultPatternCount=patternCount;for(let i:i32=0;i<patternCount;i++)unchecked(resultPattern[i]=<u8>unchecked(pattern[i]));
   resultElimCount=elimCount;for(let i:i32=0;i<elimCount;i++)unchecked(resultElims[i]=unchecked(elims[i]));
@@ -289,11 +295,11 @@ function juniorRow(transpose:bool):i32{
                 }
                 const t1rem=<u16>(t1Mask&activeMask),t2rem=<u16>(t2Mask&activeMask);
                 if(pop9(t1rem)==1&&pop9(t2rem)>=1){
-                  const d=(()=>{for(let x:i32=1;x<=9;x++)if((t1rem&bit(x))!=0)return x;return 0;})();
+                  const d=singleDigit9(t1rem);
                   if((t2rem&bit(d))!=0)tc=appendFact(temp,tc,t2,d);
                 }
                 if(pop9(t2rem)==1&&pop9(t1rem)>=1){
-                  const d=(()=>{for(let x:i32=1;x<=9;x++)if((t2rem&bit(x))!=0)return x;return 0;})();
+                  const d=singleDigit9(t2rem);
                   if((t1rem&bit(d))!=0)tc=appendFact(temp,tc,t1,d);
                 }
                 dc=dedupFacts(temp,tc,transpose,dedup);
@@ -595,13 +601,15 @@ function seniorRow(transpose:bool):i32{
 export function juniorExocetFind():i32{
   resetResult();
   const row=juniorRow(false);
-  if(row!=0)return row; // sanitized result or no raw row hit; saveCommonResult sanitizes.
+  if(row!=0)return row;
+  if(rejectedRaw)return 0;
   return juniorRow(true);
 }
 export function seniorExocetFind():i32{
   resetResult();
   const row=seniorRow(false);
   if(row!=0)return row;
+  if(rejectedRaw)return 0;
   return seniorRow(true);
 }
 
