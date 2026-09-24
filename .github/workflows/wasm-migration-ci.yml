@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - codex/wasm-human-techniques-migration
-      - codex/wasm-incremental-runtime-integration
     paths:
       - "Sudoku v3.23.3-rc.3 - DevVer.html"
       - "求解器的数独基准测试盘面参考.txt"
