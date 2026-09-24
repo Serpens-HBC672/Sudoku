@@ -42,7 +42,7 @@ const copy = wasmBytes.slice();
 await call({ type: "init", wasm: copy.buffer }, [copy.buffer]);
 await call({ type: "load", grid: testCase.puzzle, masks, givenGrid: testCase.puzzle });
 
-for (const id of [0, 1, 2, 28, 35, 40, 41, 46, 47]) {
+for (const id of [0, 1, 2, 28, 35, 40, 41, 46, 47, 48, 49]) {
   const main = runStandaloneTechniqueFinder(mainCore, id);
   const threaded = await call({ type: "standalone", techniqueId: id });
   assert.deepEqual(threaded, main, "main/Worker mismatch for standalone technique id " + id);
