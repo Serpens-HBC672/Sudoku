@@ -2150,8 +2150,12 @@ export function exocetFinderResultTrueBaseDigit(): i32 { return exocetResultTrue
 export function runFindNextTechniqueId(budgetLimit: i32 = 6790): i32 {
   for (let id: i32 = 0; id < 53; id++) {
     let found = false;
-    if (id <= 27 || (id >= 35 && id <= 39)) {
+    if (id <= 27 || (id >= 35 && id <= 37)) {
       found = basicRunTechniqueFinder(id) != 0;
+    } else if (id == 38) {
+      found = alsChainFind() != 0;
+    } else if (id == 39) {
+      found = deathBlossomFind() != 0;
     } else if (id == 28) {
       aicFind();
       found = aicResultNodeCount() > 0;
