@@ -6,6 +6,7 @@ const FACT_COUNT: i32 = 729;
 const ALL_DIGITS: u16 = 0x01ff;
 
 const inputGrid = new StaticArray<u8>(CELL_COUNT);
+const givenGrid = new StaticArray<u8>(CELL_COUNT);
 const inputMasks = new StaticArray<u16>(CELL_COUNT);
 
 let actionType: i32 = 0;
@@ -120,8 +121,13 @@ function setFill(id: i32, index: i32, d: i32): i32 {
 export function basicResetInput(): void {
   for (let i: i32 = 0; i < CELL_COUNT; i++) {
     unchecked(inputGrid[i] = 0);
+    unchecked(givenGrid[i] = 0);
     unchecked(inputMasks[i] = 0);
   }
+}
+
+export function basicSetGivenCell(index: i32, digit: i32): void {
+  if (index >= 0 && index < CELL_COUNT) unchecked(givenGrid[index] = <u8>digit);
 }
 
 export function basicSetInputCell(index: i32, digit: i32): void {
@@ -1159,11 +1165,106 @@ function findXYChain():i32{
   return 0;
 }
 
+
+@inline
+function gspMirrorIndex(symmetry: i32, index: i32): i32 {
+  const r = index / 9, c = index % 9;
+  if (symmetry == 0) return (8 - r) * 9 + (8 - c);
+  if (symmetry == 1) return c * 9 + r;
+  return (8 - c) * 9 + (8 - r);
+}
+
+function findGsp(): i32 {
+  const perm = new StaticArray<i32>(10);
+  for (let symmetry: i32 = 0; symmetry < 3; symmetry++) {
+    for (let i: i32 = 0; i < 10; i++) unchecked(perm[i] = 0);
+    let ok = true;
+    let anyMapped = false;
+
+    for (let index: i32 = 0; index < CELL_COUNT; index++) {
+      const v = <i32>unchecked(givenGrid[index]);
+      const mirror = gspMirrorIndex(symmetry, index);
+      const mv = <i32>unchecked(givenGrid[mirror]);
+      if ((v != 0) != (mv != 0)) { ok = false; break; }
+      if (v == 0) continue;
+      const previous = unchecked(perm[v]);
+      if (previous != 0 && previous != mv) { ok = false; break; }
+      unchecked(perm[v] = mv);
+      anyMapped = true;
+    }
+    if (!ok || !anyMapped) continue;
+    for (let d: i32 = 1; d <= 9; d++) {
+      const p = unchecked(perm[d]);
+      if (p != 0 && unchecked(perm[p]) != d) { ok = false; break; }
+    }
+    if (!ok) continue;
+
+    let selfMask: u16 = 0;
+    for (let d: i32 = 1; d <= 9; d++) {
+      const p = unchecked(perm[d]);
+      if (p == 0 || p == d) selfMask = <u16>(selfMask | bitForDigit(d));
+    }
+
+    // (a) filled mirror -> fill current, row-major.
+    for (let index: i32 = 0; index < CELL_COUNT; index++) {
+      if (!emptyAt(index)) continue;
+      const mirror = gspMirrorIndex(symmetry, index);
+      const mv = <i32>unchecked(inputGrid[mirror]);
+      if (mv == 0) continue;
+      const digit = unchecked(perm[mv]);
+      if (digit == 0 || (maskAt(index) & bitForDigit(digit)) == 0) continue;
+      techniqueId = 3; actionType = 1;
+      resultR = index / 9; resultC = index % 9; resultDigit = digit;
+      unchecked(meta[0] = symmetry);
+      unchecked(meta[1] = mirror);
+      unchecked(meta[2] = mv);
+      unchecked(meta[3] = 0); // fill
+      return actionType;
+    }
+
+    // (b) symmetry-axis cells may only contain self-paired digits.
+    eliminationCount = 0;
+    for (let index: i32 = 0; index < CELL_COUNT; index++) {
+      if (!emptyAt(index) || gspMirrorIndex(symmetry, index) != index) continue;
+      const remove = <u16>(maskAt(index) & <u16>(~selfMask));
+      for (let d: i32 = 1; d <= 9; d++) if ((remove & bitForDigit(d)) != 0) appendElimination(index, d);
+    }
+    if (eliminationCount > 0) {
+      techniqueId = 3; actionType = 2; patternCount = 0;
+      unchecked(meta[0] = symmetry); unchecked(meta[3] = 1); // axis
+      return actionType;
+    }
+
+    // (c) mirror-candidate consistency, accumulating every violation.
+    eliminationCount = 0;
+    for (let index: i32 = 0; index < CELL_COUNT; index++) {
+      if (!emptyAt(index)) continue;
+      const mirror = gspMirrorIndex(symmetry, index);
+      if (mirror == index) continue;
+      const mirrorValue = <i32>unchecked(inputGrid[mirror]);
+      const mirrorMask = mirrorValue != 0 ? bitForDigit(mirrorValue) : maskAt(mirror);
+      const m = maskAt(index);
+      for (let d: i32 = 1; d <= 9; d++) {
+        const p = unchecked(perm[d]);
+        if ((m & bitForDigit(d)) == 0 || p == 0) continue;
+        if ((mirrorMask & bitForDigit(p)) == 0) appendElimination(index, d);
+      }
+    }
+    if (eliminationCount > 0) {
+      techniqueId = 3; actionType = 2; patternCount = 0;
+      unchecked(meta[0] = symmetry); unchecked(meta[3] = 2); // mirror
+      return actionType;
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
   if (id == 1) return findHiddenSingle();
   if (id == 2) return findLockedCandidate();
+  if (id == 3) return findGsp();
   if (id == 4) return findNakedSubset(2, 4);
   if (id == 5) return findHiddenSubset(2, 5);
   if (id == 6) return findNakedSubset(3, 6);
