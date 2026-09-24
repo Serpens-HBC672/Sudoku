@@ -328,6 +328,8 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [45, "tridagonForce"],
   [46, "skLoop"],
   [47, "msls"],
+  [48, "juniorExocet"],
+  [49, "seniorExocet"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -350,6 +352,75 @@ function readStandaloneEliminations(core) {
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId === 48 || techniqueId === 49) {
+    if (techniqueId === 48) core.runJuniorExocetFinder();
+    else core.runSeniorExocetFinder();
+    if (core.exocetFinderResultTechnique() === 0) return null;
+
+    const transposed = core.exocetFinderResultOrientation() === 1;
+    const decodeVirtualCell = (index) => {
+      const r = Math.floor(index / 9);
+      const c = index % 9;
+      return transposed ? [c, r] : [r, c];
+    };
+    const decodeVirtualFact = (k) => {
+      const digit = (k % 9) + 1;
+      const cell = Math.floor(k / 9);
+      const [r, c] = decodeVirtualCell(cell);
+      return { r, c, digit };
+    };
+    const patternCells = Array.from(
+      { length: core.exocetFinderResultPatternCount() },
+      (_, i) => decodeVirtualCell(core.exocetFinderResultPatternAt(i)),
+    );
+    const eliminations = Array.from(
+      { length: core.exocetFinderResultEliminationCount() },
+      (_, i) => decodeVirtualFact(core.exocetFinderResultEliminationAt(i)),
+    );
+    const base = Array.from({ length: 2 }, (_, i) => decodeVirtualCell(core.exocetFinderResultBaseAt(i)));
+    const targets = Array.from({ length: 2 }, (_, i) => decodeVirtualCell(core.exocetFinderResultTargetAt(i)));
+    const baseCandidates = maskToDigits(core.exocetFinderResultBaseMask() & 0x1ff);
+    const orientation = transposed ? "col" : "row";
+    const subtypeCode = core.exocetFinderResultSubtype();
+
+    if (techniqueId === 48) {
+      const subtype = [
+        "mirrorSync",
+        "base",
+        "mirrorConjugatePair",
+        "adjacentTarget",
+        "incompatiblePair",
+        "mirrorAlmostHiddenSet",
+      ][subtypeCode];
+      return {
+        actionType: "eliminate",
+        technique,
+        subtype,
+        patternCells,
+        eliminations,
+        context: { orientation, base, baseCandidates, targets },
+      };
+    }
+
+    const subtype = ["trueBase", "lockedMember", "base"][subtypeCode];
+    const context = {
+      orientation,
+      base,
+      baseCandidates,
+      target: [...targets[0]],
+      endoTarget: [...targets[1]],
+    };
+    if (subtypeCode === 0) context.trueBaseDigit = core.exocetFinderResultTrueBaseDigit();
+    return {
+      actionType: "eliminate",
+      technique,
+      subtype,
+      patternCells,
+      eliminations,
+      context,
+    };
+  }
 
   if (techniqueId === 47) {
     core.runMslsFinder();
