@@ -12,6 +12,12 @@ const TECHNIQUES = [
   [0, "nakedSingle"],
   [1, "hiddenSingle"],
   [2, "lockedCandidate"],
+  [4, "nakedPair"],
+  [5, "hiddenPair"],
+  [6, "nakedTriple"],
+  [7, "hiddenTriple"],
+  [8, "nakedQuad"],
+  [9, "hiddenQuad"],
 ];
 
 function hostClone(value) {
