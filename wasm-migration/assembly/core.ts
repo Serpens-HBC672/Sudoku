@@ -1,4 +1,23 @@
 import {
+  tridagonResetInput,
+  tridagonSetInputCell,
+  tridagonSetInputMask,
+  tridagonFind,
+  tridagonResultActionType,
+  tridagonResultVariant,
+  tridagonResultPatternCount,
+  tridagonResultPatternAt,
+  tridagonResultEliminationCount,
+  tridagonResultEliminationAt,
+  tridagonResultGuardianCount,
+  tridagonResultGuardianAt,
+  tridagonResultSubsetCount,
+  tridagonResultSubsetAt,
+  tridagonResultBlockAt,
+  tridagonResultMeta,
+} from "./tridagon-finder";
+
+import {
   alsAdvResetInput,
   alsAdvSetInputCell,
   alsAdvSetInputMask,
@@ -352,6 +371,7 @@ export function resetInput(): void {
   sdcResetInput();
   fireworkResetInput();
   alsAdvResetInput();
+  tridagonResetInput();
 }
 
 export function setInputCell(index: i32, digit: i32): void {
@@ -362,6 +382,7 @@ export function setInputCell(index: i32, digit: i32): void {
   sdcSetInputCell(index, digit);
   fireworkSetInputCell(index, digit);
   alsAdvSetInputCell(index, digit);
+  tridagonSetInputCell(index, digit);
 }
 
 export function setInputMask(index: i32, mask: i32): void {
@@ -372,6 +393,7 @@ export function setInputMask(index: i32, mask: i32): void {
   sdcSetInputMask(index, mask);
   fireworkSetInputMask(index, mask);
   alsAdvSetInputMask(index, mask);
+  tridagonSetInputMask(index, mask);
 }
 
 export function setGivenCell(index: i32, digit: i32): void {
@@ -1795,6 +1817,20 @@ export function alsAdvancedResultEliminationAt(i:i32): i32 { return alsAdvResult
 export function alsAdvancedResultExtraDigitCount(): i32 { return alsAdvResultExtraDigitCount(); }
 export function alsAdvancedResultExtraDigitAt(i:i32): i32 { return alsAdvResultExtraDigitAt(i); }
 export function alsAdvancedResultMeta(i:i32): i32 { return alsAdvResultMeta(i); }
+
+export function runTridagonFinder(): i32 { return tridagonFind(); }
+export function tridagonFinderResultActionType(): i32 { return tridagonResultActionType(); }
+export function tridagonFinderResultVariant(): i32 { return tridagonResultVariant(); }
+export function tridagonFinderResultPatternCount(): i32 { return tridagonResultPatternCount(); }
+export function tridagonFinderResultPatternAt(i:i32): i32 { return tridagonResultPatternAt(i); }
+export function tridagonFinderResultEliminationCount(): i32 { return tridagonResultEliminationCount(); }
+export function tridagonFinderResultEliminationAt(i:i32): i32 { return tridagonResultEliminationAt(i); }
+export function tridagonFinderResultGuardianCount(): i32 { return tridagonResultGuardianCount(); }
+export function tridagonFinderResultGuardianAt(i:i32): i32 { return tridagonResultGuardianAt(i); }
+export function tridagonFinderResultSubsetCount(): i32 { return tridagonResultSubsetCount(); }
+export function tridagonFinderResultSubsetAt(i:i32): i32 { return tridagonResultSubsetAt(i); }
+export function tridagonFinderResultBlockAt(i:i32): i32 { return tridagonResultBlockAt(i); }
+export function tridagonFinderResultMeta(i:i32): i32 { return tridagonResultMeta(i); }
 
 // Small deterministic kernel used only to detect gross JS<->WASM call/setup
 // regressions. It is not the migration's performance acceptance benchmark.
