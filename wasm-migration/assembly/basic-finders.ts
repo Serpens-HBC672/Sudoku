@@ -1630,6 +1630,146 @@ function findAhsXZ():i32{
   return 0;
 }
 
+
+function collectRccMask(a:i32,b:i32):u16{
+  if(alsOverlapByIndex(a,b))return 0;
+  const common=<u16>(unchecked(alsMask[a])&unchecked(alsMask[b]));
+  let out:u16=0;
+  for(let d:i32=1;d<=9;d++){
+    const db=bitForDigit(d);
+    if((common&db)!=0&&alsDigitAllSee(a,b,d))out=<u16>(out|db);
+  }
+  return out;
+}
+
+function findAlsChain():i32{
+  enumerateAls();
+  for(let a:i32=0;a<alsCount;a++){
+    for(let b:i32=0;b<alsCount;b++){
+      if(b==a||alsOverlapByIndex(a,b))continue;
+      const rcc1Mask=collectRccMask(a,b);
+      if(rcc1Mask==0)continue;
+      for(let rcc1:i32=1;rcc1<=9;rcc1++){
+        if((rcc1Mask&bitForDigit(rcc1))==0)continue;
+        for(let c:i32=0;c<alsCount;c++){
+          if(c==a||c==b||alsOverlapByIndex(a,c)||alsOverlapByIndex(b,c))continue;
+          const rcc2Mask=collectRccMask(b,c);
+          if(rcc2Mask==0)continue;
+          for(let rcc2:i32=1;rcc2<=9;rcc2++){
+            if((rcc2Mask&bitForDigit(rcc2))==0||rcc2==rcc1)continue;
+            const usedRcc=<u16>(rcc1Mask|rcc2Mask);
+            const endpointCommon=<u16>(unchecked(alsMask[a])&unchecked(alsMask[c]));
+            for(let z:i32=1;z<=9;z++){
+              const zb=bitForDigit(z);
+              if((endpointCommon&zb)==0||(usedRcc&zb)!=0)continue;
+              eliminationCount=0;
+              for(let index:i32=0;index<CELL_COUNT;index++){
+                if(cellInAls(index,a)||cellInAls(index,b)||cellInAls(index,c))continue;
+                if(!emptyAt(index)||(maskAt(index)&zb)==0)continue;
+                if(cellSeesAllAlsDigitPositions(index,a,z)&&cellSeesAllAlsDigitPositions(index,c,z))appendElimination(index,z);
+              }
+              if(eliminationCount>0){
+                techniqueId=38;actionType=2;patternCount=0;extraDigitCount=0;
+                appendAlsPattern(a);appendAlsPattern(b);appendAlsPattern(c);
+                unchecked(meta[0]=<i32>unchecked(alsSize[a]));
+                unchecked(meta[1]=<i32>unchecked(alsSize[b]));
+                unchecked(meta[2]=<i32>unchecked(alsSize[c]));
+                unchecked(meta[3]=z);
+                unchecked(extraDigits[extraDigitCount++]=<u8>rcc1);
+                unchecked(extraDigits[extraDigitCount++]=<u8>rcc2);
+                return actionType;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+function alsOverlapsUsed(ai:i32,used:StaticArray<i32>,usedCount:i32):bool{
+  for(let i:i32=0;i<usedCount;i++)if(alsOverlapByIndex(ai,unchecked(used[i])))return true;
+  return false;
+}
+
+function findDeathBlossom():i32{
+  enumerateAls();
+  const used=new StaticArray<i32>(9);
+  const petalDigit=new StaticArray<i32>(9);
+  const petalAls=new StaticArray<i32>(9);
+  for(let stem:i32=0;stem<CELL_COUNT;stem++){
+    if(!emptyAt(stem))continue;
+    const stemMask=maskAt(stem);
+    if(countBits9(stemMask)<2)continue;
+    let petalCount:i32=0,allFound=true;
+    for(let d:i32=1;d<=9;d++){
+      const db=bitForDigit(d);
+      if((stemMask&db)==0)continue;
+      let found:i32=-1;
+      for(let ai:i32=0;ai<alsCount;ai++){
+        if(cellInAls(stem,ai))continue;
+        if((unchecked(alsMask[ai])&db)==0)continue;
+        if(alsOverlapsUsed(ai,used,petalCount))continue;
+        let allSee=true;
+        const n=<i32>unchecked(alsSize[ai]);
+        for(let j:i32=0;j<n;j++){
+          const cell=alsCellAt(ai,j);
+          if((maskAt(cell)&db)!=0&&!cellsSee(cell,stem)){allSee=false;break;}
+        }
+        if(allSee){found=ai;break;}
+      }
+      if(found<0){allFound=false;break;}
+      unchecked(used[petalCount]=found);
+      unchecked(petalDigit[petalCount]=d);
+      unchecked(petalAls[petalCount]=found);
+      petalCount++;
+    }
+    if(!allFound)continue;
+    let commonZ:u16=unchecked(alsMask[unchecked(petalAls[0])]);
+    for(let i:i32=1;i<petalCount;i++)commonZ=<u16>(commonZ&unchecked(alsMask[unchecked(petalAls[i])]));
+    commonZ=<u16>(commonZ&<u16>(~stemMask));
+    if(commonZ==0)continue;
+    for(let z:i32=1;z<=9;z++){
+      const zb=bitForDigit(z);
+      if((commonZ&zb)==0)continue;
+      eliminationCount=0;
+      for(let index:i32=0;index<CELL_COUNT;index++){
+        if(index==stem)continue;
+        let inPetal=false;
+        for(let pi:i32=0;pi<petalCount&&!inPetal;pi++)if(cellInAls(index,unchecked(petalAls[pi])))inPetal=true;
+        if(inPetal||!emptyAt(index)||(maskAt(index)&zb)==0)continue;
+        let seesAll=true;
+        for(let pi:i32=0;pi<petalCount&&seesAll;pi++){
+          const ai=unchecked(petalAls[pi]);
+          const n=<i32>unchecked(alsSize[ai]);
+          for(let j:i32=0;j<n;j++){
+            const cell=alsCellAt(ai,j);
+            if((maskAt(cell)&zb)!=0&&!cellsSee(index,cell)){seesAll=false;break;}
+          }
+        }
+        if(seesAll)appendElimination(index,z);
+      }
+      if(eliminationCount>0){
+        techniqueId=39;actionType=2;patternCount=0;extraDigitCount=0;
+        appendPattern(stem);
+        for(let pi:i32=0;pi<petalCount;pi++){
+          const ai=unchecked(petalAls[pi]);
+          appendAlsPattern(ai);
+          unchecked(extraDigits[extraDigitCount++]=<u8>unchecked(petalDigit[pi]));
+          unchecked(extraDigits[extraDigitCount++]=unchecked(alsSize[ai]));
+        }
+        unchecked(meta[0]=stem);
+        unchecked(meta[1]=petalCount);
+        unchecked(meta[2]=z);
+        unchecked(meta[3]=<i32>stemMask);
+        return actionType;
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -1663,6 +1803,8 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 35) return findPom();
   if (id == 36) return findAlsXZ();
   if (id == 37) return findAhsXZ();
+  if (id == 38) return findAlsChain();
+  if (id == 39) return findDeathBlossom();
   return 0;
 }
 
