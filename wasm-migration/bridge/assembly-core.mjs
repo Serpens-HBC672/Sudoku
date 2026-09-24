@@ -302,6 +302,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [27, "xyChain"],
   [35, "pom"],
   [36, "alsXZ"],
+  [37, "ahsXZ"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -545,6 +546,41 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
         elimDigit: core.standaloneResultMeta(1),
         unitType: unitTypeCode === 0 ? "row" : unitTypeCode === 1 ? "col" : "box",
         idx: core.standaloneResultMeta(3),
+      },
+    };
+  }
+
+  if (techniqueId === 37) {
+    const patternCells = readStandalonePatternCells(core);
+    const aCellCount = core.standaloneResultMeta(0);
+    const bCellCount = core.standaloneResultMeta(1);
+    const aDigitCount = core.standaloneResultMeta(2);
+    const bDigitCount = core.standaloneResultMeta(3);
+    const overlapCount = core.standaloneResultMeta(4);
+    const xCount = core.standaloneResultMeta(5);
+    const zCount = core.standaloneResultMeta(6);
+    const auxCells = [];
+    for (let i = 0; i < core.standaloneResultExtraCellCount(); i++) {
+      const index = core.standaloneResultExtraCellAt(i);
+      auxCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const auxDigits = [];
+    for (let i = 0; i < core.standaloneResultExtraDigitCount(); i++) {
+      auxDigits.push(core.standaloneResultExtraDigitAt(i));
+    }
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        ahsACells: patternCells.slice(0, aCellCount).map((cell) => [...cell]),
+        ahsADigits: auxDigits.slice(0, aDigitCount),
+        ahsBCells: patternCells.slice(aCellCount, aCellCount + bCellCount).map((cell) => [...cell]),
+        ahsBDigits: auxDigits.slice(aDigitCount, aDigitCount + bDigitCount),
+        rccCells: auxCells.slice(0, overlapCount).map((cell) => [...cell]),
+        xCells: auxCells.slice(overlapCount, overlapCount + xCount).map((cell) => [...cell]),
+        zCells: auxCells.slice(overlapCount + xCount, overlapCount + xCount + zCount).map((cell) => [...cell]),
       },
     };
   }
