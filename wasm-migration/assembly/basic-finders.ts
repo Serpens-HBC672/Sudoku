@@ -405,6 +405,84 @@ function findHiddenSubset(k: i32, id: i32): i32 {
   return 0;
 }
 
+
+function findFish(k: i32, id: i32): i32 {
+  const eligibleBases = new StaticArray<i32>(9);
+  const combo = new StaticArray<i32>(9);
+  const coverOrder = new StaticArray<i32>(9);
+
+  for (let d: i32 = 1; d <= 9; d++) {
+    const bit = bitForDigit(d);
+    for (let baseType: i32 = 0; baseType < 2; baseType++) {
+      let eligibleCount: i32 = 0;
+      for (let idx: i32 = 0; idx < 9; idx++) {
+        let positions: i32 = 0;
+        for (let pos: i32 = 0; pos < 9; pos++) {
+          const index = unitCellIndex(baseType, idx, pos);
+          if (emptyAt(index) && (maskAt(index) & bit) != 0) positions++;
+        }
+        if (positions >= 2 && positions <= k) unchecked(eligibleBases[eligibleCount++] = idx);
+      }
+      if (eligibleCount < k) continue;
+
+      initCombination(combo, k);
+      while (true) {
+        let coverCount: i32 = 0;
+        for (let ci: i32 = 0; ci < k; ci++) {
+          const baseIdx = unchecked(eligibleBases[unchecked(combo[ci])]);
+          for (let pos: i32 = 0; pos < 9; pos++) {
+            const index = unitCellIndex(baseType, baseIdx, pos);
+            if (!emptyAt(index) || (maskAt(index) & bit) == 0) continue;
+            const coverIdx = baseType == 0 ? index % 9 : index / 9;
+            let seen = false;
+            for (let j: i32 = 0; j < coverCount; j++) {
+              if (unchecked(coverOrder[j]) == coverIdx) { seen = true; break; }
+            }
+            if (!seen) unchecked(coverOrder[coverCount++] = coverIdx);
+          }
+        }
+
+        if (coverCount == k) {
+          eliminationCount = 0;
+          const coverType = baseType == 0 ? 1 : 0;
+          for (let ci: i32 = 0; ci < coverCount; ci++) {
+            const coverIdx = unchecked(coverOrder[ci]);
+            for (let pos: i32 = 0; pos < 9; pos++) {
+              const index = unitCellIndex(coverType, coverIdx, pos);
+              const baseIdxOfCell = baseType == 0 ? index / 9 : index % 9;
+              if (comboContainsValue(eligibleBases, combo, k, baseIdxOfCell)) continue;
+              if (emptyAt(index) && (maskAt(index) & bit) != 0) appendElimination(index, d);
+            }
+          }
+          if (eliminationCount > 0) {
+            techniqueId = id; actionType = 2; subtype = baseType;
+            patternCount = 0;
+            let baseMask: i32 = 0;
+            let coverMask: i32 = 0;
+            for (let ci: i32 = 0; ci < k; ci++) {
+              const baseIdx = unchecked(eligibleBases[unchecked(combo[ci])]);
+              baseMask |= 1 << baseIdx;
+              for (let pos: i32 = 0; pos < 9; pos++) {
+                const index = unitCellIndex(baseType, baseIdx, pos);
+                if (emptyAt(index) && (maskAt(index) & bit) != 0) appendPattern(index);
+              }
+            }
+            for (let ci: i32 = 0; ci < coverCount; ci++) coverMask |= 1 << unchecked(coverOrder[ci]);
+            unchecked(meta[0] = d);
+            unchecked(meta[1] = baseType);
+            unchecked(meta[2] = baseMask);
+            unchecked(meta[3] = coverMask);
+            unchecked(meta[4] = k);
+            return actionType;
+          }
+        }
+        if (!advanceCombination(combo, eligibleCount, k)) break;
+      }
+    }
+  }
+  return 0;
+}
+
 export function runBasicTechniqueFinder(id: i32): i32 {
   resetResult();
   if (id == 0) return findNakedSingle();
@@ -416,6 +494,10 @@ export function runBasicTechniqueFinder(id: i32): i32 {
   if (id == 7) return findHiddenSubset(3, 7);
   if (id == 8) return findNakedSubset(4, 8);
   if (id == 9) return findHiddenSubset(4, 9);
+  if (id == 10) return findFish(2, 10);
+  if (id == 11) return findFish(3, 11);
+  if (id == 15) return findFish(4, 15);
+  if (id == 16) return findFish(5, 16);
   return 0;
 }
 
