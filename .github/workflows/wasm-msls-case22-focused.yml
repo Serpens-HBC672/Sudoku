@@ -1,4 +1,4 @@
-name: Focused MSLS #22 Reproduction
+name: Focused MSLS #22 Regression
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
         include:
           - label: historical-3fb9801
             ref: 3fb98015986848e20025f8d1b1881f28fa6978e4
-            expect: trap
+            expect: pass
           - label: recovered-head-7e23d42
             ref: 7e23d42e249959ebeeb5690ddabe2b34d036f602
             expect: pass
