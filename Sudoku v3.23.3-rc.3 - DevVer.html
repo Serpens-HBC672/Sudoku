@@ -12232,23 +12232,35 @@ function renderStringPanels() {
     };
   }
 
-  function findDynamicNishioFromMasks(grid, masks) {
+  function findDynamicNishioFromMasks(grid, masks, budgetLimit = DFC_BUDGET) {
     const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const engine = (g, gc, r, c, d, st) => propagateAssumptionDynamic(g, gc, r, c, d, st, budget);
     const savedShowChainDetail = state.settings.showChainDetail;
     state.settings.showChainDetail = false;
     try {
-      return normalizeOracleValue(findDynamicNishioChain(grid, getCands));
+      return {
+        finding: normalizeOracleValue(findNishioChain(grid, getCands, engine, "dynamicNishioChain")),
+        budgetCalls: budget.calls,
+        budgetLimit: budget.limit,
+      };
     } finally {
       state.settings.showChainDetail = savedShowChainDetail;
     }
   }
 
-  function findDynamicUnaryFromMasks(grid, masks) {
+  function findDynamicUnaryFromMasks(grid, masks, budgetLimit = DFC_BUDGET) {
     const getCands = getCandsFromMasks(grid, masks);
+    const budget = { calls: 0, limit: budgetLimit };
+    const engine = (g, gc, r, c, d, st) => propagateAssumptionDynamic(g, gc, r, c, d, st, budget);
     const savedShowChainDetail = state.settings.showChainDetail;
     state.settings.showChainDetail = false;
     try {
-      return normalizeOracleValue(findDynamicUnaryChain(grid, getCands));
+      return {
+        finding: normalizeOracleValue(findUnaryChain(grid, getCands, engine, "dynamicUnaryChain")),
+        budgetCalls: budget.calls,
+        budgetLimit: budget.limit,
+      };
     } finally {
       state.settings.showChainDetail = savedShowChainDetail;
     }
