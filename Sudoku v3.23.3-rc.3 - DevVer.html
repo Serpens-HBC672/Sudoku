@@ -12224,6 +12224,7 @@ function renderStringPanels() {
   globalThis.__SUDOKU_WASM_MIGRATION_TEST_HOOKS__ = Object.freeze({
     version: 1,
     techniqueKeys: () => TECHNIQUE_CHAIN.map((entry) => entry.key),
+    candidateMasksForGrid: (grid) => candidateMasksSnapshot(grid, (r, c) => candidatesAt(grid, r, c)),
     tracePuzzle,
     enumerateAvailableFromMasks,
     propagateStaticFromMasks,
