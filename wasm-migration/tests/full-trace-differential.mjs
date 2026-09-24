@@ -61,10 +61,21 @@ for (const testCase of corpus.filter((x) => ids.includes(x.id))) {
     const grid = gridFromString(step.beforeGrid);
     loadPosition(core, grid, Array.from(step.beforeMasks, Number));
     loadGivenGrid(core, testCase.puzzle);
-    const finding = findNextStepWasm(core, {
-      budgetLimit: 6790,
-      validator: (candidate) => !!oracle.validateFindingAgainstSolution(candidate, testCase.solution),
-    });
+    let finding;
+    try {
+      finding = findNextStepWasm(core, {
+        budgetLimit: 6790,
+        validator: (candidate) => !!oracle.validateFindingAgainstSolution(candidate, testCase.solution),
+      });
+    } catch (error) {
+      console.error("FULL_TRACE_CRASH", JSON.stringify({
+        caseId: testCase.id,
+        step: step.step,
+        expectedTechnique: step.finding.technique,
+        lastTechniqueId: typeof core.debugLastTechniqueSearchId === "function" ? core.debugLastTechniqueSearchId() : null,
+      }));
+      throw error;
+    }
     assert.deepEqual(
       finding,
       hostClone(step.finding),
