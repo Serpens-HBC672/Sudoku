@@ -283,6 +283,9 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [9, "hiddenQuad"],
   [10, "xWing"],
   [11, "swordfish"],
+  [12, "skyscraper"],
+  [13, "twoStringKite"],
+  [14, "emptyRectangle"],
   [15, "jellyfish"],
   [16, "squirmbagFish"],
 ]);
@@ -346,6 +349,60 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
       patternCells: readStandalonePatternCells(core),
       eliminations: readStandaloneEliminations(core),
       context: { box, line, lineType, digit: lockedDigit },
+    };
+  }
+
+  if (techniqueId === 12) {
+    const patternCells = readStandalonePatternCells(core);
+    const baseType = core.standaloneResultMeta(1) === 0 ? "row" : "col";
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        digit: core.standaloneResultMeta(0),
+        baseType,
+        base: patternCells.slice(0, 2).map((cell) => [...cell]),
+        roof: patternCells.slice(2, 4).map((cell) => [...cell]),
+      },
+    };
+  }
+
+  if (techniqueId === 13) {
+    const patternCells = readStandalonePatternCells(core);
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        digit: core.standaloneResultMeta(0),
+        near: patternCells.slice(0, 2).map((cell) => [...cell]),
+        far: patternCells.slice(2, 4).map((cell) => [...cell]),
+      },
+    };
+  }
+
+  if (techniqueId === 14) {
+    const patternCells = readStandalonePatternCells(core);
+    const eliminations = readStandaloneEliminations(core);
+    const near = patternCells[patternCells.length - 2];
+    const far = patternCells[patternCells.length - 1];
+    const target = [eliminations[0].r, eliminations[0].c];
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: {
+        digit: core.standaloneResultMeta(0),
+        box: core.standaloneResultMeta(1),
+        axis: [core.standaloneResultMeta(2), core.standaloneResultMeta(3)],
+        near: [...near],
+        far: [...far],
+        target,
+      },
     };
   }
 
