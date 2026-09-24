@@ -327,6 +327,7 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [41, "tridagon"],
   [45, "tridagonForce"],
   [46, "skLoop"],
+  [47, "msls"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -349,6 +350,30 @@ function readStandaloneEliminations(core) {
 export function runStandaloneTechniqueFinder(core, techniqueId) {
   const technique = STANDALONE_TECHNIQUE_KEYS.get(techniqueId);
   if (!technique) throw new Error("Unsupported standalone technique id: " + techniqueId);
+
+  if (techniqueId === 47) {
+    core.runMslsFinder();
+    if (core.mslsFinderResultEliminationCount() === 0) return null;
+    const patternCells = [];
+    for (let i = 0; i < core.mslsFinderResultPatternCount(); i++) {
+      const index = core.mslsFinderResultPatternAt(i);
+      patternCells.push([Math.floor(index / 9), index % 9]);
+    }
+    const eliminations = [];
+    for (let i = 0; i < core.mslsFinderResultEliminationCount(); i++) {
+      eliminations.push(decodeFact(core.mslsFinderResultEliminationAt(i)));
+    }
+    const rows = Array.from({ length: core.mslsFinderResultRowCount() }, (_, i) => core.mslsFinderResultRowAt(i));
+    const cols = Array.from({ length: core.mslsFinderResultColCount() }, (_, i) => core.mslsFinderResultColAt(i));
+    const boxes = Array.from({ length: core.mslsFinderResultBoxCount() }, (_, i) => core.mslsFinderResultBoxAt(i));
+    return {
+      actionType: "eliminate",
+      technique,
+      patternCells,
+      eliminations,
+      context: { rows, cols, boxes, size: [rows.length, cols.length] },
+    };
+  }
 
   if (techniqueId === 46) {
     core.runSkLoopFinder();
