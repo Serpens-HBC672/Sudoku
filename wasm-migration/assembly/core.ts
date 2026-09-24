@@ -877,6 +877,10 @@ function runStaticBudgetedInternal(r: i32, c: i32, d: i32, startTrue: bool): i32
   if (budgetCallsValue > budgetLimitValue) {
     contradictionValue = 0;
     abortedValue = 1;
+    // JS returns freshly allocated empty Sets on a budget abort. Counts alone
+    // are not enough because outer Unary logic queries set membership directly.
+    clearU8(trueSeen, FACT_COUNT);
+    clearU8(falseSeen, FACT_COUNT);
     trueCountValue = 0;
     falseCountValue = 0;
     return 0;
@@ -1023,6 +1027,10 @@ function runDynamicShared(r: i32, c: i32, d: i32, startTrue: bool): i32 {
   if (budgetCallsValue > budgetLimitValue) {
     contradictionValue = 0;
     abortedValue = 1;
+    // JS returns freshly allocated empty Sets on a budget abort. Counts alone
+    // are not enough because outer Unary logic queries set membership directly.
+    clearU8(trueSeen, FACT_COUNT);
+    clearU8(falseSeen, FACT_COUNT);
     trueCountValue = 0;
     falseCountValue = 0;
     return 0;
