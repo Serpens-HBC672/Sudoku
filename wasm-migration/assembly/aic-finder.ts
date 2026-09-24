@@ -17,58 +17,6 @@ let eliminationCount:i32=0;
 const pathDigits=new StaticArray<u8>(MAX_NODES);
 const pathCounts=new StaticArray<u8>(MAX_NODES);
 const pathCells=new StaticArray<u8>(MAX_NODES*MAX_NODE_CELLS);
-
-// Fixed non-reentrant scratch for strongPartners. Reuse avoids repeated
-// managed StaticArray allocation without changing partner enumeration.
-const strongPartnerRemScratch=new StaticArray<i32>(9);
-
-// niceDfs is recursive, so its partner buffers must remain distinct per
-// recursion frame. The search reaches currentPathCount 2..7, i.e. six active
-// allocation frames at most under the existing MAX_NODES / maxLinks contract.
-const niceDfsPartnerDigits0=new StaticArray<u8>(96);
-const niceDfsPartnerDigits1=new StaticArray<u8>(96);
-const niceDfsPartnerDigits2=new StaticArray<u8>(96);
-const niceDfsPartnerDigits3=new StaticArray<u8>(96);
-const niceDfsPartnerDigits4=new StaticArray<u8>(96);
-const niceDfsPartnerDigits5=new StaticArray<u8>(96);
-const niceDfsPartnerCounts0=new StaticArray<u8>(96);
-const niceDfsPartnerCounts1=new StaticArray<u8>(96);
-const niceDfsPartnerCounts2=new StaticArray<u8>(96);
-const niceDfsPartnerCounts3=new StaticArray<u8>(96);
-const niceDfsPartnerCounts4=new StaticArray<u8>(96);
-const niceDfsPartnerCounts5=new StaticArray<u8>(96);
-const niceDfsPartnerCells0=new StaticArray<u8>(288);
-const niceDfsPartnerCells1=new StaticArray<u8>(288);
-const niceDfsPartnerCells2=new StaticArray<u8>(288);
-const niceDfsPartnerCells3=new StaticArray<u8>(288);
-const niceDfsPartnerCells4=new StaticArray<u8>(288);
-const niceDfsPartnerCells5=new StaticArray<u8>(288);
-
-@inline function niceDfsPartnerDigits(frame:i32):StaticArray<u8>{
-  if(frame==0)return niceDfsPartnerDigits0;
-  if(frame==1)return niceDfsPartnerDigits1;
-  if(frame==2)return niceDfsPartnerDigits2;
-  if(frame==3)return niceDfsPartnerDigits3;
-  if(frame==4)return niceDfsPartnerDigits4;
-  return niceDfsPartnerDigits5;
-}
-@inline function niceDfsPartnerCounts(frame:i32):StaticArray<u8>{
-  if(frame==0)return niceDfsPartnerCounts0;
-  if(frame==1)return niceDfsPartnerCounts1;
-  if(frame==2)return niceDfsPartnerCounts2;
-  if(frame==3)return niceDfsPartnerCounts3;
-  if(frame==4)return niceDfsPartnerCounts4;
-  return niceDfsPartnerCounts5;
-}
-@inline function niceDfsPartnerCells(frame:i32):StaticArray<u8>{
-  if(frame==0)return niceDfsPartnerCells0;
-  if(frame==1)return niceDfsPartnerCells1;
-  if(frame==2)return niceDfsPartnerCells2;
-  if(frame==3)return niceDfsPartnerCells3;
-  if(frame==4)return niceDfsPartnerCells4;
-  return niceDfsPartnerCells5;
-}
-
 let pathCount:i32=0;
 
 @inline function bit(d:i32):u16 {
@@ -199,7 +147,7 @@ function strongPartners(
     }
     if(!inUnit)continue;
 
-    const rem=strongPartnerRemScratch; let rn:i32=0;
+    const rem=new StaticArray<i32>(9); let rn:i32=0;
     for(let pos:i32=0;pos<9;pos++){
       const cell=unitCell(unitType,idx,pos);
       if(!empty(cell)||(maskAt(cell)&db)==0||nodeContains(node,cell))continue;
@@ -280,8 +228,7 @@ function conclusion(currentPathCount:i32):bool {
 function dfs(currentPathCount:i32,lastStrong:bool,remainingLinks:i32):bool {
   if(remainingLinks<=0)return false;
   const nextStrong=!lastStrong,node=currentPathCount-1;
-  const frame=currentPathCount-2;
-  const pDigits=niceDfsPartnerDigits(frame),pCounts=niceDfsPartnerCounts(frame),pCells=niceDfsPartnerCells(frame);
+  const pDigits=new StaticArray<u8>(96),pCounts=new StaticArray<u8>(96),pCells=new StaticArray<u8>(288);
   const pc=nextStrong?strongPartners(node,pDigits,pCounts,pCells):weakPartners(node,pDigits,pCounts,pCells);
   for(let p:i32=0;p<pc;p++){
     const pd=<i32>unchecked(pDigits[p]),pn=<i32>unchecked(pCounts[p]);

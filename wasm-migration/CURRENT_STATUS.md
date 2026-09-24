@@ -145,3 +145,26 @@ Named/debug stack:
 The source-level allocation is the recursive frame's `pDigits/pCounts/pCells` partner-buffer set. Because parent frames remain live while child DFS calls execute, these buffers cannot be replaced by one shared array. The bounded fix preallocates six module-scoped frame-specific buffer sets, matching the existing `currentPathCount 2..7` recursion contract, and selects by frame. No link ordering, recursion depth, partner enumeration, first-match logic, or Finding data is changed.
 
 Fast-gate validation remains authoritative.
+
+
+## Final bounded incremental-runtime root cause
+
+Prefix isolation evidence recorded in commit `495e2baf047218e78c8e8c377ea15fb3e668242d` identified the first history transition that makes a later managed allocation fail:
+
+- standalone prefix through ordinal 184 remains healthy;
+- adding ordinal 185, case #4 technique `46 / skLoop`, poisons the later allocator state;
+- MSLS and Exocet calls after SK Loop are not required to create the failure.
+
+Concrete defect:
+- `skloop-finder.ts` allocated `pairMasks` as `9*32` bytes, valid indices `0..287`;
+- the table is intentionally indexed by Sudoku digit `d = 1..9` as `pairMasks[d*32+n]`;
+- digit 9 therefore starts at index `288`, outside the old allocation;
+- because the access is wrapped in `unchecked`, the write can corrupt adjacent managed/allocator memory and the eventual trap appears later inside unrelated `__new` / TLSF operations.
+
+Behavior-preserving fix:
+- size `pairMasks` as `10*32` so the existing 1-based digit slices `1..9` are valid;
+- do not alter digit order, pair enumeration, SK Loop matching, first-match semantics, candidate masks, or Finding output.
+
+The earlier Exocet/AIC scratch-hoisting experiments were diagnostic workarounds for later allocator manifestations, not the root cause. They are reverted in the final bounded fix so the solver change remains minimal: only the SK Loop scratch capacity is changed.
+
+Incremental runtime remains a candidate only until the exact Senior Exocet reproduction and all specified fast gates pass on this minimal fix.
