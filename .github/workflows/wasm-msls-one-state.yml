@@ -1,0 +1,44 @@
+name: One-state MSLS #22
+
+on:
+  push:
+    branches:
+      - codex/wasm-msls-one-state
+    paths:
+      - ".github/wasm-focused/msls-case22-one-state.mjs"
+      - ".github/workflows/wasm-msls-one-state.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  one-state:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout harness
+        uses: actions/checkout@v4
+        with:
+          path: harness
+
+      - name: Checkout historical failing target
+        uses: actions/checkout@v4
+        with:
+          ref: 3fb98015986848e20025f8d1b1881f28fa6978e4
+          path: target
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install historical target toolchain
+        working-directory: target/wasm-migration
+        run: npm install --no-audit --no-fund
+
+      - name: Build historical WASM core
+        working-directory: target/wasm-migration
+        run: npm run build
+
+      - name: Reproduce one #22 state and one MSLS call
+        run: node harness/.github/wasm-focused/msls-case22-one-state.mjs
