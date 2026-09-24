@@ -77,7 +77,11 @@ for (const testCase of corpus) {
     const jsFinding = oracle.findTechniqueFromMasks(
       key, testCase.puzzle, masks, testCase.puzzle, testCase.solution,
     );
-    const wasmFinding = runStandaloneTechniqueFinder(core, id);
+    const rawWasmFinding = runStandaloneTechniqueFinder(core, id);
+    const wasmFinding =
+      key === "juniorExocet" || key === "seniorExocet"
+        ? oracle.validateFindingAgainstSolution(rawWasmFinding, testCase.solution)
+        : rawWasmFinding;
     if (key === "medusa3D" && jsFinding && !wasmFinding) {
       const diag = jsFinding.context.coloring.map(({ r, c, d }) => {
         const k = r * 81 + c * 9 + (d - 1);
