@@ -281,6 +281,10 @@ const STANDALONE_TECHNIQUE_KEYS = new Map([
   [7, "hiddenTriple"],
   [8, "nakedQuad"],
   [9, "hiddenQuad"],
+  [10, "xWing"],
+  [11, "swordfish"],
+  [15, "jellyfish"],
+  [16, "squirmbagFish"],
 ]);
 
 function readStandalonePatternCells(core) {
@@ -342,6 +346,33 @@ export function runStandaloneTechniqueFinder(core, techniqueId) {
       patternCells: readStandalonePatternCells(core),
       eliminations: readStandaloneEliminations(core),
       context: { box, line, lineType, digit: lockedDigit },
+    };
+  }
+
+  const fishIds = new Set([10, 11, 15, 16]);
+  if (fishIds.has(techniqueId)) {
+    const baseType = core.standaloneResultMeta(1) === 0 ? "row" : "col";
+    const coverType = baseType === "row" ? "col" : "row";
+    const baseMask = core.standaloneResultMeta(2) & 0x1ff;
+    const coverMask = core.standaloneResultMeta(3) & 0x1ff;
+    const maskIndexes = (mask) => {
+      const out = [];
+      for (let i = 0; i < 9; i++) if (mask & (1 << i)) out.push(i);
+      return out;
+    };
+    return {
+      actionType: "eliminate",
+      technique,
+      subtype: baseType,
+      patternCells: readStandalonePatternCells(core),
+      eliminations: readStandaloneEliminations(core),
+      context: {
+        digit: core.standaloneResultMeta(0),
+        baseType,
+        coverType,
+        baseIdxs: maskIndexes(baseMask),
+        coverIdxs: maskIndexes(coverMask),
+      },
     };
   }
 
