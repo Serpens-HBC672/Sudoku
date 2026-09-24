@@ -1,0 +1,38 @@
+name: Incremental Senior Exocet Prefix Isolation
+
+on:
+  push:
+    branches:
+      - codex/wasm-incremental-exocet-prefix-diagnostic
+    paths:
+      - ".github/workflows/wasm-senior-exocet-prefix-isolation.yml"
+      - "wasm-migration/tests/senior-exocet-prefix-isolation.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  isolate-prefix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install migration toolchain
+        run: npm install --no-audit --no-fund
+      - name: Build incremental core
+        run: npm run build
+      - name: Isolate exact history prefix before Senior Exocet
+        run: node tests/senior-exocet-prefix-isolation.mjs
+      - name: Upload prefix evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: incremental-senior-exocet-prefix-isolation
+          path: wasm-migration/senior-exocet-prefix-results/prefix-isolation.json
+          if-no-files-found: error
