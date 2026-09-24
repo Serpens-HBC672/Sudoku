@@ -57,6 +57,9 @@ jobs:
       - name: Run standalone technique finder differential suite
         run: npm run test:standalone
 
+      - name: Run static forcing-chain finder differential suite
+        run: npm run test:static-finders
+
       - name: Build SIMD-enabled profile
         run: npm run build:simd
 
