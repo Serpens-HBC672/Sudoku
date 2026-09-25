@@ -2,6 +2,14 @@
 
 This file is evidence, not a design promise. Update it when a gate changes.
 
+## Canonical post-promotion state
+
+- canonical branch: `codex/wasm-human-techniques-migration`
+- canonical promotion HEAD: `be2ba5d41ca7ac1c54c14a05c45b95bd8b072f22`
+- AssemblyScript `incremental` is the intended runtime.
+- Senior Exocet, allocator-lifetime, and coarse-dispatch ABI investigations below are retained as historical validation evidence, not active migration tasks.
+
+
 ## Verified on GitHub Actions
 
 Migration CI run evidence before the full-budget DFC benchmark:
@@ -61,7 +69,7 @@ Using the same one-instance #1→#22 workload and exact selected-Finding oracle:
 - `incremental`: completed all 22 puzzles with **1867/1867 exact selected-Finding parity**; peak/final linear memory **524288 bytes / 8 pages**; elapsed **364776 ms**; WASM size **142447 bytes**; no explicit boundary collection.
 - `minimal` + puzzle-boundary `__collect()`: completed all 22 puzzles with **1867/1867 exact selected-Finding parity**; peak/final linear memory **2147483648 bytes / 32768 pages**; elapsed **362714 ms**; WASM size **118413 bytes**; requires explicit collection at safe puzzle boundaries.
 
-Measured conclusion: `incremental` is the preferred migration runtime. `stub` is unsuitable for the long-lived shared solver instance. `minimal` remains diagnostic evidence only and is not the documented production runtime.
+Measured conclusion: `incremental` is the canonical intended runtime. `stub` is unsuitable for the long-lived shared solver instance. `minimal` remains diagnostic evidence only and is not the documented production runtime.
 
 
 ## Incremental Senior Exocet lifetime diagnosis
@@ -84,12 +92,12 @@ Named/debug stack:
 
 The failing access occurs while the incremental runtime is allocating a fixed temporary `StaticArray<i32>` inside `appearingTimes`; this evidence does not by itself establish a GC bug, leak, or Senior Exocet algorithm defect.
 
-Smallest behavior-preserving implementation/lifetime fix under validation:
+Historical bounded workaround considered at this stage (later superseded and reverted after root-cause isolation):
 - move only the three fixed scratch arrays used by `appearingTimes` (active/combo/chosen) to module scope and reuse them;
 - preserve all loops, ordering, masks, first-match behavior, and result materialization;
 - no Sudoku technique condition or algorithm is changed.
 
-Fast-gate and exact-reproduction validation is required before incremental runtime promotion.
+At this historical stage, fast-gate and exact-reproduction validation was still required before incremental runtime promotion; those gates later passed.
 
 
 ### Follow-on named-stack evidence: Nice Loop
@@ -101,7 +109,7 @@ Named/debug incremental stack:
 
 Source inspection identifies the allocation at `strongPartners` as its fixed local `StaticArray<i32>(9)` remainder buffer. `strongPartners` is non-reentrant: it fully constructs the partner list and returns before recursive DFS continues. The bounded follow-on fix therefore reuses one module-scoped 9-entry scratch buffer for that helper only. Partner discovery, traversal order, recursion, first-match behavior, and Finding materialization are unchanged.
 
-Validation remains required before incremental runtime promotion.
+At this historical stage, validation was still required before incremental runtime promotion; later root-cause isolation superseded this workaround and the canonical gates passed.
 
 
 ### SK Loop heap-corruption isolation and capacity fix
@@ -132,7 +140,7 @@ Smallest behavior-preserving fix:
 
 This is a concrete capacity/indexing defect. The later allocator trap is consistent with prior heap-state corruption from that unchecked out-of-bounds write; no claim is made that AssemblyScript incremental GC itself is defective.
 
-Exact Senior reproduction plus the specified fast differential/Worker gates must pass before incremental runtime promotion.
+At this historical stage, exact Senior reproduction plus the specified fast differential/Worker gates still had to pass before incremental runtime promotion; they later passed.
 
 
 ### Follow-on named-stack evidence: recursive Nice Loop frame
@@ -144,7 +152,7 @@ Named/debug stack:
 
 The source-level allocation is the recursive frame's `pDigits/pCounts/pCells` partner-buffer set. Because parent frames remain live while child DFS calls execute, these buffers cannot be replaced by one shared array. The bounded fix preallocates six module-scoped frame-specific buffer sets, matching the existing `currentPathCount 2..7` recursion contract, and selects by frame. No link ordering, recursion depth, partner enumeration, first-match logic, or Finding data is changed.
 
-Fast-gate validation remains authoritative.
+At this historical stage, fast-gate validation remained the authoritative acceptance gate.
 
 
 ## Final bounded incremental-runtime root cause
@@ -167,7 +175,7 @@ Behavior-preserving fix:
 
 The earlier Exocet/AIC scratch-hoisting experiments were diagnostic workarounds for later allocator manifestations, not the root cause. They are reverted in the final bounded fix so the solver change remains minimal: only the SK Loop scratch capacity is changed.
 
-Incremental runtime remains a candidate only until the exact Senior Exocet reproduction and all specified fast gates pass on this minimal fix.
+At this historical stage, `incremental` remained a candidate pending the exact Senior Exocet reproduction and specified fast gates. Those gates later passed and canonical promotion completed.
 
 
 ### Incremental coarse-dispatch ABI diagnosis
@@ -216,10 +224,11 @@ The same structural risk exists for other finder groups that share module result
 `findNextStepWasm` is unchanged because its dispatcher stops at the selected technique, so that selected finder result remains current for immediate materialization.
 
 
-## Canonical promotion eligibility
+## Canonical promotion complete
 
-The incremental runtime fast gates passed on the exact promotion candidate.
+The incremental runtime fast gates passed on the exact promotion candidate, and canonical promotion is complete.
 
 - WASM Migration CI run `36027696019`: **SUCCESS**.
 - Incremental Senior Exocet Diagnostic run `36027696132`: **SUCCESS**.
-- The incremental runtime is eligible for canonical promotion.
+- canonical promotion HEAD: `be2ba5d41ca7ac1c54c14a05c45b95bd8b072f22`.
+- AssemblyScript `incremental` is the intended runtime.

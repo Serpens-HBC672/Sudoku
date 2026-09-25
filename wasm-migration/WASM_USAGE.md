@@ -83,7 +83,7 @@ For the UI option that lists all available techniques:
 const findings = findAllAvailableStepsWasm(core, { budgetLimit: 6790, validator });
 ```
 
-The module first scans the full registry in one call and exposes two availability bitmasks. JS then materializes only techniques that actually produced a finding. This avoids 53 JS→WASM search calls.
+The module first scans the full registry in one call and exposes two availability bitmasks. The scan only identifies which techniques hit; because finders can share result buffers, JS reruns each reported hit in registry order before materializing its Finding, making that finder's own result buffer current. This keeps the coarse availability scan without treating earlier shared result buffers as persistent.
 
 Lower-level migration/test APIs remain available for exact per-technique differential tests and propagation tests. They are not the preferred application boundary.
 

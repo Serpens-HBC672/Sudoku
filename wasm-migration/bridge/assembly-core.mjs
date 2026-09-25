@@ -1484,16 +1484,11 @@ export function findNextStepWasm(core, options = {}) {
   const validator = typeof options.validator === "function" ? options.validator : null;
   let startId = 0;
   while (startId < 53) {
-    const techniqueId =
-      typeof core.runFindNextTechniqueIdFrom === "function"
-        ? core.runFindNextTechniqueIdFrom(startId, budgetLimit)
-        : core.runFindNextTechniqueId(budgetLimit);
+    const techniqueId = core.runFindNextTechniqueIdFrom(startId, budgetLimit);
     if (techniqueId < 0) return null;
 
-    // The WASM dispatcher already performed the expensive ordered search.
-    // Re-running only the selected finder here is temporary ABI materialization:
-    // it reconstructs the existing JS Finding object from the same deterministic
-    // technique, while avoiding 53 JS<->WASM boundary crossings.
+    // The dispatcher stops on the selected technique, so its result buffer is
+    // still current and can be materialized without rerunning the finder.
     const finding = runTechniqueById(core, techniqueId, budgetLimit, true);
     if (!finding) throw new Error("WASM selected technique " + techniqueId + " but adapter could not materialize its Finding");
     if (!validator || validator(finding)) return finding;
@@ -1505,12 +1500,16 @@ export function findNextStepWasm(core, options = {}) {
 export function findAllAvailableStepsWasm(core, options = {}) {
   const budgetLimit = options.budgetLimit ?? 6790;
   const validator = typeof options.validator === "function" ? options.validator : null;
+  core.runScanAvailableTechniques(budgetLimit);
+  const low = core.resultAvailableTechniqueMaskLow() >>> 0;
+  const high = core.resultAvailableTechniqueMaskHigh() >>> 0;
   const findings = [];
-  for (let techniqueId = 0; techniqueId < 53; techniqueId++) {
-    const finding = runTechniqueById(core, techniqueId, budgetLimit, true);
-    if (!finding) continue;
-    if (validator && !validator(finding)) continue;
-    findings.push(finding);
+  for (let id = 0; id < 53; id++) {
+    const available = id < 32 ? !!(low & (1 << id)) : !!(high & (1 << (id - 32)));
+    if (!available) continue;
+    const finding = runTechniqueById(core, id, budgetLimit, false);
+    if (!finding) throw new Error("WASM availability scan marked technique " + id + " but adapter could not materialize its Finding");
+    if (!validator || validator(finding)) findings.push(finding);
   }
   return findings;
 }

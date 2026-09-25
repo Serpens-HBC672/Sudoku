@@ -1,5 +1,13 @@
 # WASM migration resume state
 
+> **Archived migration / diagnostic state.** This file preserves historical migration evidence.
+> Its former `current task`, `next task`, candidate-runtime, and promotion instructions are no longer authoritative.
+> For current canonical state, use:
+> - `wasm-migration/CURRENT_STATUS.md`
+> - `wasm-migration/MIGRATION.md`
+> - `wasm-migration/BUILD.md`
+> - `wasm-migration/WASM_USAGE.md`
+
 - source branch: `feat/android-release-packaging`
 - frozen source baseline: `fa68cb875b32673a66d8d9a3b46d891b3e3adee7`
 - readable oracle source: `Sudoku v3.23.3-rc.3 - DevVer.html`
