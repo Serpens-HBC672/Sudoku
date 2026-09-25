@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const DEVVER_URL = new URL("../../Sudoku v3.23.3-rc.3 - DevVer.html", import.meta.url);
 
-export async function loadOracle() {
+export async function loadOracle({ includeSoundnessChecker = false } = {}) {
   const html = await readFile(fileURLToPath(DEVVER_URL), "utf8");
   const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
   const mainScript = scripts.find((script) => script.includes("function candidatesAt") && script.includes("__SUDOKU_WASM_MIGRATION_TEST_HOOKS__"));
@@ -45,5 +45,7 @@ export async function loadOracle() {
 
   const hooks = context.__SUDOKU_WASM_MIGRATION_TEST_HOOKS__;
   if (!hooks) throw new Error("DevVer did not install __SUDOKU_WASM_MIGRATION_TEST_HOOKS__");
-  return hooks;
+  return includeSoundnessChecker
+    ? { ...hooks, verifySoundnessAfterApply: vm.runInContext('verifySoundnessAfterApply', context) }
+    : hooks;
 }

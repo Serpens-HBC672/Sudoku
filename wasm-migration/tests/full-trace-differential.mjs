@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import {
   instantiateCore,
@@ -42,6 +43,14 @@ const outDir = resolve(argValue("--out") || "full-differential-results");
 await mkdir(outDir, { recursive: true });
 
 const core = await instantiateCore(WASM_URL);
+const hash = data => createHash('sha256').update(data).digest('hex');
+const identity = {
+  wasm: hash(await readFile(WASM_URL)),
+  oracle: hash(await readFile(new URL('../../Sudoku v3.23.3-rc.3 - DevVer.html',import.meta.url))),
+  bridge: hash(await readFile(new URL('../bridge/assembly-core.mjs',import.meta.url))),
+  corpus: hash(await readFile(new URL('../../求解器的数独基准测试盘面参考.txt',import.meta.url))),
+  budget:6790,
+};
 const report = {
   schema: "sudoku-js-wasm-full-trace-differential/v1",
   ids,
@@ -51,8 +60,21 @@ const report = {
 };
 
 for (const testCase of corpus.filter((x) => ids.includes(x.id))) {
+  const casePath = resolve(outDir, 'case-' + testCase.id + '.json');
+  try {
+    const prior = JSON.parse(await readFile(casePath,'utf8'));
+    assert.deepEqual(prior.identity,identity);
+    if (prior.status === 'PASS') {
+      report.cases.push(prior.summary);
+      report.totalSteps += prior.summary.steps;
+      report.passedSteps += prior.summary.passed;
+      console.log('#' + testCase.id + ' reused hash-matched PASS');
+      continue;
+    }
+  } catch (error) { if(error.code !== 'ENOENT') throw error; }
   const started = performance.now();
   const trace = oracle.tracePuzzle(testCase.puzzle, testCase.solution);
+  await writeFile(resolve(outDir,'oracle-' + testCase.id + '.json'),JSON.stringify({identity,trace}));
   if (trace.soundnessProblem) {
     throw new Error("#" + testCase.id + " JS oracle soundness failure: " + JSON.stringify(trace.soundnessProblem));
   }
@@ -76,16 +98,23 @@ for (const testCase of corpus.filter((x) => ids.includes(x.id))) {
       }));
       throw error;
     }
-    assert.deepEqual(
+    try { assert.deepEqual(
       finding,
       hostClone(step.finding),
       "#" + testCase.id + " step " + step.step + " selected Finding mismatch",
-    );
+    ); } catch(error) {
+      await writeFile(resolve(outDir,'failure-' + testCase.id + '.json'),JSON.stringify({identity,caseId:testCase.id,step,actual:finding,error:String(error)},null,2));
+      throw error;
+    }
+    assert.equal(step.soundnessProblem,null);
+    assert.ok(step.beforeMasks.every(mask => (mask & ~511) === 0));
+    assert.ok(step.afterMasks.every(mask => (mask & ~511) === 0));
     passed++;
     report.totalSteps++;
     report.passedSteps++;
   }
   const elapsedMs = performance.now() - started;
+  assert.equal(trace.complete,true,'trace must finish');
   report.cases.push({
     id: testCase.id,
     name: testCase.name,
@@ -95,6 +124,8 @@ for (const testCase of corpus.filter((x) => ids.includes(x.id))) {
     stalled: trace.stalled,
     elapsedMs,
   });
+  await writeFile(casePath,JSON.stringify({identity,status:'PASS',summary:report.cases.at(-1)},null,2));
+  await writeFile(resolve(outDir, "full-differential.json"), JSON.stringify(report,null,2));
   console.log(
     "#" + testCase.id + " full trace PASS " + passed + "/" + trace.trace.length +
     " steps in " + elapsedMs.toFixed(1) + "ms",

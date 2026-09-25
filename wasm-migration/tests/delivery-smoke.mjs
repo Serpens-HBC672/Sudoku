@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {instantiateCore,loadPosition,loadGivenGrid,findNextStepWasm} from '../bridge/assembly-core.mjs';
+import {loadOracle} from './load-oracle.mjs';
+import {loadBenchmarkCorpus} from './benchmark-corpus.mjs';
+const oracle=await loadOracle(), entry=(await loadBenchmarkCorpus()).find(x=>x.id===57);
+const core=await instantiateCore(new URL('../build/sudoku-techniques.wasm',import.meta.url));
+const masks=Array.from(oracle.candidateMasksForGrid(entry.puzzle),Number);
+loadPosition(core,entry.puzzle,masks);loadGivenGrid(core,entry.puzzle);
+const f=findNextStepWasm(core,{budgetLimit:6790});
+assert.ok(f);assert.equal(f.technique,'nakedSingle');
+assert.deepEqual(f,JSON.parse(JSON.stringify(oracle.findTechniqueFromMasks(f.technique,entry.puzzle,masks,entry.puzzle,entry.solution))));
+console.log('PASS extracted delivery module and relative oracle/corpus imports, budget 6790, positive '+f.technique);

@@ -36,8 +36,9 @@ function parseDifficulty(block) {
 }
 
 export async function loadBenchmarkCorpus() {
-  const text = await readFile(fileURLToPath(BENCHMARK_URL), "utf8");
-  const sourceSha256 = createHash("sha256").update(text, "utf8").digest("hex");
+  const raw = await readFile(fileURLToPath(BENCHMARK_URL), "utf8");
+  const sourceSha256 = createHash("sha256").update(raw, "utf8").digest("hex");
+  const text = raw.replace(/\r\n/g, "\n");
   const blocks = text.split(/\n(?=#\d+\n)/).filter((block) => /^#\d+\n/.test(block));
   if (blocks.length === 0) throw new Error("Benchmark corpus contains no #N blocks");
 

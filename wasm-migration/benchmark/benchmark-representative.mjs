@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import os from "node:os";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { createHash } from 'node:crypto';
 import { resolve } from "node:path";
 import {
   instantiateCore,
@@ -68,6 +69,7 @@ const report = {
     totalMemoryBytes: os.totalmem(),
   },
   wasm: {
+    sha256: createHash('sha256').update(await readFile(WASM_URL)).digest('hex'),
     moduleInitializationMs,
     budget: BUDGET,
     language: "AssemblyScript",
@@ -169,6 +171,8 @@ for (const id of ids) {
   };
   entry.speedup = entry.jsBaselineMs.median / entry.wasmEndToEndMs.median;
   report.cases.push(entry);
+  await writeFile(resolve(outDir, 'case-' + id + '.json'),JSON.stringify({runtime:report.runtime,wasm:report.wasm,methodology:report.methodology,entry},null,2));
+  await writeFile(resolve(outDir, 'results.json'),JSON.stringify(report,null,2));
   console.log(
     "#" + id + " steps=" + entry.steps +
     " JS=" + entry.jsBaselineMs.median.toFixed(2) + "ms" +
@@ -191,7 +195,7 @@ const rows = report.cases.map((x) =>
 const md = [
   "# Representative JS → WASM benchmark",
   "",
-  "All measurements are from the same GitHub Actions runner and Node process. Historical corpus times are retained as metadata only and are not used for speedup ratios.",
+  "All measurements are from the same local machine and Node process. Historical corpus times are metadata only, not speedup baselines. JS includes trace construction and application; WASM is a validated state replay including assertions, not an application solve latency measurement.",
   "",
   "- Node: " + report.runtime.node,
   "- Platform: " + report.runtime.platform + " " + report.runtime.arch,

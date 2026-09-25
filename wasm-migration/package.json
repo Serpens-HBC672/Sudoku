@@ -7,6 +7,11 @@
     "node": ">=22"
   },
   "scripts": {
+    "test:coarse": "node tests/coarse-entry-parity.mjs",
+    "test:soundness": "node tests/soundness-contract.mjs",
+    "test:trace": "node tests/full-trace-differential.mjs --ids all --out evidence/full-trace",
+    "benchmark:delivery": "node benchmark/delivery-hotspots.mjs",
+    "coverage:delivery": "node benchmark/delivery-coverage.mjs",
     "build": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime incremental --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --outFile build/sudoku-techniques.wasm",
     "build:simd": "node -e \"require('fs').mkdirSync('build',{recursive:true})\" && asc assembly/core.ts --runtime incremental --optimizeLevel 3 --shrinkLevel 0 --exportRuntime --enable simd --outFile build/sudoku-techniques-simd.wasm",
     "test:static": "node tests/static-differential.mjs",

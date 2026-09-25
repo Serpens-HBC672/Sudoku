@@ -13,7 +13,10 @@ import {
   findAllAvailableStepsWasm,
 } from "./sudoku-wasm-adapter.js";
 
+import { exocetFindingMatchesSolution } from './finding-validator.js';
 let core = null;
+let solution = null;
+const validator = finding => exocetFindingMatchesSolution(finding, solution);
 
 function assertCore() {
   if (!core) throw new Error("WASM worker is not initialized");
@@ -24,10 +27,12 @@ async function handle(message) {
   switch (message.type) {
     case "init": {
       core = await instantiateCore(message.wasm);
+      solution = null;
       return { type: "ready" };
     }
     case "loadPosition": {
       loadPosition(assertCore(), message.grid, message.masks);
+      solution = message.solution ?? null;
       if (message.givenGrid) loadGivenGrid(core, message.givenGrid);
       return { type: "positionLoaded" };
     }
@@ -39,12 +44,12 @@ async function handle(message) {
     case "findNext":
       return {
         type: "result",
-        finding: findNextStepWasm(assertCore(), { budgetLimit: message.budgetLimit }),
+        finding: findNextStepWasm(assertCore(), { budgetLimit: message.budgetLimit, validator }),
       };
     case "findAll":
       return {
         type: "result",
-        findings: findAllAvailableStepsWasm(assertCore(), { budgetLimit: message.budgetLimit }),
+        findings: findAllAvailableStepsWasm(assertCore(), { budgetLimit: message.budgetLimit, validator }),
       };
     case "staticNishio":
       return { type: "result", finding: runStaticNishioFinder(assertCore()) };
