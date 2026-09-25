@@ -1,5 +1,17 @@
 # BUILD.md
 
+## Local delivery acceptance (Windows / Node 22)
+
+Use `npm ci --no-audit --no-fund` with the supplied package-lock.json, then `npm run build`.
+The local delivered runtime is Node 22.23.1 / AssemblyScript 0.27.31 incremental.
+`tests/benchmark-corpus.mjs` accepts Windows CRLF without altering the frozen corpus and hashes the actual original bytes.
+
+After building, run `npm run test:coarse`, `npm run test:soundness` and the existing static/dynamic/standalone/Worker scripts. `npm run test:trace` runs all 57 puzzles at budget 6790 with per-case hash-bound checkpoints. The trace gate records complete oracle pre/post states and exact ordered Finding comparisons; it does not run all techniques at every step. Run `npm run benchmark:delivery` only after traces finish and while no other test workload is running; `npm run coverage:delivery` reuses those traces.
+
+The package script `./package-delivery.ps1 -Name <new-directory-name>` copies only delivery files, hashes them, creates a ZIP, extracts it, verifies every copied file and runs a positive minimal module call from the extracted copy. It refuses to overwrite an existing directory/ZIP. See DELIVERY_REPORT.md for actual results and manifest.json at the package root for file hashes.
+
+Historical CI run [36108090845](https://github.com/Serpens-HBC672/Sudoku/actions/runs/36108090845) was supplied as completed/success in the handoff (PR merge commit `1ea73a37b5918290d6c6f478fe0ad882c1cbf923`, tree `3515805fad34759010f21902296a25516a8b6390`, equal to staging). It was not rerun or waited on during local delivery. Its status is inherited evidence; local evidence is under evidence/.
+
 ## Authoritative source
 
 This migration is built against the frozen readable baseline:

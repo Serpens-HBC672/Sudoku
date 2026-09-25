@@ -1,5 +1,9 @@
 # WASM_USAGE.md
 
+Local delivery adds optional `solution` to the browser Worker's `loadPosition` message. It is reset on every load and init. Coarse findNext/findAll apply exactly the frozen oracle's Exocet known-solution rule when a solution is supplied; omitted solution leaves the original no-validator behavior. `bridge/finding-validator.js` exposes that same rule for main-thread callers. No JavaScript technique search is used as a fallback.
+
+The original application HTML remains the frozen oracle, not a deployed WASM application. Adapter invocation, Node worker_threads parity, and real Edge module Worker parity have separate evidence scopes in DELIVERY_REPORT.md. Browser test coverage at budget 64 is a smoke test, not full-budget DFC evidence.
+
 ## Module
 
 Compiled module: `sudoku-techniques.wasm`.

@@ -1,5 +1,11 @@
 # MIGRATION.md
 
+## Local delivery addendum
+
+The local completion starts at `caaef8df1b939142ac79445f33696e16bb092f78`; the final local source commit and file identities are in the delivery manifest. AssemblyScript solver sources and the frozen oracle are unchanged from that starting point. The Windows corpus parser now normalizes CRLF for parsing while retaining the original-byte hash. The browser Worker accepts optional `solution` on `loadPosition` and uses the exact original `exocetFindingMatchesSolution` boundary rule; it resets that value on every load and initialization. No technique algorithm, ordering, budget or Finding representation changed.
+
+The full local trace gate passed 57 puzzles / 4886 ordered Findings at budget6790; direct coarse Node/browser entries and real Edge Worker were also checked at their documented scopes. Actual performance and the seven techniques not observed in trace/coverage samples are reported in BENCHMARK.md and COVERAGE.md. Do not interpret adapter acceptance as an already-deployed original application; original HTML is retained as oracle and application-level integration/custom-order/detailed-chain UI validation has not been performed.
+
 # Human-technique JS → WASM migration
 
 ## Authority and scope

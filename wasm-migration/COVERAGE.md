@@ -1,43 +1,26 @@
-# Technique coverage
+# Local technique coverage
 
-Coverage source: frozen JS oracle at baseline `fa68cb875b32673a66d8d9a3b46d891b3e3adee7`, readable source `Sudoku v3.23.3-rc.3 - DevVer.html`.
+Derived from frozen TECHNIQUE_CHAIN and this delivery's complete 57 case traces.
 
-The registry is derived from `TECHNIQUE_CHAIN`; the number 53 is reported evidence, not a hard-coded coverage target.
+- Registry: 53
+- First-match observed: 41
+- All-available observed: 35
+- Union observed: 46
+- Exact-parity trace steps: 4886
+- Soundness failures: 0
 
-## Current corpus result
+All-available scan: first recorded state of cases 11,34,47,53,57, at normal budget 6790. No all-technique scan at every step. Raw ordered Findings: evidence/coverage.json.
 
-- Registered techniques: **53**
-- Benchmark cases traced for first-match coverage: **57/57**
-- First-match observed: **41/53**
-- Bounded all-available observed: **35/53**
-- Union observed: **46/53**
-- Oracle soundness failures: **0**
-- All-available states scanned: **5**
+## First-match
 
-First-match and all-available coverage are intentionally separate. The normal trace records the selected first-match finding at every solve state. The expensive existing `findAllAvailableSteps` path was then sampled on one recorded state from each of benchmark ids **11, 34, 47, 53, 57**. This avoids repeatedly invoking all expensive techniques on every state of DFC-heavy puzzles.
+nakedSingle, hiddenSingle, lockedCandidate, gsp, nakedPair, hiddenPair, nakedTriple, hiddenTriple, nakedQuad, xWing, swordfish, skyscraper, twoStringKite, emptyRectangle, finnedXWing, finnedSwordfish, finnedJellyfish, uniqueRectangleType1, uniqueRectangleType2, hiddenUniqueRectangle, bugPlusOne, xyzWing, wWing, wxyzWing, xyChain, aic, sueDeCoq, pom, alsXZ, ahsXZ, alsChain, medusa3D, tridagon, unaryChain, nishioChain, tridagonForce, skLoop, msls, juniorExocet, dynamicNishioChain, dynamicUnaryChain
 
-## First-match observed
+## All-available
 
-nakedSingle, hiddenSingle, lockedCandidate, gsp, nakedPair, hiddenPair, nakedTriple, hiddenTriple, nakedQuad, xWing, swordfish, skyscraper, twoStringKite, emptyRectangle, finnedXWing, finnedSwordfish, finnedJellyfish, uniqueRectangleType1, uniqueRectangleType2, hiddenUniqueRectangle, bugPlusOne, xyzWing, wWing, wxyzWing, xyChain, aic, sueDeCoq, pom, alsXZ, ahsXZ, alsChain, medusa3D, tridagon, unaryChain, nishioChain, tridagonForce, skLoop, msls, juniorExocet, dynamicNishioChain, dynamicUnaryChain.
+nakedSingle, hiddenSingle, lockedCandidate, gsp, nakedPair, hiddenPair, nakedTriple, hiddenTriple, nakedQuad, hiddenQuad, xWing, swordfish, skyscraper, twoStringKite, emptyRectangle, jellyfish, squirmbagFish, finnedXWing, finnedSwordfish, finnedJellyfish, hiddenUniqueRectangle, xyzWing, xyChain, aic, niceLoop, sueDeCoq, pom, alsXZ, ahsXZ, alsChain, deathBlossom, medusa3D, nishioChain, msls, dynamicNishioChain
 
-## Bounded all-available observed
+## Not observed
 
-nakedSingle, hiddenSingle, lockedCandidate, gsp, nakedPair, hiddenPair, nakedTriple, hiddenTriple, nakedQuad, hiddenQuad, xWing, swordfish, skyscraper, twoStringKite, emptyRectangle, jellyfish, squirmbagFish, finnedXWing, finnedSwordfish, finnedJellyfish, hiddenUniqueRectangle, xyzWing, xyChain, aic, niceLoop, sueDeCoq, pom, alsXZ, ahsXZ, alsChain, deathBlossom, medusa3D, nishioChain, msls, dynamicNishioChain.
+fireworkTriple, fireworkQuadruple, fireworkWWing, fireworkAlp, multipleChain, seniorExocet, dynamicMultipleChain
 
-## Not observed by either scan
-
-The supplied 57-puzzle corpus did **not** exercise these seven techniques in either the complete first-match traces or the documented bounded all-available scan:
-
-- fireworkTriple
-- fireworkQuadruple
-- fireworkWWing
-- fireworkAlp
-- multipleChain
-- seniorExocet
-- dynamicMultipleChain
-
-No coverage is fabricated for them. Their migration gates therefore rely on per-technique JS↔WASM differential checks on the supplied benchmark starts (including null-result equivalence) plus any future targeted fixtures added by the owner.
-
-## Evidence
-
-The coverage workflow is `.github/workflows/wasm-coverage.yml`; generator is `benchmark/coverage-scan.mjs`. The recorded evidence artifact from the full 57-board oracle scan reported `first=41/53 allAvailable=35/53 union=46/53` with zero soundness failures.
+These remain implemented but have no positive observation in these trace/coverage samples. Initial-state per-technique differential includes null-result parity and must not be described as positive technique coverage.

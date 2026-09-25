@@ -1,5 +1,13 @@
 # Current migration verification status
 
+## Local delivery, 2026-09-25 (supersedes historical coverage claims below)
+
+From cleanup commit `caaef8df1b939142ac79445f33696e16bb092f78`, local Node 22.23.1 / AssemblyScript 0.27.31 incremental completed **57/57 puzzles and 4886/4886 exact ordered selected-Finding comparisons**, budget 6790. Raw pre/post states and per-case hash-bound results are in `evidence/full-trace/`. The original shared soundness checker passed replay on all 4886 post-states; negative tests detect all three required failure types.
+
+Additional local gates: static propagation 1140, dynamic propagation 228 and dynamic finders 171 (both budget64 smoke), standalone finders 2679, static forcing finders 171, Node Worker parity, direct Node/browser bridge parity at budget6790, and real Edge module Worker parity at budget64 including optional solution validation. Coverage from the actual traces and five all-available states is 41 first-match / 35 all-available / 46 union out of 53. See DELIVERY_REPORT.md, COVERAGE.md and BENCHMARK.md for scope, limitations and measured results; manifest.json in the package binds final files.
+
+The solver and frozen oracle were not changed. Changes are the CRLF corpus parser, acceptance/packaging tools, and optional known-solution Exocet validation at the browser Worker boundary. The original application HTML has not been switched to WASM. No remote writes or GitHub Actions operations occurred. All following workflow/runtime investigation sections are historical evidence, not claims about this local run.
+
 This file is evidence, not a design promise. Update it when a gate changes.
 
 ## Canonical post-promotion state
