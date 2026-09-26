@@ -45,6 +45,9 @@ jobs:
       - name: Build scalar AssemblyScript core
         run: npm run build
 
+      - name: Verify GSP position loading and Worker messages
+        run: npm run test:gsp
+
       - name: Run exact JS-WASM static propagation differential suite
         run: npm run test:static
 

@@ -62,9 +62,10 @@ bit 8 -> digit 9
 The JS adapter loads a position with:
 
 ```js
-loadPosition(core, grid9x9, masks81);
-loadGivenGrid(core, givenGrid9x9);
+loadPosition(core, grid9x9, masks81, givenGrid9x9);
 ```
+
+Pass the immutable original puzzle as the fourth argument on **every** position load. `loadPosition` resets all inputs, including givens. Omitting givens (or passing `null`) intentionally disables GSP and must not be used for parity with a JS call that receives givens. Never substitute the evolving current grid. The legacy `loadGivenGrid(core, givens)` API remains supported, but must be called **after** each `loadPosition`.
 
 Internally the authoritative candidate representation remains a 9-bit mask. Digit arrays are only derived views used when recreating the existing JS Finding/context shape.
 

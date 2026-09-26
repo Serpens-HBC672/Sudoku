@@ -6,7 +6,6 @@ import { resolve } from "node:path";
 import {
   instantiateCore,
   loadPosition,
-  loadGivenGrid,
   materializeTechniqueFinding,
 } from "../bridge/assembly-core.mjs";
 import { loadOracle } from "../tests/load-oracle.mjs";
@@ -112,8 +111,7 @@ for (const id of ids) {
       const masks = Array.from(step.beforeMasks, Number);
 
       let t0 = performance.now();
-      loadPosition(core, grid, masks);
-      loadGivenGrid(core, testCase.puzzle);
+      loadPosition(core, grid, masks, testCase.puzzle);
       if (measure) inputPrepMs += performance.now() - t0;
 
       let startId = 0;

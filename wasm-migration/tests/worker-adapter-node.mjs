@@ -2,7 +2,6 @@ import { parentPort } from "node:worker_threads";
 import {
   instantiateCore,
   loadPosition,
-  loadGivenGrid,
   runStandaloneTechniqueFinder,
   runDynamicNishioFinder,
   runDynamicUnaryFinder,
@@ -21,8 +20,7 @@ parentPort.on("message", async (message) => {
     }
     if (!core) throw new Error("worker core not initialized");
     if (message.type === "load") {
-      loadPosition(core, message.grid, message.masks);
-      loadGivenGrid(core, message.givenGrid);
+      loadPosition(core, message.grid, message.masks, message.givenGrid);
       parentPort.postMessage({ id: message.id, ok: true });
       return;
     }

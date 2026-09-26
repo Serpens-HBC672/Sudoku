@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import os from 'node:os';
-import {instantiateCore,loadPosition,loadGivenGrid,materializeTechniqueFinding} from '../bridge/assembly-core.mjs';
+import {instantiateCore,loadPosition,materializeTechniqueFinding} from '../bridge/assembly-core.mjs';
 import {loadOracle} from '../tests/load-oracle.mjs';
 import {loadBenchmarkCorpus} from '../tests/benchmark-corpus.mjs';
 import {exocetFindingMatchesSolution} from '../bridge/finding-validator.js';
@@ -24,7 +24,7 @@ for(const [caseId,key] of [[57,'nakedSingle'],[11,'lockedCandidate'],[22,'dynami
     const masks=Array.from(step.beforeMasks,Number);
     const endToEndStart=performance.now();
     let t=endToEndStart;
-    loadPosition(core,grid,masks);loadGivenGrid(core,test.puzzle);
+    loadPosition(core, grid, masks, test.puzzle);
     const inputMs=performance.now()-t;
     t=performance.now();
     if(id===50) core.runDynamicNishioFinder(6790);

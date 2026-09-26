@@ -13,13 +13,18 @@ export async function instantiateCore(source) {
   return instance.exports;
 }
 
-export function loadPosition(core, grid, masks) {
+// Load immutable puzzle givens after reset, together with each current position.
+// Omission deliberately disables GSP; never infer givens from the current grid.
+export function loadPosition(core, grid, masks, givenGrid = null) {
   if (!Array.isArray(grid) || grid.length !== 9 || !grid.every((row) => Array.isArray(row) && row.length === 9)) {
     throw new Error("grid must be a 9x9 array");
   }
   if (!Array.isArray(masks) || masks.length !== 81) {
     throw new Error("masks must contain exactly 81 entries");
   }
+
+  // Validate before resetting a previously loaded position.
+  if (givenGrid !== null) validateGivenGrid(givenGrid);
 
   core.resetInput();
   for (let r = 0; r < 9; r++) {
@@ -29,12 +34,21 @@ export function loadPosition(core, grid, masks) {
       core.setInputMask(index, masks[index] & 0x1ff);
     }
   }
+  if (givenGrid !== null) loadGivenGrid(core, givenGrid);
 }
 
-export function loadGivenGrid(core, grid) {
+function validateGivenGrid(grid) {
   if (!Array.isArray(grid) || grid.length !== 9 || !grid.every((row) => Array.isArray(row) && row.length === 9)) {
     throw new Error("given grid must be a 9x9 array");
   }
+  if (!grid.every(row => row.every(digit => Number.isInteger(digit) && digit >= 0 && digit <= 9))) {
+    throw new Error("given grid digits must be integers in 0..9");
+  }
+}
+
+// Legacy two-call API: call this AFTER every loadPosition(), which resets givens.
+export function loadGivenGrid(core, grid) {
+  validateGivenGrid(grid);
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       core.setGivenCell(r * 9 + c, grid[r][c] | 0);

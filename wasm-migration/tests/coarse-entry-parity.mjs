@@ -14,7 +14,7 @@ for (const solved of [false, true]) {
   const grid = clone(solved ? entry.solution : entry.puzzle);
   const masks = Array.from(oracle.candidateMasksForGrid(grid), Number);
   const before = clone({grid, masks});
-  adapters.forEach((a,i) => { a.loadPosition(cores[i], grid, masks); a.loadGivenGrid(cores[i], entry.puzzle); });
+  adapters.forEach((a,i) => { a.loadPosition(cores[i], grid, masks, entry.puzzle); });
   const options = {budgetLimit:6790, validator: f => !!oracle.validateFindingAgainstSolution(f, entry.solution)};
   const expected = clone(oracle.enumerateAvailableFromMasks(grid,masks,entry.puzzle,entry.solution));
   assert.equal(expected.length > 1, !solved);

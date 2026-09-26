@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import {
   instantiateCore,
   loadPosition,
-  loadGivenGrid,
   runStandaloneTechniqueFinder,
 } from "../bridge/assembly-core.mjs";
 import { loadOracle } from "./load-oracle.mjs";
@@ -89,8 +88,7 @@ let comparisons = 0;
 
 for (const testCase of corpus) {
   const masks = Array.from(oracle.candidateMasksForGrid(testCase.puzzle), Number);
-  loadPosition(core, testCase.puzzle, masks);
-  loadGivenGrid(core, testCase.puzzle);
+  loadPosition(core, testCase.puzzle, masks, testCase.puzzle);
   for (const [id, key] of TECHNIQUES) {
     const jsFinding = oracle.findTechniqueFromMasks(
       key, testCase.puzzle, masks, testCase.puzzle, testCase.solution,

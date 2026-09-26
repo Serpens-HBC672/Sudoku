@@ -29,7 +29,7 @@ try {
     const {exocetFindingMatchesSolution} = await import('/bridge/finding-validator.js');
     const bytes = new Uint8Array(await (await fetch('/build/sudoku-techniques.wasm')).arrayBuffer());
     const core = await a.instantiateCore(bytes);
-    a.loadPosition(core,grid,masks); a.loadGivenGrid(core,grid);
+    a.loadPosition(core, grid, masks, grid);
     const worker = new Worker('/bridge/sudoku-wasm-worker.js',{type:'module'});
     let id=0;
     const call = data => new Promise((resolve,reject) => {
