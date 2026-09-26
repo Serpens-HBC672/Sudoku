@@ -5,7 +5,6 @@ import { resolve } from "node:path";
 import {
   instantiateCore,
   loadPosition,
-  loadGivenGrid,
   findNextStepWasm,
 } from "../bridge/assembly-core.mjs";
 import { loadOracle } from "./load-oracle.mjs";
@@ -81,8 +80,7 @@ for (const testCase of corpus.filter((x) => ids.includes(x.id))) {
   let passed = 0;
   for (const step of trace.trace) {
     const grid = gridFromString(step.beforeGrid);
-    loadPosition(core, grid, Array.from(step.beforeMasks, Number));
-    loadGivenGrid(core, testCase.puzzle);
+    loadPosition(core, grid, Array.from(step.beforeMasks, Number), testCase.puzzle);
     let finding;
     try {
       finding = findNextStepWasm(core, {

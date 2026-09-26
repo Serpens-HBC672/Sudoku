@@ -26,3 +26,9 @@ AssemblyScript 0.27.31，incremental，Node v22.23.1。142582 bytes；SHA-256：
 历史 CI run 36108090845 的 completed/success 来自交接文件，保留引用于 BUILD.md；本次未重新触发或等待，也不以其替代本地结果。
 
 所有文件仅在当前 Sudoku 工作区及新的交付子目录；没有 push、merge、远端分支修改或 GitHub Actions 操作。
+
+## 后续 GSP 接入修复（2026-09-26）
+
+`loadPosition(core, grid, masks, givenGrid)` 现在支持同次加载原始题面，Node、浏览器和 Worker 路径及调用示例均已同步。此前省略原始题面可复现第47—54题的42处GSP差异；正确加载后，两种适配器各570/570步与冻结JS oracle一致。新增 `test:gsp` 覆盖上述完整轨迹、直接GSP调用、重复加载、旧接口、无givens重置及生产Worker消息处理（Node shim，非真实浏览器启动测试）。
+
+本次未修改AssemblyScript技巧实现，重建WASM的哈希仍与上文一致。桥接文件与测试已修改，旧交付包manifest和4886步证据属于修复前版本，本次未重新宣称全57题验收。仓库未包含Claude后续的Base64内嵌集成HTML，该文件须使用更新适配器并在每次loadPosition时传入原始givenGrid。

@@ -1,7 +1,6 @@
 import {
   instantiateCore,
   loadPosition,
-  loadGivenGrid,
   runStandaloneTechniqueFinder,
   runStaticNishioFinder,
   runStaticUnaryFinder,
@@ -31,9 +30,8 @@ async function handle(message) {
       return { type: "ready" };
     }
     case "loadPosition": {
-      loadPosition(assertCore(), message.grid, message.masks);
+      loadPosition(assertCore(), message.grid, message.masks, message.givenGrid ?? null);
       solution = message.solution ?? null;
-      if (message.givenGrid) loadGivenGrid(core, message.givenGrid);
       return { type: "positionLoaded" };
     }
     case "standalone":

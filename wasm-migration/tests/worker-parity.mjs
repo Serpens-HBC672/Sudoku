@@ -4,7 +4,6 @@ import { Worker } from "node:worker_threads";
 import {
   instantiateCore,
   loadPosition,
-  loadGivenGrid,
   runStandaloneTechniqueFinder,
   runDynamicNishioFinder,
   runDynamicUnaryFinder,
@@ -21,8 +20,7 @@ const oracle = await loadOracle();
 const corpus = await loadBenchmarkCorpus();
 const testCase = corpus.find((entry) => entry.id === 22) || corpus[0];
 const masks = Array.from(oracle.candidateMasksForGrid(testCase.puzzle), Number);
-loadPosition(mainCore, testCase.puzzle, masks);
-loadGivenGrid(mainCore, testCase.puzzle);
+loadPosition(mainCore, testCase.puzzle, masks, testCase.puzzle);
 
 const worker = new Worker(new URL("./worker-adapter-node.mjs", import.meta.url), { type: "module" });
 let seq = 0;
