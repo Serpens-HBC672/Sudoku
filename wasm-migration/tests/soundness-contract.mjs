@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {loadOracle} from './load-oracle.mjs';
+import {loadBenchmarkCorpus} from './benchmark-corpus.mjs';
+const oracle=await loadOracle({includeSoundnessChecker:true});
+const {solution}= (await loadBenchmarkCorpus())[0];
+const grid=Array.from({length:9},()=>Array(9).fill(0));
+const verify=oracle.verifySoundnessAfterApply;
+assert.equal(verify({actionType:'eliminate',eliminations:[{r:0,c:0,digit:solution[0][0]}]},solution,grid,()=>[1]).kind,'badElimination');
+assert.equal(verify({actionType:'fill',r:0,c:0,digit:solution[0][0]%9+1},solution,grid,()=>[1]).kind,'badFill');
+const zero=verify({actionType:'eliminate',eliminations:[{r:1,c:0,digit:solution[1][0]%9+1},{r:0,c:0,digit:solution[0][0]%9+1}]},solution,grid,()=>[]);
+assert.equal(zero.kind,'zeroCandidates');
+assert.equal(zero.cell.r,0);assert.equal(zero.cell.c,0);
+console.log('PASS frozen shared soundness checker rejects bad elimination, bad fill and zero candidates; deterministic row-major failure.');

@@ -1,0 +1,39 @@
+name: WASM Coverage Scan
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/wasm-human-techniques-migration
+    paths:
+      - wasm-migration/COVERAGE_TRIGGER
+
+permissions:
+  contents: read
+
+jobs:
+  oracle-coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated migration toolchain
+        run: npm install --no-audit --no-fund
+      - name: Generate strict corpus
+        run: npm run corpus
+      - name: Trace all benchmark puzzles and run bounded all-available scan
+        run: node benchmark/coverage-scan.mjs --trace-ids all --all-available-ids 11,34,47,53,57 --max-available-states 1 --out coverage-results
+      - name: Upload coverage evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-coverage
+          path: |
+            wasm-migration/coverage-results/coverage-report.json
+            wasm-migration/coverage-results/COVERAGE.generated.md
+          if-no-files-found: error

@@ -1,0 +1,1 @@
+trigger 2026-09-24: Golden Nugget full-budget DFC benchmark, stop-at-first-dynamic oracle

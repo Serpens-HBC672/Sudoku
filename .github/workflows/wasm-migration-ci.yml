@@ -1,0 +1,100 @@
+name: WASM Migration CI
+
+on:
+  push:
+    branches:
+      - codex/wasm-human-techniques-migration
+      - main
+    paths:
+      - "Sudoku v3.23.3-rc.3 - WASM.html"
+      - "scripts/build-web.mjs"
+      - "求解器的数独基准测试盘面参考.txt"
+      - "wasm-migration/**"
+      - ".github/workflows/wasm-migration-ci.yml"
+  pull_request:
+    paths:
+      - "Sudoku v3.23.3-rc.3 - WASM.html"
+      - "scripts/build-web.mjs"
+      - "求解器的数独基准测试盘面参考.txt"
+      - "wasm-migration/**"
+      - ".github/workflows/wasm-migration-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  assemblyscript-static-propagation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wasm-migration
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install isolated migration toolchain
+        run: npm install --no-audit --no-fund
+
+      - name: Generate strict machine-readable benchmark corpus
+        run: npm run corpus
+
+      - name: Build scalar AssemblyScript core
+        run: npm run build
+
+      - name: Verify reproducible embedded application
+        run: node ../scripts/build-web.mjs --check
+
+      - name: Verify actual application and generated Blob Worker
+        run: npm run test:app
+
+      - name: Verify GSP position loading and Worker messages
+        run: npm run test:gsp
+
+      - name: Run exact JS-WASM static propagation differential suite
+        run: npm run test:static
+
+      - name: Run bounded JS-WASM dynamic propagation differential suite
+        run: npm run test:dynamic
+
+      - name: Run exact Dynamic Nishio-Unary-Multiple finder differential suite
+        run: npm run test:dynamic-finders
+
+      - name: Run standalone technique finder differential suite
+        run: npm run test:standalone
+
+      - name: Report Exocet oracle findings
+        run: node tests/exocet-oracle-report.mjs
+
+      - name: Run static forcing-chain finder differential suite
+        run: npm run test:static-finders
+
+      - name: Run shared main-thread Worker parity
+        run: npm run test:worker
+
+      - name: Build SIMD-enabled profile
+        run: npm run build:simd
+
+      - name: Record artifact hashes and sizes
+        run: |
+          sha256sum build/*.wasm > build/SHA256SUMS.txt
+          wc -c build/*.wasm > build/SIZES.txt
+          cat build/SHA256SUMS.txt
+          cat build/SIZES.txt
+
+      - name: Upload WASM prototype artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-prototype
+          path: |
+            wasm-migration/build/*.wasm
+            wasm-migration/build/SHA256SUMS.txt
+            wasm-migration/build/SIZES.txt
+            wasm-migration/benchmark/corpus.json
+          if-no-files-found: error

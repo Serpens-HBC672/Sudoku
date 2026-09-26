@@ -1,6 +1,6 @@
 # Android packaging and GitHub Release
 
-This repository keeps the Sudoku application as its existing single HTML file. The mobile packaging layer does not rewrite the Sudoku engine. During CI, `scripts/prepare-web.mjs` copies the single root `Sudoku *.html` file to `www/index.html`, then Capacitor generates the Android project.
+The only root application is `Sudoku v3.23.3-rc.3 - WASM.html`, with its engine embedded. `package.json` explicitly selects it through `sudoku.webSource`. During CI, `scripts/prepare-web.mjs` verifies that it is the only root Sudoku HTML and copies it to `www/index.html`, then Capacitor generates the Android project. The frozen JavaScript oracle lives under `wasm-migration/oracle/` and cannot become a packaging entry.
 
 ## What gets built
 
