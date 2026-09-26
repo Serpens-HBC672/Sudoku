@@ -1,0 +1,37 @@
+name: WASM Full Trace Differential
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/wasm-human-techniques-migration
+    paths:
+      - wasm-migration/FULL_TRACE_TRIGGER
+
+permissions:
+  contents: read
+
+jobs:
+  full-trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: wasm-migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install migration toolchain
+        run: npm install --no-audit --no-fund
+      - name: Build AssemblyScript core
+        run: npm run build
+      - name: Compare every selected finding on all 57 oracle traces
+        run: node tests/full-trace-differential.mjs --ids all --out full-differential-results
+      - name: Upload full trace evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: sudoku-wasm-full-differential
+          path: wasm-migration/full-differential-results/full-differential.json
+          if-no-files-found: error

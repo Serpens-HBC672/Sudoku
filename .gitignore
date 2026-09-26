@@ -6,3 +6,5 @@ android/
 *.keystore
 .env
 .DS_Store
+
+wasm-migration/build/
