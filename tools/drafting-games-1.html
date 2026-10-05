@@ -170,6 +170,17 @@
   .speed-slider input[type=range]{ flex:1; accent-color:var(--accent); height:28px; }
   .speed-slider-val{ font-family:'JetBrains Mono', monospace; font-size:11px; min-width:66px; text-align:right; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
 
+  .model-controls{ display:flex; flex-direction:column; gap:8px; border:1px dashed var(--slot-line); padding:10px; }
+  .model-controls select{ max-width:100%; background:var(--paper); color:var(--ink); border:1px solid var(--ink-soft); padding:7px; font:inherit; }
+  .model-controls input[type=file]{ max-width:100%; width:100%; font:inherit; color:var(--ink-soft); }
+  .model-controls input::file-selector-button{ border:1px solid var(--ink); padding:7px; margin-right:8px; background:var(--paper); color:var(--ink); cursor:pointer; }
+  .model-controls p{ margin:0; line-height:1.5; letter-spacing:0; overflow-wrap:anywhere; }
+  .model-controls .model-state{ color:var(--ink); }
+  .model-controls [data-state="error"]{ color:var(--accent-dark); }
+  .model-controls progress{ width:100%; accent-color:var(--accent); }
+  .model-controls button{ padding:6px 10px; }
+  .model-controls select:focus-visible,.model-controls input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
   .size-switch{ display:flex; gap:6px; }
   .size-switch button{ background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); padding:6px 12px; min-width:48px; }
   .size-switch button:hover:not(:disabled):not(.active){ background:var(--slot-bg); }
@@ -236,6 +247,19 @@
         </div>
         <footer>
           <div class="hint-row"><span id="hint2048">方向键/WASD 或滑动棋盘移动</span></div>
+          <div class="model-controls" aria-label="2048 AI 与权重">
+            <label for="engine2048">自动游玩策略</label>
+            <select id="engine2048">
+              <option value="heuristic">原有启发式 · 无需权重</option>
+              <option value="td8">TD 8×6 · 2-ply / 困难局面 3-ply · 目标 32768</option>
+            </select>
+            <label for="modelFile2048">本地权重文件（8x6patt.f32，512 MiB）</label>
+            <input id="modelFile2048" type="file" accept=".f32" aria-describedby="modelNote2048 modelStatus2048">
+            <p class="model-state" id="modelStatus2048" role="status" aria-live="polite" data-state="empty">未加载权重 · 当前可使用原有启发式</p>
+            <progress id="modelProgress2048" value="0" max="1" aria-label="权重读取与校验进度" hidden></progress>
+            <div><button id="unloadModel2048" disabled>释放权重</button></div>
+            <p id="modelNote2048">文件仅在本机读取，不会上传。需先用 prepare-model.js 转换；加载时完整校验 SHA-256。建议桌面浏览器，并预留至少 1 GiB 可用内存。TD 达到 32768 后停止；可手动继续或切回原有启发式。<a href="drafting-games-1-README.md" target="_blank" rel="noopener">准备与使用说明</a></p>
+          </div>
           <div class="footer-row">
             <div class="btns">
               <button id="playBtn2048">自动游玩</button>
@@ -1063,6 +1087,7 @@ function AI2048Kit(cfg){
 if(typeof module !== 'undefined') module.exports = AI2048Kit;
 
 </script>
+<script src="2048-ntuple/browser-adapter.js"></script>
 <script>
 (function(){
   const SIZE = 4;
@@ -1082,6 +1107,25 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
   const tallyEl = document.getElementById('tally2048');
   const newGameBtn = document.getElementById('newGameBtn2048');
   const speedSliderHost = document.getElementById('speedHost2048');
+  const engineEl = document.getElementById('engine2048');
+  const modelFileEl = document.getElementById('modelFile2048');
+  const modelStatusEl = document.getElementById('modelStatus2048');
+  const modelProgressEl = document.getElementById('modelProgress2048');
+  const unloadModelBtn = document.getElementById('unloadModel2048');
+  let tdClient = null;
+  function usingTD(){ return engineEl.value === 'td8'; }
+  function tdBoard(){ return NTupleBrowser.boardFromTiles(tiles); }
+  function syncModelUI(){
+    const state = tdClient ? tdClient.state : {status:'error',message:'权重接口脚本未加载；仍可使用原有启发式。',progress:0};
+    modelStatusEl.dataset.state = state.status;
+    modelStatusEl.textContent = state.message + (state.status === 'loading' ? ' ' + Math.floor(state.progress*100) + '%' : '');
+    modelProgressEl.hidden = state.status !== 'loading'; modelProgressEl.value = state.progress;
+    unloadModelBtn.disabled = state.status === 'empty';
+    unloadModelBtn.textContent = state.status === 'loading' ? '取消加载' : '释放权重';
+    dynBtn.disabled = usingTD();
+    dynBtn.title = usingTD() ? 'TD 使用经过验证的固定层数，不使用墙钟预算' : '实验:棋盘拥挤时多想,安全时少想';
+    playBtn.disabled = usingTD() && (state.status !== 'ready' || tiles.some(t=>t.exp>=15));
+  }
   GameShared.buildSlots(document.getElementById('slots2048'), SIZE);
 
   GameShared.attachSwipe(boardEl, (dir)=>{ if(!autoPlaying) handleMove(dir); });
@@ -1255,6 +1299,12 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
   let turbo = false, dynBudget = false, batch = false, turboBudgetMs = 20;
   let stepsPlayed = 0, dirty = false, rafPending = false, autoPlayedThisGame = false, milestoneAt = 0;
   const TRANSITION_MS = 140;
+  let boardVersion = 0, gameVersion = 0, moveTimer = null, moveCompletion = null, batchTimer = null;
+  function finishPendingMove(){
+    if(!moveCompletion) return;
+    clearTimeout(moveTimer); moveTimer = null;
+    const finish = moveCompletion; moveCompletion = null; finish();
+  }
 
   let lastLayout = {size:100, gap:12};
   function cellLayout(){
@@ -1360,60 +1410,58 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
       if(wasAuto) recordGame();
       stopAuto();
       setTimeout(()=>{ if(over) overlayEl.classList.add('show'); }, 380);
-      if(wasAuto && batch){                       // 连续对局: start the next game by itself
-        setTimeout(()=>{ if(over && batch && !autoPlaying){ newGame(); startAuto(); } }, 1500);
-      }
+      if(wasAuto && batch) scheduleNextGame();
+    } else if(autoPlaying && usingTD() && tiles.some(t=>t.exp>=15)){
+      recordGame(); stopAuto(); syncModelUI();
+      hint2048.textContent = '已达成 TD 目标 32768 · 可手动继续或切换原有启发式';
+      if(batch) scheduleNextGame();
     }
   }
 
   function handleMove(dir){
-    if(over) return;
+    if(!['up','right','down','left'].includes(dir)) return false;
+    finishPendingMove();
+    if(over) return false;
     if(pendingMilestone) dismissMilestone();
     const {resultTiles, slides, merges, gained, moved} = applyRealMove(tiles, dir, ()=>nextTileId++);
-    if(!moved) return;
+    if(!moved) return false;
+    const version = ++boardVersion;
     stepsPlayed++;
-
     const layout = cellLayout();
-    // slide everything (including merge participants) to their destinations
-    for(const s of slides){
-      const el = tileEls.get(s.id);
-      if(!el) continue;
-      const p = posFor(s.toR, s.toC, layout);
-      el.style.left = p.left+'px'; el.style.top = p.top+'px';
+    for(const slide of slides){
+      const el = tileEls.get(slide.id); if(!el) continue;
+      const p = posFor(slide.toR,slide.toC,layout); el.style.left=p.left+'px'; el.style.top=p.top+'px';
     }
-    score += gained;
-    if(score > best) best = score;
-    scoreEl.textContent = score; bestEl.textContent = best;
+    score+=gained; if(score>best) best=score;
+    scoreEl.textContent=score; bestEl.textContent=best;
+    // Finish the real random spawn immediately, before another request can inspect the board.
+    // The delayed callback is visual only and cannot spawn into a restarted/changed game.
+    tiles=resultTiles;
+    const spawned=spawnLogic();
+    moveCompletion=()=>{
+      if(version!==boardVersion) return;
+      fullRender();
+      for(const merge of merges){const tile=tiles.find(t=>t.r===merge.r&&t.c===merge.c);if(tile&&tileEls.has(tile.id))tileEls.get(tile.id).classList.add('pop');}
+      if(spawned&&tileEls.has(spawned.id))tileEls.get(spawned.id).classList.add('spawn');
+      checkMilestonesAndGameOver(); syncModelUI();
+    };
+    moveTimer=setTimeout(finishPendingMove,TRANSITION_MS);
+    return true;
+  }
 
-    // Update the logical state immediately either way, so a rapid next
-    // move always computes against the true post-move board. Only the DOM
-    // cleanup (removing merge-source elements, spawning the merged tile's
-    // element) waits for the slide animation to visually finish.
-    tiles = resultTiles;
-    if(merges.length){
-      setTimeout(()=>{
-        for(const m of merges){
-          for(const sid of m.sourceIds){ const el = tileEls.get(sid); if(el){ el.remove(); tileEls.delete(sid); } }
-        }
-        for(const t of resultTiles){
-          if(tileEls.has(t.id)) continue; // already-existing surviving tile
-          const el = makeTileEl(t.exp, t.r, t.c, layout, 'pop');
-          tilesLayer.appendChild(el);
-          tileEls.set(t.id, el);
-        }
-        spawnRandomTile();
-        checkMilestonesAndGameOver();
-      }, TRANSITION_MS);
-    } else {
-      setTimeout(()=>{
-        spawnRandomTile();
-        checkMilestonesAndGameOver();
-      }, TRANSITION_MS);
-    }
+  function scheduleNextGame(){
+    const version=gameVersion, token=autoToken;
+    clearTimeout(batchTimer);
+    batchTimer=setTimeout(()=>{
+      batchTimer=null;
+      if(batch && !autoPlaying && version===gameVersion && token===autoToken){newGame();startAuto();}
+    },1500);
   }
 
   function newGame(){
     stopAuto();
+    boardVersion++; gameVersion++;
+    clearTimeout(moveTimer); moveTimer=null; moveCompletion=null;
     tiles = []; nextTileId = 1; score = 0; over = false;
     stepsPlayed = 0; dirty = false; autoPlayedThisGame = false;
     celebratedThisGame = new Set();
@@ -1422,6 +1470,7 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
     tilesLayer.innerHTML = ''; tileEls = new Map();
     spawnRandomTile(); spawnRandomTile();
     scoreEl.textContent = score; bestEl.textContent = best;
+    syncModelUI();
   }
 
   // ---- instant (turbo) path: game logic only; the DOM is redrawn at most once per frame ----
@@ -1434,7 +1483,7 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
     if(over) return false;
     const {resultTiles, gained, moved} = applyRealMove(tiles, dir, ()=>nextTileId++);
     if(!moved) return false;
-    tiles = resultTiles;
+    tiles = resultTiles; boardVersion++;
     score += gained; if(score > best) best = score;
     spawnLogic();
     stepsPlayed++;
@@ -1482,20 +1531,26 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
   function stopAuto(){
     autoPlaying = false; autoToken++;
     if(autoTimer){ clearTimeout(autoTimer); autoTimer = null; }
+    clearTimeout(batchTimer); batchTimer=null;
+    if(tdClient) tdClient.cancel();
     if(aiRunner){ aiRunner.dispose(); aiRunner = null; }
     boardEl.classList.remove('turbo');
     flushRender();                                     // make the board show the true final state
     playBtn.textContent = '自动游玩';
     turboBtn.disabled = false;
     hint2048.textContent = DEFAULT_HINT;
+    syncModelUI();
   }
   function startAuto(){
+    finishPendingMove();
+    if(over || (usingTD() && (!tdClient || tdClient.state.status!=='ready' || tiles.some(t=>t.exp>=15)))){syncModelUI();return;}
+    clearTimeout(batchTimer); batchTimer=null;
     autoPlaying = true; autoPlayedThisGame = true;
     playBtn.textContent = '停止';
     turboBtn.disabled = true;                          // switching mode mid-run would change what the slider means
     if(turbo) boardEl.classList.add('turbo');          // CSS: no slide/pop animations while it runs
     rateAt = performance.now(); rateSteps = 0; rate = 0; spentMs = 0; spentN = 0;
-    aiRunner = createAIRunner();
+    if(!usingTD()) aiRunner = createAIRunner();
     autoTick();
   }
   function showStatus(res, budget){
@@ -1504,6 +1559,11 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
     if(now - rateAt >= 1000){ rate = rateSteps * 1000 / (now - rateAt); rateAt = now; rateSteps = 0; }
     if(turbo && now - hintAt < 250) return;            // keep DOM work off the hot path
     hintAt = now;
+    if(res.engine === 'td8'){
+      hint2048.textContent = (turbo ? '极速 · 第 ' + stepsPlayed.toLocaleString() + ' 步' : '自动游玩') +
+        ' · TD 8×6 · ' + res.depth + '-ply · 实际计算 ' + res.elapsedMs.toFixed(1) + 'ms · 后台线程';
+      return;
+    }
     const depth = res.depth ? '搜索 ' + res.depth + ' 步深' : '唯一可走';
     const where = res.mode === 'worker' ? '后台线程' : '主线程分片';
     hint2048.textContent = (turbo ? '极速 · 第 ' + stepsPlayed.toLocaleString() + ' 步 · ' + Math.round(rate) + ' 步/秒' : '自动游玩') +
@@ -1514,13 +1574,14 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
     if(!autoPlaying) return;
     if(over){ stopAuto(); return; }
     if(pendingMilestone && (!turbo || performance.now() - milestoneAt > 1500)) dismissMilestone();
-    const token = autoToken;
+    const token = autoToken, version = boardVersion, boardKey = usingTD() ? tdBoard().join(',') : null, startedAt = performance.now();
     // normal mode: the slider is "time per move" INCLUDING the slide animation, so what is left is think time.
     // turbo mode: no animation, the slider IS the think time.
     const base = turbo ? turboBudgetMs : Math.max(20, autoSpeedMs - TRANSITION_MS - 10);
     const budget = moveBudget(base);
-    aiRunner.ask(boardFromTiles(tiles), budget).then(res=>{
-      if(!autoPlaying || token !== autoToken) return;     // stopped / new game while thinking
+    const request = usingTD() ? tdClient.ask(tdBoard()) : aiRunner.ask(boardFromTiles(tiles), budget);
+    request.then(res=>{
+      if(res.cancelled || !autoPlaying || token !== autoToken || version !== boardVersion || (boardKey !== null && boardKey !== tdBoard().join(','))) return;     // stopped / new game while thinking
       if(!res.dir){ stopAuto(); return; }
       if(turbo){
         moveInstant(res.dir);
@@ -1530,14 +1591,14 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
       } else {
         handleMove(res.dir);
         showStatus(res, budget);
-        autoTimer = setTimeout(autoTick, TRANSITION_MS + 10);
+        autoTimer = setTimeout(autoTick, usingTD() ? Math.max(TRANSITION_MS + 10, autoSpeedMs - (performance.now()-startedAt)) : TRANSITION_MS + 10);
       }
     });
   }
 
   document.addEventListener('keydown', (e)=>{
     if(!document.getElementById('panel2048').classList.contains('active')) return;
-    if(e.target && e.target.type === 'range') return;
+    if(e.target && (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable)) return;
     const map = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
       w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
     if(map[e.key]){ e.preventDefault(); if(!autoPlaying) handleMove(map[e.key]); }
@@ -1556,7 +1617,10 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
     onChange:(v)=>{ autoSpeedMs = v; }
   });
   function configureSlider(){
-    if(turbo) slider.configure({ label:'每步计算预算', values:TURBO_VALUES, value:turboBudgetMs,
+    speedSliderHost.hidden = usingTD() && turbo;
+    if(usingTD()) slider.configure({label:'每步间隔（至少动画时长）',min:160,max:2000,step:20,value:autoSpeedMs,
+      format:v=>v+'ms',onChange:v=>{autoSpeedMs=v;}});
+    else if(turbo) slider.configure({ label:'每步计算预算', values:TURBO_VALUES, value:turboBudgetMs,
       format:(v)=> v + 'ms', onChange:(v)=>{ turboBudgetMs = v; } });
     else slider.configure({ label:'每步用时', min:160, max:2000, step:20, value:autoSpeedMs,
       format:(v)=> v + 'ms · 计算≈' + Math.max(20, v - TRANSITION_MS - 10) + 'ms', onChange:(v)=>{ autoSpeedMs = v; } });
@@ -1565,8 +1629,29 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
   turboBtn.addEventListener('click', ()=>{ if(autoPlaying) return; turbo = !turbo; setPressed(turboBtn, turbo); configureSlider(); });
   dynBtn.addEventListener('click', ()=>{ dynBudget = !dynBudget; setPressed(dynBtn, dynBudget); spentMs = 0; spentN = 0; });
   batchBtn.addEventListener('click', ()=>{ batch = !batch; setPressed(batchBtn, batch); });
+  if(typeof NTupleBrowser !== 'undefined'){
+    tdClient=NTupleBrowser.createClient({onState:state=>{
+      if(state.status==='error') stopAuto();
+      syncModelUI();
+    }});
+  }
+  engineEl.addEventListener('change',()=>{stopAuto();configureSlider();syncModelUI();});
+  modelFileEl.addEventListener('change',()=>{
+    const file=modelFileEl.files[0]; if(!file)return;
+    stopAuto(); engineEl.value='td8'; configureSlider();
+    if(tdClient)tdClient.load(file); else syncModelUI();
+    modelFileEl.value=''; // choosing the same file again must fire change after an error
+  });
+  unloadModelBtn.addEventListener('click',()=>{stopAuto();if(tdClient)tdClient.unload();syncModelUI();});
+  window.addEventListener('pagehide',()=>{stopAuto();if(tdClient)tdClient.unload();});
   configureSlider();
 
+  // Small, explicit integration API. State is a copy; no RNG or future spawn information is exposed.
+  window.Drafting2048=Object.freeze({
+    getState:()=>({board:tiles.reduce((b,t)=>(b[t.r*4+t.c]=2**t.exp,b),new Array(16).fill(0)),score,steps:stepsPlayed,over,autoPlaying,engine:engineEl.value,version:boardVersion}),
+    move:dir=>{stopAuto();return handleMove(dir);},
+    newGame,stop:stopAuto,start:startAuto
+  });
   GameShared.onWidthChange(boardEl, fullRender);
   document.addEventListener('panelchange', (e)=>{ if(e.detail !== 'panel2048') stopAuto(); });
 
@@ -2063,3 +2148,4 @@ if(typeof module !== 'undefined') module.exports = AI2048Kit;
 </script>
 </body>
 </html>
+

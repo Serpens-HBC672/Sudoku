@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node test-ntuple.js && node test-ntuple8.js --synthetic-only && node test-selective.js",
+    "test": "node test-ntuple.js && node test-ntuple8.js --synthetic-only && node test-selective.js && node test-browser-adapter.js && node test-game-lifecycle.js",
     "prepare-model": "node prepare-model.js",
     "benchmark": "node benchmark-ntuple.js"
   },
