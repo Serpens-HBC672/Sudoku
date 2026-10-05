@@ -1,0 +1,26 @@
+{
+  "type": "paired_development_gate_protocol",
+  "recordedAt": "2026-10-05T12:50:34.517Z",
+  "seeds": [
+    60002,
+    60003,
+    60004,
+    60005,
+    60006,
+    60007,
+    60008,
+    60009,
+    60010,
+    60011
+  ],
+  "games": 10,
+  "ply": 2,
+  "target": 32768,
+  "maxSecondsPerGame": 10,
+  "abortFurtherGamesOnTimeCap": true,
+  "sourceSha256": "2b0a1534a402f146702dd251661b4dcf4687a5178cf54adf9d5595c8b20d1be3",
+  "benchmarkSha256": "0804dcaa5ee9433be04259ba886e9df09314539f1a8da364bb746a950ce05ea9",
+  "modelSha256": "4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297",
+  "sourceModelSha256": "bb8678095de7b5a934be105e51f7bb13f762eeb48b42a99e0ebc0da3fcbbbe9f",
+  "interpretation": "Paired development comparison on the same seeds as the4x6 gate, not an independent holdout. Both model and pipeline were checked against a raw-weight reference before these games."
+}

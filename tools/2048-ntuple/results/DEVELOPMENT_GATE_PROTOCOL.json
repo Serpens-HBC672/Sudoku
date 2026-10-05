@@ -1,0 +1,25 @@
+{
+  "type": "development_gate_protocol",
+  "recordedAt": "2026-10-05T12:38:10.046Z",
+  "seeds": [
+    60002,
+    60003,
+    60004,
+    60005,
+    60006,
+    60007,
+    60008,
+    60009,
+    60010,
+    60011
+  ],
+  "games": 10,
+  "ply": 2,
+  "target": 32768,
+  "maxSecondsPerGame": 10,
+  "abortFurtherGamesOnTimeCap": true,
+  "sourceSha256": "fce8f22d29f0e884ca1b1ef4a2f8aeed9e6ad1c0afd4d4c0835f48eeb1eb95ec",
+  "benchmarkSha256": "7906f5884d80768d05d3a919312c5b821783ec4e0d8605ad523bedd63ac4baca",
+  "modelSha256": "01cbe0f0cf523c75947e0c449520399068a4f4bab73ae0d894cabc95ffcfd629",
+  "interpretation": "Short development decision gate, not final independent win-rate validation. Keep every started game; timed-out games are interrupted, not losses. No further game begins after a cap."
+}

@@ -1,0 +1,15 @@
+ok 1 - 64 feature indices match independent D4 extraction for 32 varied boards
+ok 2 - every pattern preserves first-cell-low-nibble indexing
+ok 3 - generic model rejects malformed patterns and mismatched table count
+ok 4 - eight-table zero-weight 1-/2-ply decisions match array reference
+ok 5 - all eight tables contribute, including negative leaf clipping
+ok 6 - synthetic direct, packed, and eight-symmetry evaluation match independent scoring
+ok 7 - synthetic eight-table 1-/2-ply choices and Q values match array reference
+ok 8 - eight-table solver stops on existing or immediate target without expansion
+ok 9 - source header signatures independently verify all eight model patterns and their order
+ok 10 - actual-model known raw scalars and empty-board fixture match pinned source
+ok 11 - actual-model 64 indices match independent pattern extraction
+ok 12 - actual-model direct/packed values and D4 invariance match independent weights
+ok 13 - actual-model 1-/2-ply selected actions and Q values match array-board reference
+ok 14 - 576 sampled converted weights are bit-identical to source offsets
+{"ok":true,"tests":14,"boards":32,"features":64,"actualModelChecked":true,"rawChecked":true,"actual":{"patterns":["012456","456789","012345","234569","01259a","345678","134567","01489a"],"sourceBytes":1610612989,"rawValueOffsets":[24,201326647,402653270,603979893,805306516,1006633139,1207959762,1409286385],"emptyBoardValue":437491.6015625,"fixtureBoard":[16384,8192,4096,2048,128,256,512,1024,64,32,16,8,2,4,0,0],"fixtureValue":234926.36762046814,"fixtureOnePly":{"direction":1,"name":"right","value":271439.946182251,"ply":1,"actualPly":1,"nodes":0,"elapsedMs":0.08250300000054267,"complete":true,"targetReached":false},"fixtureTwoPly":{"direction":1,"name":"right","value":272133.8877110481,"ply":2,"actualPly":2,"nodes":29,"elapsedMs":0.11819500000001426,"complete":true,"targetReached":false}}}

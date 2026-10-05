@@ -1,0 +1,30 @@
+{
+  "type": "paired_selective_search_gate_protocol",
+  "recordedAt": "2026-10-05T12:59:13.877Z",
+  "seeds": [
+    60002,
+    60003,
+    60004,
+    60005,
+    60006,
+    60007,
+    60008,
+    60009,
+    60010,
+    60011
+  ],
+  "games": 10,
+  "options": {
+    "ply": 2,
+    "target": 32768,
+    "criticalSearch": true,
+    "criticalEmpty": 1,
+    "criticalTile": 8192
+  },
+  "maxSecondsPerGame": 10,
+  "abortFurtherGamesOnTimeCap": true,
+  "sourceSha256": "ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed",
+  "benchmarkSha256": "b152ce970df576f53d82d7763b3c37163dc48ce71402bceba8e0a3e8e80c6249",
+  "modelSha256": "4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297",
+  "interpretation": "Paired development comparison on previously used seeds; this is not the final independent holdout. A third ply activates only when the current board has at most one empty cell and maximum tile at least8192. Goal leaves stop before further spawning/movement."
+}

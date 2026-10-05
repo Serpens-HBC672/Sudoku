@@ -1,0 +1,19 @@
+ok 1 - independent array movement matches game engine on 400 fixed-seed moves
+ok 2 - reference D4 transformations are eight distinct bijections
+ok 3 - tuple order puts the first cell in low bits, across all four patterns
+ok 4 - all 32 indices match independent D4 extraction for 32 varied boards
+ok 5 - model rejects malformed table storage
+ok 6 - numeric input validation rejects bad shape, bad tiles, and rank overflow
+ok 7 - evaluation rejects nonfinite selected weights
+ok 8 - solver rejects unsupported ply and target options
+ok 9 - zero-weight 1-/2-ply choices obey legal moves, merge reward, and dead states
+ok 10 - negative-weight 2-ply uses the native nonnegative leaf floor and +1 bonus
+ok 11 - target already reached and immediate target merge stop before further search
+ok 12 - independent synthetic weights agree for direct and packed evaluation
+ok 13 - synthetic 1-/2-ply choices agree with independent array-board reference
+ok 14 - pinned pretrained model matches independently read scalar and board fixtures
+ok 15 - pretrained evaluation agrees with independent indexing and all D4 transforms
+ok 16 - pretrained 1-/2-ply decisions agree with independent array-board reference
+ok 17 - model loader rejects wrong provenance and truncated inference data
+ok 18 - converter retains sampled raw weights exactly and skips training extensions
+{"ok":true,"tests":18,"unitCases":32,"tableBytes":268435456,"pretrainedChecks":true,"rawChecks":true}

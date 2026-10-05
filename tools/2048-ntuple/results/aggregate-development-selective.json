@@ -1,0 +1,132 @@
+{
+  "type": "aggregate",
+  "complete": true,
+  "protocolRecordedAt": null,
+  "sourceSha256": "ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed",
+  "modelSha256": "4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297",
+  "options": {
+    "ply": 2,
+    "target": 32768,
+    "criticalSearch": true,
+    "criticalEmpty": 1,
+    "criticalTile": 8192
+  },
+  "requestedGames": null,
+  "started": 10,
+  "completed": 10,
+  "interrupted": 0,
+  "missingSeeds": [],
+  "successes": 8,
+  "successRate": 0.8,
+  "wilson95": [
+    0.49016247153664183,
+    0.9433178485456247
+  ],
+  "totalMoves": 148288,
+  "totalGameWallSeconds": 67.390835822,
+  "meanGameWallSeconds": 6.7390835822,
+  "weightedMeanMoveMs": 0.44698036102044303,
+  "peakProcessRssMiB": 579.9609375,
+  "maxTileHistogram": {
+    "16384": 2,
+    "32768": 8
+  },
+  "actualPlyHistogram": {
+    "2": 129298,
+    "3": 18990
+  },
+  "validation": "All recorded game outcomes, final boards, seeded spawn mass, and merge-score identities verified independently of search.",
+  "note": "Development-only aggregate without an independent evaluation protocol.",
+  "perGame": [
+    {
+      "seed": 60002,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452704,
+      "moves": 14866,
+      "wallSeconds": 7.460988351000001,
+      "trajectorySha256": "820bcc7cfc665149bb5d7490b5b6a1de66289f807f3c5f27f0912f1def0749d9"
+    },
+    {
+      "seed": 60003,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452720,
+      "moves": 14874,
+      "wallSeconds": 6.826537683000001,
+      "trajectorySha256": "94c3f061e0bf709204c80863de483749796c67d3c70dd460b5132fa423b15a36"
+    },
+    {
+      "seed": 60004,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453048,
+      "moves": 14955,
+      "wallSeconds": 6.8262311470000006,
+      "trajectorySha256": "24500b5418767b2c0a21d9e6b62d11957c71572065d5fc9b1a3c2dc19c696778"
+    },
+    {
+      "seed": 60005,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 372680,
+      "moves": 14113,
+      "wallSeconds": 6.739786035000001,
+      "trajectorySha256": "6bee1819c54761c6f358ef7a25d8d81d5fc727fc7abe66b2d9004fb89d55fa29"
+    },
+    {
+      "seed": 60006,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453036,
+      "moves": 14917,
+      "wallSeconds": 7.7983911489999995,
+      "trajectorySha256": "e685e9c214861c3142db1e2a9f14ad42354b56fabe6c03f6b2732847883a759a"
+    },
+    {
+      "seed": 60007,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453108,
+      "moves": 14973,
+      "wallSeconds": 7.8962939259999985,
+      "trajectorySha256": "9bbc0a7fed9c3bfc335716b112e7b0f4221c41329f47e7fce4bf7ecd4f0f5343"
+    },
+    {
+      "seed": 60008,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452952,
+      "moves": 14933,
+      "wallSeconds": 6.004241479999997,
+      "trajectorySha256": "e7671de75cec12cc3777348568faf42f9f39f77a738201595665fd71753c8d3c"
+    },
+    {
+      "seed": 60009,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452728,
+      "moves": 14876,
+      "wallSeconds": 5.597776450999998,
+      "trajectorySha256": "a8c84d4b89e2159e922d9aee6fb59ef52d783981c960508ad28f14f2c47701a7"
+    },
+    {
+      "seed": 60010,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452960,
+      "moves": 14936,
+      "wallSeconds": 5.920992372000001,
+      "trajectorySha256": "2371c7c560737efe5497b98fa790c70bd205d2c1f6d73a3c0ce30585539f00ef"
+    },
+    {
+      "seed": 60011,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387068,
+      "moves": 14845,
+      "wallSeconds": 6.319597228000006,
+      "trajectorySha256": "a381e2013399ac4c0c8f87824763108e138efbe61e46452a40529a8f70af7192"
+    }
+  ]
+}

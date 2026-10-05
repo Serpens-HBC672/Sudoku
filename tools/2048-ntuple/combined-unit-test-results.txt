@@ -1,0 +1,38 @@
+
+> standalone-2048-ntuple@1.0.0 test
+> node test-ntuple.js && node test-ntuple8.js --synthetic-only && node test-selective.js
+
+ok 1 - independent array movement matches game engine on 400 fixed-seed moves
+ok 2 - reference D4 transformations are eight distinct bijections
+ok 3 - tuple order puts the first cell in low bits, across all four patterns
+ok 4 - all 32 indices match independent D4 extraction for 32 varied boards
+ok 5 - model rejects malformed table storage
+ok 6 - numeric input validation rejects bad shape, bad tiles, and rank overflow
+ok 7 - evaluation rejects nonfinite selected weights
+ok 8 - solver rejects unsupported ply and target options
+ok 9 - zero-weight 1-/2-ply choices obey legal moves, merge reward, and dead states
+ok 10 - negative-weight 2-ply uses the native nonnegative leaf floor and +1 bonus
+ok 11 - target already reached and immediate target merge stop before further search
+ok 12 - independent synthetic weights agree for direct and packed evaluation
+ok 13 - synthetic 1-/2-ply choices agree with independent array-board reference
+# Real-model checks skipped; supply --model and optionally --raw-model. No download is implicit.
+{"ok":true,"tests":13,"unitCases":32,"tableBytes":268435456,"pretrainedChecks":false,"rawChecks":false}
+ok 1 - 64 feature indices match independent D4 extraction for 32 varied boards
+ok 2 - every pattern preserves first-cell-low-nibble indexing
+ok 3 - generic model rejects malformed patterns and mismatched table count
+ok 4 - eight-table zero-weight 1-/2-ply decisions match array reference
+ok 5 - all eight tables contribute, including negative leaf clipping
+ok 6 - synthetic direct, packed, and eight-symmetry evaluation match independent scoring
+ok 7 - synthetic eight-table 1-/2-ply choices and Q values match array reference
+ok 8 - eight-table solver stops on existing or immediate target without expansion
+# Actual 8x6 model checks skipped; supply --model and --raw-model after download verification.
+{"ok":true,"tests":8,"boards":32,"features":64,"actualModelChecked":false,"rawChecked":false,"actual":null}
+ok 1 - selective configuration rejects unsafe or malformed options
+ok 2 - synthetic: disabled selective mode preserves base 1-/2-ply choices and values
+ok 3 - synthetic: default trigger uses BEFORESTATE empty-count and tile boundaries
+ok 4 - synthetic: explicit thresholds and base-ply-one fallback respect boundaries
+ok 5 - synthetic: late-game third-ply decisions and Q values match independent recursion
+ok 6 - synthetic: goal leaves stop exactly before any additional spawn or merge
+ok 7 - synthetic: existing and immediate root goals retain terminal behavior
+# Actual-model checks skipped; use --model 8x6patt.json.
+{"ok":true,"tests":7,"startedAt":"2026-10-05T13:31:17.948Z","finishedAt":"2026-10-05T13:31:18.089Z","elapsedMs":141.033605,"actualModelChecked":false,"hashes":{"ntuple2048.js":"ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed","reference-ntuple.js":"7d50ec60f74d221ccf25b3f85b6859af44b53a646592a29222cf843056ac909a","test-selective.js":"8eec32ca43f870bffaca7f35950998ea90f32bacc42386daf74d5f6aec0f8452"},"summaries":[{"label":"synthetic","trace":{"distinctLeaves":98,"leafEvaluations":102,"distinctGoalLeaves":76},"late":{"direction":1,"name":"right","value":539569.26,"ply":2,"actualPly":3,"nodes":20,"elapsedMs":0.0600199999999802,"complete":true,"targetReached":false},"goalLeaf":{"direction":3,"name":"left","value":1036294.75,"ply":2,"actualPly":3,"nodes":155,"elapsedMs":0.43942599999999743,"complete":true,"targetReached":false}}]}

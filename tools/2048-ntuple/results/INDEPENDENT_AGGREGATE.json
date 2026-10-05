@@ -1,0 +1,944 @@
+{
+  "type": "aggregate",
+  "complete": true,
+  "protocolRecordedAt": "2026-10-05T13:05:10.722Z",
+  "sourceSha256": "ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed",
+  "modelSha256": "4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297",
+  "options": {
+    "ply": 2,
+    "target": 32768,
+    "criticalSearch": true,
+    "criticalEmpty": 1,
+    "criticalTile": 8192
+  },
+  "requestedGames": 100,
+  "started": 100,
+  "completed": 100,
+  "interrupted": 0,
+  "missingSeeds": [],
+  "successes": 49,
+  "successRate": 0.49,
+  "wilson95": [
+    0.3942199893044113,
+    0.5865198806597283
+  ],
+  "totalMoves": 1390921,
+  "totalGameWallSeconds": 563.536029412,
+  "meanGameWallSeconds": 5.63536029412,
+  "weightedMeanMoveMs": 0.39821474959541203,
+  "peakProcessRssMiB": 640.69921875,
+  "maxTileHistogram": {
+    "4096": 1,
+    "8192": 5,
+    "16384": 45,
+    "32768": 49
+  },
+  "actualPlyHistogram": {
+    "2": 1222867,
+    "3": 168054
+  },
+  "validation": "All recorded game outcomes, final boards, seeded spawn mass, and merge-score identities verified independently of search.",
+  "note": "Interpret the proportion together with the confidence interval and completion status.",
+  "perGame": [
+    {
+      "seed": 61001,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 382960,
+      "moves": 14604,
+      "wallSeconds": 8.559068475,
+      "trajectorySha256": "23ebe111b81c5e8735b2476a1fa8d7a254526ebba55d9cda5da3e1ecaafba184"
+    },
+    {
+      "seed": 61002,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 383252,
+      "moves": 14654,
+      "wallSeconds": 5.305477241,
+      "trajectorySha256": "449abb7d716accffb948eb046fda6a66db0dd375c6f0a6863db351eb5682c59d"
+    },
+    {
+      "seed": 61003,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452988,
+      "moves": 14941,
+      "wallSeconds": 5.373213572999999,
+      "trajectorySha256": "9ce81513e645f47f29905d48da08ca0da28a3da501506bc5d5a90fd4f3b74dc7"
+    },
+    {
+      "seed": 61004,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453032,
+      "moves": 14953,
+      "wallSeconds": 5.4214860479999984,
+      "trajectorySha256": "aeef0c495d17abd17fa3078557ecbf68fccc66956ff00fb122d14d0d2082582d"
+    },
+    {
+      "seed": 61005,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 329740,
+      "moves": 12335,
+      "wallSeconds": 4.336388646,
+      "trajectorySha256": "8d5fc9daaafebdcb24bece991dc5fd6e6b21e41ec9d1f2775535b19f8c8d72c9"
+    },
+    {
+      "seed": 61006,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452804,
+      "moves": 14897,
+      "wallSeconds": 5.4540925760000025,
+      "trajectorySha256": "40474694e6de0e4bbe7a39b4de3f11ba876788f4920d1ac6ddd8d56d1e1ef970"
+    },
+    {
+      "seed": 61007,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452964,
+      "moves": 14934,
+      "wallSeconds": 8.706429874000001,
+      "trajectorySha256": "a00bcdf6be82b36b9c9464ea80f4688ec7d81dd53eb5cbea6c01061f913e0b1b"
+    },
+    {
+      "seed": 61008,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452696,
+      "moves": 14869,
+      "wallSeconds": 10.465584567999999,
+      "trajectorySha256": "a272331d3d52b2226d25afcd444be32e16506475bd0c793dae9c3fb4df650e9b"
+    },
+    {
+      "seed": 61009,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 365980,
+      "moves": 13865,
+      "wallSeconds": 5.022255666999998,
+      "trajectorySha256": "a68be0e7086ad5d4240a288faf1b8765fcb9cefae9efbd5de0000de1c31e145a"
+    },
+    {
+      "seed": 61010,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453012,
+      "moves": 14948,
+      "wallSeconds": 5.692201268999997,
+      "trajectorySha256": "5df0b28d4013a7182e8220d4a68f109f973898210439609d278487379d3e2375"
+    },
+    {
+      "seed": 61011,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452868,
+      "moves": 14912,
+      "wallSeconds": 6.080270308999999,
+      "trajectorySha256": "0226f817b5eee9c50d6da2fcb43d8e9c11cd99154f227922e9b4d62171f2a1ce"
+    },
+    {
+      "seed": 61012,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 383104,
+      "moves": 14639,
+      "wallSeconds": 4.921572664999999,
+      "trajectorySha256": "385df5d59de48241207f3ba4dfa5f773010d7a98486d85017814e044bbc0be18"
+    },
+    {
+      "seed": 61013,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 374448,
+      "moves": 14234,
+      "wallSeconds": 4.910960844000001,
+      "trajectorySha256": "a893ab8fe7086567893b2d3096eeaeea947776bf5a60e49bda7c9c82a1a6c43d"
+    },
+    {
+      "seed": 61014,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453080,
+      "moves": 14964,
+      "wallSeconds": 5.3454311800000145,
+      "trajectorySha256": "94d37b028e39dc4038a95fdf1a824bcf4403960ae4db4afb19e791a48131959c"
+    },
+    {
+      "seed": 61015,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452836,
+      "moves": 14904,
+      "wallSeconds": 5.166580155000004,
+      "trajectorySha256": "1df90d2fca5ff3ad5994928efd881403c6b542ad49626b486dc735f0b7a0b0c6"
+    },
+    {
+      "seed": 61016,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 342544,
+      "moves": 13054,
+      "wallSeconds": 4.441044193000009,
+      "trajectorySha256": "649e573264bcacb4e4977357da23552368793f3a66c89bd87d26f987e00f846d"
+    },
+    {
+      "seed": 61017,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452648,
+      "moves": 14858,
+      "wallSeconds": 5.147841839999994,
+      "trajectorySha256": "920a6f4b45c2a7177db0580435ca22b84b867c7b3e5f01f3280f05b577219367"
+    },
+    {
+      "seed": 61018,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 281640,
+      "moves": 10740,
+      "wallSeconds": 3.493362620999993,
+      "trajectorySha256": "fa663d4c3e13f0a8c3b252d0e5aa7e6eee05621399134a9710f7073cc341d1cf"
+    },
+    {
+      "seed": 61019,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 386408,
+      "moves": 14803,
+      "wallSeconds": 5.149203345999995,
+      "trajectorySha256": "a1532733597c2c746b6f79db90db06b9da8e4f24f5cfc30d88dd5b211ed7788b"
+    },
+    {
+      "seed": 61020,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387120,
+      "moves": 14858,
+      "wallSeconds": 5.260120280999996,
+      "trajectorySha256": "9f0a78b7eab447ea28c7c5f3b3f72c11bec94b5f6c0278dd20cc751640cb1201"
+    },
+    {
+      "seed": 61021,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452704,
+      "moves": 14874,
+      "wallSeconds": 5.3871250920000024,
+      "trajectorySha256": "e6bc4e9e6cd22c5eefc16d11c9f23f33a4351e16961c5742a8c2f6d7d64b991f"
+    },
+    {
+      "seed": 61022,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 342056,
+      "moves": 12937,
+      "wallSeconds": 6.741010747000008,
+      "trajectorySha256": "8064dcc5934bd41f06aaf6297950446d38b2c66e7679348bc696485f4458abbc"
+    },
+    {
+      "seed": 61023,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453116,
+      "moves": 14938,
+      "wallSeconds": 5.560518496999998,
+      "trajectorySha256": "8722afaf79258ab6e79fd5f1e1a8630674fcf5eba3108406411605a391422d2b"
+    },
+    {
+      "seed": 61024,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 323676,
+      "moves": 12183,
+      "wallSeconds": 4.293679782000021,
+      "trajectorySha256": "b248510209da2fdf070888d034cc466778588b7eb07fad5133d00496951a4c24"
+    },
+    {
+      "seed": 61025,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387084,
+      "moves": 14867,
+      "wallSeconds": 5.913491578999994,
+      "trajectorySha256": "e25127e30a55ec8b60d89e74756cfd12bf29c0fc17ed9064640881443f1df139"
+    },
+    {
+      "seed": 61026,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452932,
+      "moves": 14927,
+      "wallSeconds": 7.769232086000003,
+      "trajectorySha256": "67edbcc1e10a99da2243308c96f44869be8a59c5cb4d6e62be6d69b99e34cde2"
+    },
+    {
+      "seed": 61027,
+      "outcome": "loss",
+      "maxTile": 8192,
+      "score": 153772,
+      "moves": 6300,
+      "wallSeconds": 1.9466268080000009,
+      "trajectorySha256": "377b38ce777396575570408acb49740117558502da46e70253f0ce0bbcbddeab"
+    },
+    {
+      "seed": 61028,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 385396,
+      "moves": 14749,
+      "wallSeconds": 5.840119707000006,
+      "trajectorySha256": "bb3efb990151ab98479b326894367254700e022ddc8193dc258c52a8e002f3d1"
+    },
+    {
+      "seed": 61029,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452672,
+      "moves": 14857,
+      "wallSeconds": 5.907439740000002,
+      "trajectorySha256": "c02c260c6b5e9e44a72ec1091956dbfdc2c458dd781ade2281f369b0d9aba9e9"
+    },
+    {
+      "seed": 61030,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453040,
+      "moves": 14954,
+      "wallSeconds": 5.479237381999992,
+      "trajectorySha256": "be8e7efdba209646a51db6d0a1264cf0b05e227ef37540a6a434992106bd3258"
+    },
+    {
+      "seed": 61031,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 378416,
+      "moves": 14443,
+      "wallSeconds": 4.741659207000019,
+      "trajectorySha256": "83d43086d20d76d5ce8a3b023d7429cb9b1e9e57627397dd2a65087ff7344fd0"
+    },
+    {
+      "seed": 61032,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 367048,
+      "moves": 13936,
+      "wallSeconds": 4.685694037000008,
+      "trajectorySha256": "25597e164a00f86ceb7a53350e210d29cd2168f613714b447e739dd7c8739d7b"
+    },
+    {
+      "seed": 61033,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 382524,
+      "moves": 14603,
+      "wallSeconds": 5.034495907000004,
+      "trajectorySha256": "a47c12daa6bd5f7b68a8eb7137bfcd253483aae63e1b85716646143528024e81"
+    },
+    {
+      "seed": 61034,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453248,
+      "moves": 14974,
+      "wallSeconds": 4.978070013000019,
+      "trajectorySha256": "4128875bae3fb1ef960b4a7d928eed33cd85b3dc1db704814c8c60e239897f63"
+    },
+    {
+      "seed": 61035,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452928,
+      "moves": 14926,
+      "wallSeconds": 5.112621725000005,
+      "trajectorySha256": "c742a4d15a8c3b149324d49dcb18a6bf17efc511cca64cea2de4646318f1617f"
+    },
+    {
+      "seed": 61036,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452808,
+      "moves": 14898,
+      "wallSeconds": 5.220080755000002,
+      "trajectorySha256": "b005548c68edd2f072611ef64946ad783e9ad91f1e7a0daefc099bec70f06ed7"
+    },
+    {
+      "seed": 61037,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387368,
+      "moves": 14932,
+      "wallSeconds": 5.034656489000016,
+      "trajectorySha256": "aae416ae5f2634aeee36d6971ba844a04d2e1f913b1bebd4d62641489fa64962"
+    },
+    {
+      "seed": 61038,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453108,
+      "moves": 14926,
+      "wallSeconds": 5.0163911389999845,
+      "trajectorySha256": "e077de94f3ccf44335b6ea2dfeb900fc7234e2b6a2fa16db86d97ea6ac7bbe71"
+    },
+    {
+      "seed": 61039,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452816,
+      "moves": 14897,
+      "wallSeconds": 6.435116031000012,
+      "trajectorySha256": "890997120d9e34c23802b322454da0ea48c79d84aeb258fab393fe59b734bff6"
+    },
+    {
+      "seed": 61040,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452756,
+      "moves": 14885,
+      "wallSeconds": 5.592518044999975,
+      "trajectorySha256": "7d4cb6d35becb429f9fedcae8f6faebb0656f6c1c028ace892e3526eb856188a"
+    },
+    {
+      "seed": 61041,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452824,
+      "moves": 14899,
+      "wallSeconds": 6.005341885000002,
+      "trajectorySha256": "0a2fbe6bc567f40afa2c41ad0115922ebab998c408e66bd796a25a10fe1d8299"
+    },
+    {
+      "seed": 61042,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 385880,
+      "moves": 14746,
+      "wallSeconds": 6.081327144999988,
+      "trajectorySha256": "9f6b27cbff17c2c27c496f9776c20be5ba45279917f71673b0b636fe54ad66fd"
+    },
+    {
+      "seed": 61043,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 289332,
+      "moves": 11079,
+      "wallSeconds": 6.161938603999995,
+      "trajectorySha256": "83b21e9b5de94be63878a65f37e2d1dc4bdba87daff123cc24ddbf4a98354ddd"
+    },
+    {
+      "seed": 61044,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453028,
+      "moves": 14951,
+      "wallSeconds": 8.478430582000001,
+      "trajectorySha256": "d669319bc5e4675472737198885c892d9228b2830c5b8e3b71250654893c2360"
+    },
+    {
+      "seed": 61045,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452852,
+      "moves": 14908,
+      "wallSeconds": 5.551207137999998,
+      "trajectorySha256": "a6ca3ccbdca40f56dba7ddfa81bb042493254337bc2ff54e069c0e0c213960d7"
+    },
+    {
+      "seed": 61046,
+      "outcome": "loss",
+      "maxTile": 8192,
+      "score": 175380,
+      "moves": 7295,
+      "wallSeconds": 2.2165503489999976,
+      "trajectorySha256": "d40b67fdd1ffc3b2f70b54b496a02ecfdec15351333a92a120cf71c9443c3a11"
+    },
+    {
+      "seed": 61047,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452996,
+      "moves": 14944,
+      "wallSeconds": 5.246927439999999,
+      "trajectorySha256": "afd1699e9baadd46e69f291c811225cb20e7e9b06180590586c36dfb30a38100"
+    },
+    {
+      "seed": 61048,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 373212,
+      "moves": 14087,
+      "wallSeconds": 5.124611212999996,
+      "trajectorySha256": "86eb1b932641998bff21385b91293939e5258f1be397eff4508aa8363a811568"
+    },
+    {
+      "seed": 61049,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452764,
+      "moves": 14887,
+      "wallSeconds": 5.207588080999965,
+      "trajectorySha256": "8fb6129a68cf1244280098d11eca26145ca02a2e0f9de00665823077ba7c7c10"
+    },
+    {
+      "seed": 61050,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387360,
+      "moves": 14918,
+      "wallSeconds": 5.026466174000001,
+      "trajectorySha256": "7d08fdbb9031289b012d87471f8e0d17796761ed6ef315d3afc4a55074e41f1d"
+    },
+    {
+      "seed": 61051,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452660,
+      "moves": 14860,
+      "wallSeconds": 7.9248572940000015,
+      "trajectorySha256": "a637cd4bdbc4fd980793a66878ec467748579b33ce06ee9e4573ed0cc8f1e35f"
+    },
+    {
+      "seed": 61052,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452932,
+      "moves": 14927,
+      "wallSeconds": 6.011480100999999,
+      "trajectorySha256": "d510a0ff2710053cd0ea44f9a3d829212db693ff1526bab974a86f2d1f004f72"
+    },
+    {
+      "seed": 61053,
+      "outcome": "loss",
+      "maxTile": 8192,
+      "score": 173312,
+      "moves": 7199,
+      "wallSeconds": 2.4339140150000023,
+      "trajectorySha256": "31be5459a5a1982ae9f4fd3c5b47553650452b0902bf4ba5f4d87e9971cdb292"
+    },
+    {
+      "seed": 61054,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 386108,
+      "moves": 14798,
+      "wallSeconds": 5.760904050000001,
+      "trajectorySha256": "cb89bc730d71b36aba5bf352dae50061d59ede52ad06a55fabda52af548d2368"
+    },
+    {
+      "seed": 61055,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452988,
+      "moves": 14936,
+      "wallSeconds": 5.891130782,
+      "trajectorySha256": "6cf5b12f6d31fc70b07c59b89d5ff9f8d5df986ff5a4d75dc15ba98cb8dc7be4"
+    },
+    {
+      "seed": 61056,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452588,
+      "moves": 14842,
+      "wallSeconds": 5.696371665999999,
+      "trajectorySha256": "42b8e435b2293606ff913c19332d4f3d8943c170d9641e51d1eb719c11dbde60"
+    },
+    {
+      "seed": 61057,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453020,
+      "moves": 14948,
+      "wallSeconds": 8.590503629999999,
+      "trajectorySha256": "5a426b58a809376ff5858f209981dfe18c92bb7b4d49d6fc42f7f45effb23e01"
+    },
+    {
+      "seed": 61058,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387416,
+      "moves": 14932,
+      "wallSeconds": 8.403670103999998,
+      "trajectorySha256": "7e74b8b8f214d3e89dae5c75e7f1ad06209841302a37e65a2f4d1ccb3336c7e9"
+    },
+    {
+      "seed": 61059,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 372428,
+      "moves": 14066,
+      "wallSeconds": 5.810692499000004,
+      "trajectorySha256": "93d190689e67fab52cf3ffa3ca3c5bdeca28cdcc917d330ebb37960782efa9df"
+    },
+    {
+      "seed": 61060,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453240,
+      "moves": 14975,
+      "wallSeconds": 6.153674002,
+      "trajectorySha256": "0300abd4e95d2cb19db9a1fb0e59391b2f0bdae093ef33fd465db4bd451c626f"
+    },
+    {
+      "seed": 61061,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452792,
+      "moves": 14893,
+      "wallSeconds": 6.156990816000005,
+      "trajectorySha256": "53000da9d3366a7eee4f2b0fe168cb04a161cc80c93d01329f04ad73eda77a0f"
+    },
+    {
+      "seed": 61062,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 284488,
+      "moves": 10777,
+      "wallSeconds": 4.095981169999999,
+      "trajectorySha256": "2e98b916e245bea76c15e6e8f608c2ce65a3d09a2ecbd9263e578669e41fb99c"
+    },
+    {
+      "seed": 61063,
+      "outcome": "loss",
+      "maxTile": 8192,
+      "score": 176612,
+      "moves": 7411,
+      "wallSeconds": 2.511258043000009,
+      "trajectorySha256": "98f42c876e474e9427e1e6fcf1924dd60e4b4ed5dcf594afc9861ec8895fc57d"
+    },
+    {
+      "seed": 61064,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 352800,
+      "moves": 13160,
+      "wallSeconds": 5.002338111999998,
+      "trajectorySha256": "9023c3fb6249c9767d974d1baeb3911b051d77b42e79606449fc12ab27ed825f"
+    },
+    {
+      "seed": 61065,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 342140,
+      "moves": 12986,
+      "wallSeconds": 4.8794963199999914,
+      "trajectorySha256": "fac33de0c2f3e3ada250414509a4cd2ab644c721f1d7973786cb305d7ca2f003"
+    },
+    {
+      "seed": 61066,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452916,
+      "moves": 14923,
+      "wallSeconds": 5.7087391970000025,
+      "trajectorySha256": "e3eae4cbde74efd1a22f73a7912ad3d00454113cf0cb1d93f0612e1fb9a69725"
+    },
+    {
+      "seed": 61067,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453276,
+      "moves": 14966,
+      "wallSeconds": 5.843345387000008,
+      "trajectorySha256": "a5a242bcc97ffff86de756799921bc42191f60348683e25d70cbdb9c686cff72"
+    },
+    {
+      "seed": 61068,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453284,
+      "moves": 14976,
+      "wallSeconds": 5.864969838000005,
+      "trajectorySha256": "f0a641af691209822ef96ebdd5c2f78113f768803a98d3d7c8de17174168ad2a"
+    },
+    {
+      "seed": 61069,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452964,
+      "moves": 14943,
+      "wallSeconds": 5.9489938600000025,
+      "trajectorySha256": "f41cf2e36ccfb57af9ea62edba8d4da7ba5dadf44fdc91cea137a6fc34a1f4b3"
+    },
+    {
+      "seed": 61070,
+      "outcome": "loss",
+      "maxTile": 8192,
+      "score": 199796,
+      "moves": 8268,
+      "wallSeconds": 2.917948446999988,
+      "trajectorySha256": "2ce4e726c7b68629408dd07b3b8cdf1ac9cf26122b6e301da60a806665f53953"
+    },
+    {
+      "seed": 61071,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452960,
+      "moves": 14934,
+      "wallSeconds": 6.149073277999996,
+      "trajectorySha256": "b4ca1446d5cec1dca0468bdc5fcd35b97b5f21b0a5ccb7986a7faf671f5f3b64"
+    },
+    {
+      "seed": 61072,
+      "outcome": "loss",
+      "maxTile": 4096,
+      "score": 80396,
+      "moves": 3698,
+      "wallSeconds": 0.9760346399999981,
+      "trajectorySha256": "13fd656a1f843c7f5ef7513cde2f50bb891df72fb757f00504e0b77363178b2a"
+    },
+    {
+      "seed": 61073,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 386596,
+      "moves": 14823,
+      "wallSeconds": 8.034827281999998,
+      "trajectorySha256": "3aaa12b9ee397a998c17c8a54f82753d875369bd985a8cab0a850f9b8798a64a"
+    },
+    {
+      "seed": 61074,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452928,
+      "moves": 14927,
+      "wallSeconds": 6.777310075999995,
+      "trajectorySha256": "51921e23a95b0050c04d3a089a49ef6a23a392491580ab2699703fbb0d80c545"
+    },
+    {
+      "seed": 61075,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452904,
+      "moves": 14921,
+      "wallSeconds": 6.104552297999995,
+      "trajectorySha256": "57f26d6e27733e068d0aa9329f3a147edf76538561f856c64cf1740e65527b57"
+    },
+    {
+      "seed": 61076,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 378104,
+      "moves": 14391,
+      "wallSeconds": 9.233234096,
+      "trajectorySha256": "14f751b5dc267d5884db03d33190022610b9051e6e40cd4a773cf741c8d3fd62"
+    },
+    {
+      "seed": 61077,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452728,
+      "moves": 14877,
+      "wallSeconds": 6.974021424999984,
+      "trajectorySha256": "4ded5c4cd1c845ee5e271cf1e89b14d91b8501cc2a4201b759f4757bc89e3a6b"
+    },
+    {
+      "seed": 61078,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 373840,
+      "moves": 14210,
+      "wallSeconds": 6.240557656999997,
+      "trajectorySha256": "dbda335b902f5e241150961c041597e5d8456b60bb59cd6297a51ebcab52de74"
+    },
+    {
+      "seed": 61079,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452936,
+      "moves": 14934,
+      "wallSeconds": 6.095934326999996,
+      "trajectorySha256": "d76a4b1241c1160e955b4dd883d134e4b1d27a06f090ffe7bf456fb7cb6df225"
+    },
+    {
+      "seed": 61080,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453028,
+      "moves": 14953,
+      "wallSeconds": 5.883931557999982,
+      "trajectorySha256": "a06acf490de51f401b1eb65f2ee8880dfeaa6e44e360b51b45b0455a6a8e22ee"
+    },
+    {
+      "seed": 61081,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 261136,
+      "moves": 9771,
+      "wallSeconds": 3.349916097999987,
+      "trajectorySha256": "dc9574cbcb451e4b5a5d9bcd1bf6917f26999895fac63412ae608a5f367d09f9"
+    },
+    {
+      "seed": 61082,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 386992,
+      "moves": 14826,
+      "wallSeconds": 5.892952420999994,
+      "trajectorySha256": "d8115f587b95e997b4ea316b6ec2ff8f380320dfedb76d822baa07e529002d17"
+    },
+    {
+      "seed": 61083,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387260,
+      "moves": 14894,
+      "wallSeconds": 5.735138529999997,
+      "trajectorySha256": "5483d745db1b146474847f7bcde7eab1f56414b6fb5ae9be7c4f336ed3b851fe"
+    },
+    {
+      "seed": 61084,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 381988,
+      "moves": 14588,
+      "wallSeconds": 5.699157314000011,
+      "trajectorySha256": "bd936d9542321c2f06f14497b090750d57a9f57251d79a5321fee2c14981954a"
+    },
+    {
+      "seed": 61085,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 386744,
+      "moves": 14844,
+      "wallSeconds": 5.774839538,
+      "trajectorySha256": "e8879249e1f25dfc99f3fe54257270c96b6a97b8f7f1f2d7a5f5407edd50e89e"
+    },
+    {
+      "seed": 61086,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452912,
+      "moves": 14928,
+      "wallSeconds": 5.965189206999988,
+      "trajectorySha256": "22bcf71132d0379b35b2b54161715442c0cba81f6a59bc0bd238ee8cd4dabed7"
+    },
+    {
+      "seed": 61087,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 290432,
+      "moves": 11168,
+      "wallSeconds": 4.4832961840000065,
+      "trajectorySha256": "b733a0632267918af54f287a4e7ae1889301c8666366ccb815861bdb324997a9"
+    },
+    {
+      "seed": 61088,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 281716,
+      "moves": 10763,
+      "wallSeconds": 4.925574599000014,
+      "trajectorySha256": "3e58ba11b975f692dc1ad015260d9d9699d1d0f1eeedf3f8f9bb355ed27b0f24"
+    },
+    {
+      "seed": 61089,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453156,
+      "moves": 14950,
+      "wallSeconds": 7.204452032000001,
+      "trajectorySha256": "922060b72933958042cfc0452e29777d3c9fea55a7c2a6dd77eeeae012b7cf93"
+    },
+    {
+      "seed": 61090,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452868,
+      "moves": 14910,
+      "wallSeconds": 5.9845645260000015,
+      "trajectorySha256": "b96c4ada32f94009ebabdc4d86aa4eb594dc8369803d48b6d36d3d169fdc95bf"
+    },
+    {
+      "seed": 61091,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 382996,
+      "moves": 14612,
+      "wallSeconds": 5.463476848999999,
+      "trajectorySha256": "5fad22efbfec7ed3821501cb2202471cbf0329644ed4b64132959eb7f61efdbf"
+    },
+    {
+      "seed": 61092,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 387328,
+      "moves": 14910,
+      "wallSeconds": 8.114017430000008,
+      "trajectorySha256": "774b699ce0ad73816f07b905bcd3b032389663111098fe96a25b9c54fb511893"
+    },
+    {
+      "seed": 61093,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 383368,
+      "moves": 14657,
+      "wallSeconds": 6.529219628999999,
+      "trajectorySha256": "e1be068e50585945719434e368061aa9d6b2d3e8bbfb00e44e87ec7ea32293cd"
+    },
+    {
+      "seed": 61094,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 383408,
+      "moves": 14710,
+      "wallSeconds": 5.845151573999988,
+      "trajectorySha256": "fa0841028ffd6a58ede9e214b15cace89ff9925c11715e201343f48995f5a39a"
+    },
+    {
+      "seed": 61095,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452996,
+      "moves": 14944,
+      "wallSeconds": 6.129583988999977,
+      "trajectorySha256": "6b00f18de7a4e6812e0b013a8707438e7190f0d9b1bf52697805914843a45b45"
+    },
+    {
+      "seed": 61096,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 386888,
+      "moves": 14843,
+      "wallSeconds": 5.578374551000016,
+      "trajectorySha256": "276119577ebb69efa66a6ef58e913e2dd0ccb40147a988494538cb3986207e94"
+    },
+    {
+      "seed": 61097,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 290536,
+      "moves": 11160,
+      "wallSeconds": 3.7735241239999886,
+      "trajectorySha256": "2021d9dc14b2844aa51850e20f03b850f17a1ee3a9fa32c147853efcd5a3a95b"
+    },
+    {
+      "seed": 61098,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 378516,
+      "moves": 14494,
+      "wallSeconds": 5.283086179999984,
+      "trajectorySha256": "03f6ad4d1a7875be1936f2d73d7c8106f4e10a914ac1f379f2a57ad1f9bc546e"
+    },
+    {
+      "seed": 61099,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 453244,
+      "moves": 14971,
+      "wallSeconds": 5.925188908000011,
+      "trajectorySha256": "2da5478776f020dc5a733cdccb67585f247332d79a354e63688bcbb0618a8148"
+    },
+    {
+      "seed": 61100,
+      "outcome": "success",
+      "maxTile": 32768,
+      "score": 452568,
+      "moves": 14838,
+      "wallSeconds": 5.759831009000016,
+      "trajectorySha256": "bd62b3309346efef44c19a05aed332b24cda79ce9f1b28fcf8c2a56966f9eeee"
+    }
+  ]
+}

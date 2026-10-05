@@ -1,0 +1,30 @@
+{
+  "startedAt": "2026-10-05T13:05:10.833Z",
+  "finishedAt": "2026-10-05T13:09:59.597Z",
+  "stopReason": null,
+  "completed": 100,
+  "interrupted": 0,
+  "workers": [
+    {
+      "seedRange": [
+        61001,
+        61050
+      ],
+      "code": 0,
+      "signal": null,
+      "recordedGames": 50,
+      "file": "results/independent-seeds61001-61050.jsonl"
+    },
+    {
+      "seedRange": [
+        61051,
+        61100
+      ],
+      "code": 0,
+      "signal": null,
+      "recordedGames": 50,
+      "file": "results/independent-seeds61051-61100.jsonl"
+    }
+  ],
+  "complete": true
+}

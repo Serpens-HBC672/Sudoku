@@ -1,0 +1,20 @@
+{
+  "type": "frozen_dependency_audit",
+  "recordedAt": "2026-10-05T13:08:21.446Z",
+  "note": "These dependency files were copied into the frozen tree before the independent evaluation started. This companion audit adds explicit helper hashes; it does not modify the original protocol or any execution source/options.",
+  "files": [
+    {
+      "path": "tools/2048-ntuple/ntuple2048.js",
+      "sha256": "ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed"
+    },
+    {
+      "path": "tools/2048-ntuple/benchmark-ntuple.js",
+      "sha256": "3cfc3006ca8349d88c9a733826d1c8795d75e60d26d13a14aa605dd5deec7c4c"
+    },
+    {
+      "path": "tools/2048-expectimax/expectimax2048.js",
+      "sha256": "225ea64e5c317374e04f30b3efb1ffbcc40c0b5bbda1a182a08dc679ee03d49d"
+    }
+  ],
+  "gameHelperPreviouslyPublishedSha256": "225ea64e5c317374e04f30b3efb1ffbcc40c0b5bbda1a182a08dc679ee03d49d"
+}

@@ -1,0 +1,14 @@
+ok 1 - selective configuration rejects unsafe or malformed options
+ok 2 - synthetic: disabled selective mode preserves base 1-/2-ply choices and values
+ok 3 - synthetic: default trigger uses BEFORESTATE empty-count and tile boundaries
+ok 4 - synthetic: explicit thresholds and base-ply-one fallback respect boundaries
+ok 5 - synthetic: late-game third-ply decisions and Q values match independent recursion
+ok 6 - synthetic: goal leaves stop exactly before any additional spawn or merge
+ok 7 - synthetic: existing and immediate root goals retain terminal behavior
+ok 8 - pretrained 8x6: disabled selective mode preserves base 1-/2-ply choices and values
+ok 9 - pretrained 8x6: default trigger uses BEFORESTATE empty-count and tile boundaries
+ok 10 - pretrained 8x6: explicit thresholds and base-ply-one fallback respect boundaries
+ok 11 - pretrained 8x6: late-game third-ply decisions and Q values match independent recursion
+ok 12 - pretrained 8x6: goal leaves stop exactly before any additional spawn or merge
+ok 13 - pretrained 8x6: existing and immediate root goals retain terminal behavior
+{"ok":true,"tests":13,"startedAt":"2026-10-05T13:31:27.041Z","finishedAt":"2026-10-05T13:31:28.209Z","elapsedMs":1167.363938,"actualModelChecked":true,"hashes":{"ntuple2048.js":"ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed","reference-ntuple.js":"7d50ec60f74d221ccf25b3f85b6859af44b53a646592a29222cf843056ac909a","test-selective.js":"8eec32ca43f870bffaca7f35950998ea90f32bacc42386daf74d5f6aec0f8452"},"summaries":[{"label":"synthetic","trace":{"distinctLeaves":98,"leafEvaluations":102,"distinctGoalLeaves":76},"late":{"direction":1,"name":"right","value":539569.26,"ply":2,"actualPly":3,"nodes":20,"elapsedMs":0.057913000000013426,"complete":true,"targetReached":false},"goalLeaf":{"direction":3,"name":"left","value":1036294.75,"ply":2,"actualPly":3,"nodes":155,"elapsedMs":0.38238199999997846,"complete":true,"targetReached":false}},{"label":"pretrained 8x6","trace":{"distinctLeaves":98,"leafEvaluations":102,"distinctGoalLeaves":76},"late":{"direction":1,"name":"right","value":255031.16722366333,"ply":2,"actualPly":3,"nodes":20,"elapsedMs":0.046397999999953754,"complete":true,"targetReached":false},"goalLeaf":{"direction":3,"name":"left","value":266382.01733029366,"ply":2,"actualPly":3,"nodes":155,"elapsedMs":0.26234599999997954,"complete":true,"targetReached":false}}]}

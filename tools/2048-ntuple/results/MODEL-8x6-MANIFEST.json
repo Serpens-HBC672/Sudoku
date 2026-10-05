@@ -1,0 +1,86 @@
+{
+  "format": "tdl2048-8x6-f32le-v1",
+  "createdAt": "2026-10-05T12:48:24.917Z",
+  "source": {
+    "repo": "moporgic/TDL2048",
+    "revision": "0899be24f2f53d1199225960330e6742177af81d",
+    "filename": "8x6patt.w",
+    "bytes": 1610612989,
+    "sha256": "bb8678095de7b5a934be105e51f7bb13f762eeb48b42a99e0ebc0da3fcbbbe9f",
+    "url": "https://huggingface.co/moporgic/TDL2048/resolve/0899be24f2f53d1199225960330e6742177af81d/8x6patt.w",
+    "license": "MIT",
+    "licenseUrl": "https://huggingface.co/moporgic/TDL2048/blob/0899be24f2f53d1199225960330e6742177af81d/README.md",
+    "patterns": [
+      "012456",
+      "456789",
+      "012345",
+      "234569",
+      "01259a",
+      "345678",
+      "134567",
+      "01489a"
+    ]
+  },
+  "inference": {
+    "file": "8x6patt.f32",
+    "bytes": 536870912,
+    "sha256": "4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297",
+    "dtype": "float32",
+    "byteOrder": "little-endian",
+    "tables": [
+      {
+        "id": "012456",
+        "entries": 16777216,
+        "rawValueOffset": 24,
+        "outputByteOffset": 0
+      },
+      {
+        "id": "456789",
+        "entries": 16777216,
+        "rawValueOffset": 201326647,
+        "outputByteOffset": 67108864
+      },
+      {
+        "id": "012345",
+        "entries": 16777216,
+        "rawValueOffset": 402653270,
+        "outputByteOffset": 134217728
+      },
+      {
+        "id": "234569",
+        "entries": 16777216,
+        "rawValueOffset": 603979893,
+        "outputByteOffset": 201326592
+      },
+      {
+        "id": "01259a",
+        "entries": 16777216,
+        "rawValueOffset": 805306516,
+        "outputByteOffset": 268435456
+      },
+      {
+        "id": "345678",
+        "entries": 16777216,
+        "rawValueOffset": 1006633139,
+        "outputByteOffset": 335544320
+      },
+      {
+        "id": "134567",
+        "entries": 16777216,
+        "rawValueOffset": 1207959762,
+        "outputByteOffset": 402653184
+      },
+      {
+        "id": "01489a",
+        "entries": 16777216,
+        "rawValueOffset": 1409286385,
+        "outputByteOffset": 469762048
+      }
+    ],
+    "features": 64,
+    "symmetries": "All eight D4 symmetries, same weights shared across each pattern",
+    "indexOrder": "First listed pattern cell is least-significant nibble",
+    "trainingArraysIncluded": false,
+    "networkMeaning": "TD-trained afterstate future-score value; add immediate merge reward when scoring an action."
+  }
+}

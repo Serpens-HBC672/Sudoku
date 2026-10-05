@@ -1,0 +1,29 @@
+{
+  "independentValidation": "PASS",
+  "games": 100,
+  "successes": 49,
+  "successRate": 0.49,
+  "wilson95": [
+    0.3942199893044113,
+    0.5865198806597283
+  ],
+  "elapsedWallSeconds": 288.764,
+  "meanGameWallSeconds": 5.63536029412,
+  "weightedMeanMoveMs": 0.39821474959541203,
+  "maxGameWallSeconds": 10.465584567999999,
+  "peakProcessRssMiB": 640.69921875,
+  "loadMs": [
+    1111.211568,
+    1072.3694930000001
+  ],
+  "maxTileHistogram": {
+    "4096": 1,
+    "8192": 5,
+    "16384": 45,
+    "32768": 49
+  },
+  "sourceSha256": "ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed",
+  "benchmarkSha256": "3cfc3006ca8349d88c9a733826d1c8795d75e60d26d13a14aa605dd5deec7c4c",
+  "helperSha256": "225ea64e5c317374e04f30b3efb1ffbcc40c0b5bbda1a182a08dc679ee03d49d",
+  "checked": "exact unique registered seeds; source hashes/options/cap; both complete summaries; target outcomes; legal terminal losses; independent Python seeded spawn mass and score identities; depth counts"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "standalone-2048-ntuple",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node test-ntuple.js && node test-ntuple8.js --synthetic-only && node test-selective.js",
+    "prepare-model": "node prepare-model.js",
+    "benchmark": "node benchmark-ntuple.js"
+  },
+  "license": "MIT",
+  "main": "ntuple2048.js"
+}
