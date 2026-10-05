@@ -1,0 +1,85 @@
+{
+  "type": "user_directed_termination",
+  "recordedAt": "2026-10-05T12:19:23.688Z",
+  "runSessionExitCode": 130,
+  "sessionClosed": true,
+  "sourceSha256": "225ea64e5c317374e04f30b3efb1ffbcc40c0b5bbda1a182a08dc679ee03d49d",
+  "preregisteredGames": 30,
+  "completedGames": 10,
+  "completedSuccesses": 0,
+  "interruptedGames": [
+    {
+      "seed": 50005,
+      "outcome": "interrupted",
+      "reason": "User requested cancellation and a change of approach.",
+      "lastLoggedProgress": {
+        "type": "progress",
+        "seed": 50005,
+        "moves": 6000,
+        "maxTile": 8192,
+        "score": 146804,
+        "seconds": 2685.4,
+        "meanDepth": 5.28,
+        "truncatedMoves": 2213
+      },
+      "exactFinalMoveCount": null,
+      "finalBoard": null,
+      "note": "Progress is the last periodic checkpoint, not the exact cancellation state. This game is neither a loss nor a completed trial."
+    },
+    {
+      "seed": 50022,
+      "outcome": "interrupted",
+      "reason": "User requested cancellation and a change of approach.",
+      "lastLoggedProgress": {
+        "type": "progress",
+        "seed": 50022,
+        "moves": 6000,
+        "maxTile": 8192,
+        "score": 147312,
+        "seconds": 2567,
+        "meanDepth": 5.27,
+        "truncatedMoves": 2420
+      },
+      "exactFinalMoveCount": null,
+      "finalBoard": null,
+      "note": "Progress is the last periodic checkpoint, not the exact cancellation state. This game is neither a loss nor a completed trial."
+    }
+  ],
+  "notStartedSeeds": [
+    50006,
+    50007,
+    50008,
+    50009,
+    50010,
+    50011,
+    50012,
+    50013,
+    50014,
+    50015,
+    50023,
+    50024,
+    50025,
+    50026,
+    50027,
+    50028,
+    50029,
+    50030
+  ],
+  "reason": "The user judged the test duration excessive and the observed ten completed failures inadequate, and explicitly requested switching routes.",
+  "preregistrationCompleted": false,
+  "stoppingRuleChangedBy": "User request; this was not the originally preregistered stopping rule.",
+  "interpretation": "Report 0/10 among completed games, two interrupted games, and 18 unstarted games. Do not describe this as a completed 30-game evaluation or count interrupted games as losses. Any nominal interval for the completed prefix is descriptive, not a fixed-sample confirmatory result.",
+  "preservedRawFiles": [
+    {
+      "path": "results/holdout-seeds50001-50015.jsonl",
+      "sha256": "9fa089981f996b0a57a4ffe16a8a392969871e82efae741b5c67e7d85e0c1399",
+      "originalBeforePathRedactionSha256": "c6df03c08ecddc16aaa2b828e08d3cd4ce8ae1ad1c423a282d028396be57b043"
+    },
+    {
+      "path": "results/holdout-seeds50016-50030.jsonl",
+      "sha256": "0b32247d0a3ce85baa9e3027d7bb37555162814143eed8aadbb9b49ee9ff0079",
+      "originalBeforePathRedactionSha256": "8a4f8ad7c8cff0302564831fe3cde42349d01410534f564a86df6d6a88e389ff"
+    }
+  ],
+  "publicationNormalization": "Executable and script paths in published JSONL metadata are normalized; all experiment arguments, options and measured data are preserved."
+}
