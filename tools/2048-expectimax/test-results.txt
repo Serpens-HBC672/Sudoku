@@ -1,0 +1,17 @@
+PASS exports and fresh empty boards (20.2 ms)
+PASS merge rules, directions, score, and unsigned packing (2.8 ms)
+PASS all 65,536 rows, left and right, against independent merge logic (663.9 ms)
+PASS 10,000 random boards in all directions, public and packed (393.9 ms)
+PASS spawn geometry, immutability, reproducibility, and distribution (55.1 ms)
+PASS public functions do not mutate frozen input boards (4.3 ms)
+PASS invalid boards and directions are rejected (0.8 ms)
+PASS solver returns legal finite decisions and honors target / terminal states (44.0 ms)
+PASS negative heuristics never make certain death preferable to survival (0.1 ms)
+PASS tiny search budgets still yield legal fallback moves (1.7 ms)
+PASS a forced root move skips search without changing its legal direction (0.6 ms)
+PASS transposition table size does not alter completed depth-three search (37.2 ms)
+PASS heuristic tables match a direct row-and-column formula (15.3 ms)
+PASS expectimax matches independent spawn enumeration and max-node oracle (150.3 ms)
+PASS UMD browser global and native ESM default import work (97.4 ms)
+
+15 independent test groups passed in 1490.2 ms.

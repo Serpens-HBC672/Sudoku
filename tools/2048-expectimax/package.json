@@ -1,0 +1,11 @@
+{
+  "name": "standalone-2048-expectimax",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Independent standard 4x4 2048 Expectimax solver and reproducible experiments",
+  "type": "commonjs",
+  "main": "expectimax2048.js",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node test-expectimax2048.js", "benchmark": "node benchmark.js" },
+  "license": "MIT"
+}
