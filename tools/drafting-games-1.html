@@ -1,0 +1,2065 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2048 &amp; 数字华容道 · 制图台</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Archivo:wght@400;600;700&display=swap');
+
+  /* ---- design tokens: light = paper drafting sheet, dark = blueprint ---- */
+  :root{
+    --paper:#EFEBE0; --paper-line:#C9D3DB;
+    --ink:#1D2B3A; --ink-soft:#5A6B7D;
+    --accent:#B5651D; --accent-dark:#7C4313;
+    --slot-bg:#E4DFD1; --slot-line:#CFC9B8;
+    --tile-edge:rgba(0,0,0,.07);
+    --tile15-bg:#DCE6EE; --tile15-hover:#C7D8E5;
+    --overlay-bg:rgba(239,235,224,.80);
+    --toast-bg:#1D2B3A; --toast-fg:#E2B354;
+    --btn-bg:#1D2B3A; --btn-fg:#EFEBE0; --btn-hover:#7C4313;
+    --cell-gap:12px; --pad:14px;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0F1B2A; --paper-line:#1D3147;
+      --ink:#E7E2D3; --ink-soft:#8FA4B8;
+      --accent:#E3A45B; --accent-dark:#F0BC80;
+      --slot-bg:#14263A; --slot-line:#24405A;
+      --tile-edge:rgba(255,255,255,.14);
+      --tile15-bg:#1C3550; --tile15-hover:#264767;
+      --overlay-bg:rgba(15,27,42,.80);
+      --toast-bg:#E7E2D3; --toast-fg:#7C4313;
+      --btn-bg:#E7E2D3; --btn-fg:#0F1B2A; --btn-hover:#F0BC80;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0F1B2A; --paper-line:#1D3147;
+    --ink:#E7E2D3; --ink-soft:#8FA4B8;
+    --accent:#E3A45B; --accent-dark:#F0BC80;
+    --slot-bg:#14263A; --slot-line:#24405A;
+    --tile-edge:rgba(255,255,255,.14);
+    --tile15-bg:#1C3550; --tile15-hover:#264767;
+    --overlay-bg:rgba(15,27,42,.80);
+    --toast-bg:#E7E2D3; --toast-fg:#7C4313;
+    --btn-bg:#E7E2D3; --btn-fg:#0F1B2A; --btn-hover:#F0BC80;
+  }
+  @media (max-width:480px){ :root{ --pad:10px; --cell-gap:8px; } }
+  #board15[data-n="5"]{ --cell-gap:8px; }
+  @media (max-width:480px){ #board15[data-n="5"]{ --cell-gap:5px; } }
+
+  *{box-sizing:border-box;}
+  html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+  body{
+    margin:0; display:flex; justify-content:center; align-items:flex-start;
+    padding:clamp(14px,4vh,40px) 16px 40px;
+    background:
+      linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      var(--paper);
+    font-family:'Archivo', system-ui, sans-serif;
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app-shell{ width:512px; max-width:100%; }
+
+  /* ---- tabs: a segmented control, clear of the header below ---- */
+  .tabbar{ display:flex; width:max-content; margin:0 0 20px; border:2px solid var(--ink); background:var(--paper); }
+  .tab-btn{
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; letter-spacing:.5px;
+    padding:9px 18px; background:transparent; color:var(--ink-soft); border:none; cursor:pointer;
+  }
+  .tab-btn + .tab-btn{ border-left:2px solid var(--ink); }
+  .tab-btn.active{ background:var(--ink); color:var(--paper); }
+  .tab-btn:not(.active):hover{ background:var(--slot-bg); color:var(--ink); }
+  .game-panel{ display:none; }
+  .game-panel.active{ display:block; }
+
+  .sheet{ width:100%; position:relative; }
+  .frame-marks{ position:absolute; inset:0; pointer-events:none; }
+  .frame-marks span{ position:absolute; width:16px; height:16px; border:2px solid var(--ink); }
+  .frame-marks .tl{top:-8px;left:-8px;border-right:none;border-bottom:none;}
+  .frame-marks .tr{top:-8px;right:-8px;border-left:none;border-bottom:none;}
+  .frame-marks .bl{bottom:-8px;left:-8px;border-right:none;border-top:none;}
+  .frame-marks .br{bottom:-8px;right:-8px;border-left:none;border-top:none;}
+
+  header{ display:flex; justify-content:space-between; align-items:flex-end; gap:10px; border-bottom:2px solid var(--ink); padding-bottom:10px; margin-bottom:16px; }
+  .title-block h1{ font-family:'JetBrains Mono', monospace; font-weight:800; margin:0; line-height:1; white-space:nowrap; }
+  #panel2048 .title-block h1{ font-size:34px; letter-spacing:-1px; }
+  #panel15 .title-block h1{ font-size:26px; letter-spacing:-0.5px; line-height:1.1; }
+  .title-block .sub{ font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-soft); margin-top:4px; }
+  .stats{ display:flex; gap:8px; }
+  .stat-box{ border:1.5px solid var(--ink); background:var(--paper); padding:5px 10px; min-width:54px; text-align:center; }
+  .stat-box .label{ font-size:9px; letter-spacing:1px; color:var(--ink-soft); text-transform:uppercase; }
+  .stat-box .val{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:17px; font-variant-numeric:tabular-nums; }
+
+  /* ---- board ---- */
+  .board-frame{ position:relative; width:100%; aspect-ratio:1/1; background:var(--paper); border:2px solid var(--ink); touch-action:none; user-select:none; -webkit-user-select:none; }
+  .slots{ position:absolute; inset:var(--pad); display:grid; gap:var(--cell-gap); pointer-events:none; }
+  .slot{ background:var(--slot-bg); border:1px dashed var(--slot-line); }
+  .tiles-layer{ position:absolute; inset:var(--pad); }
+  .board-frame.shake{ animation:shake .2s ease; }
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
+
+  /* ---- 2048 tiles ---- */
+  .tile2048{
+    position:absolute; border-radius:2px; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-variant-numeric:tabular-nums;
+    transition:left .14s ease, top .14s ease;
+    box-shadow:inset 0 0 0 1px var(--tile-edge);
+  }
+  .tile2048.spawn{ animation:spawn2048 .16s ease; }
+  .tile2048.pop{ animation:pop2048 .18s ease; }
+  @keyframes spawn2048{ from{transform:scale(.3); opacity:0;} to{transform:scale(1); opacity:1;} }
+  @keyframes pop2048{ 0%{transform:scale(.7);} 60%{transform:scale(1.12);} 100%{transform:scale(1);} }
+
+  /* ---- 15-puzzle tiles ---- */
+  .tile15{
+    position:absolute; background:var(--tile15-bg); border:1.5px solid var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--ink);
+    cursor:pointer; user-select:none; transition:left .14s ease, top .14s ease;
+  }
+  /* corner registration mark: lights up when the tile sits in its final position */
+  .tile15.placed15::before{ content:''; position:absolute; top:6px; left:6px; width:7px; height:7px; background:var(--accent); }
+  @media (hover:hover){ .tile15:hover{ background:var(--tile15-hover); } }
+  .tile15.movable15::after{ content:''; position:absolute; inset:0; box-shadow:inset 0 0 0 1.5px var(--accent); opacity:.55; pointer-events:none; }
+  .void15{ position:absolute; background:repeating-linear-gradient(45deg, var(--paper-line) 0, var(--paper-line) 1px, transparent 1px, transparent 8px); border:1.5px dashed var(--slot-line); transition:left .14s ease, top .14s ease; }
+
+  /* ---- overlays (game over / puzzle solved) ---- */
+  .overlay{ position:absolute; inset:0; z-index:6; background:var(--overlay-bg); display:none; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center; border:2px solid var(--ink); }
+  .overlay.show{ display:flex; animation:fadeIn .25s ease; }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .overlay h2{ font-family:'JetBrains Mono', monospace; font-size:24px; margin:0; }
+  .overlay p{ margin:0 0 6px; font-size:12px; color:var(--ink-soft); letter-spacing:1px; text-transform:uppercase; }
+
+  /* ---- milestone toast (non-blocking banner) ---- */
+  .milestone-toast{
+    position:absolute; left:10px; right:10px; top:10px; z-index:5;
+    background:var(--toast-bg); color:var(--toast-fg);
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 10px 8px 14px; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,.3);
+  }
+  .milestone-toast.show{ display:flex; animation:toastIn .22s ease; }
+  @keyframes toastIn{ from{transform:translateY(-10px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .milestone-toast .actions{ display:flex; gap:6px; }
+  .milestone-toast button{ background:transparent; color:var(--toast-fg); border:1.5px solid var(--toast-fg); padding:5px 10px; font-size:11px; }
+  .milestone-toast button:hover{ background:var(--toast-fg); color:var(--toast-bg); }
+
+  /* ---- footer / controls ---- */
+  footer{ display:flex; flex-direction:column; gap:12px; margin-top:16px; font-size:11px; color:var(--ink-soft); letter-spacing:.5px; }
+  .footer-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .hint-row{ min-height:2.7em; line-height:1.35; }
+  .btns{ display:flex; gap:8px; }
+  button{
+    font-family:'Archivo', sans-serif; font-weight:600; font-size:12px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--btn-bg); color:var(--btn-fg); border:none; padding:9px 16px; cursor:pointer;
+  }
+  button:hover{ background:var(--btn-hover); }
+  button:disabled{ opacity:.45; cursor:default; }
+  button:disabled:hover{ background:var(--btn-bg); }
+  button:focus-visible, input[type=range]:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  @media (pointer:coarse){ button{ min-height:44px; } .milestone-toast button{ min-height:36px; } }
+
+  .speed-slider{ display:flex; align-items:center; gap:8px; width:100%; }
+  .speed-slider-label{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .speed-slider input[type=range]{ flex:1; accent-color:var(--accent); height:28px; }
+  .speed-slider-val{ font-family:'JetBrains Mono', monospace; font-size:11px; min-width:66px; text-align:right; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  .size-switch{ display:flex; gap:6px; }
+  .size-switch button{ background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); padding:6px 12px; min-width:48px; }
+  .size-switch button:hover:not(:disabled):not(.active){ background:var(--slot-bg); }
+  .size-switch button.active:hover{ background:var(--ink); }
+  .size-switch button.active{ background:var(--ink); color:var(--paper); }
+
+  .size-row{ justify-content:flex-start; gap:12px; }
+  .row-label{ font-size:11px; color:var(--ink-soft); }
+
+
+  /* ---- 2048 option chips, turbo mode, result tally ---- */
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{ background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); padding:6px 10px; font-size:11px; }
+  .chip:hover:not(:disabled):not([aria-pressed="true"]){ background:var(--slot-bg); }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:var(--btn-fg); }
+  .chip[aria-pressed="true"]:hover{ background:var(--accent-dark); border-color:var(--accent-dark); }
+  .chip:disabled{ opacity:.55; }
+  .board-frame.turbo .tile2048{ transition:none; }
+  .board-frame.turbo .tile2048.spawn, .board-frame.turbo .tile2048.pop{ animation:none; }
+  .tally{ font-family:'JetBrains Mono', monospace; font-size:11px; line-height:1.6; color:var(--ink-soft); white-space:pre-line; border-top:1px dashed var(--slot-line); padding-top:8px; }
+
+  @media (max-width:420px){ #panel2048 .title-block h1{ font-size:30px; } #panel15 .title-block h1{ font-size:22px; } .stat-box{ min-width:48px; padding:5px 8px; } }
+  @media (prefers-reduced-motion:reduce){
+    .tile2048,.tile15,.void15{ transition:none; }
+    .tile2048.spawn,.tile2048.pop,.board-frame.shake,.overlay.show,.milestone-toast.show{ animation:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="tabbar">
+      <button class="tab-btn active" data-panel="panel2048">2048</button>
+      <button class="tab-btn" data-panel="panel15">数字华容道</button>
+    </nav>
+
+    <div id="panel2048" class="game-panel active">
+      <div class="sheet">
+        <header>
+          <div class="title-block">
+            <h1>2048</h1>
+            <div class="sub">合并方块 · No. 2048&#8209;A</div>
+          </div>
+          <div class="stats">
+            <div class="stat-box"><div class="label">分数</div><div class="val" id="score2048">0</div></div>
+            <div class="stat-box"><div class="label">最佳</div><div class="val" id="best2048">0</div></div>
+          </div>
+        </header>
+        <div class="board-frame" id="board2048">
+          <div class="frame-marks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+          <div class="slots" id="slots2048"></div>
+          <div class="tiles-layer" id="tiles2048"></div>
+          <div class="milestone-toast" id="milestone2048">
+            <span id="milestoneText2048">达成 2048!</span>
+            <div class="actions">
+              <button id="milestoneContinue2048">继续</button>
+              <button id="milestoneRestart2048">重开</button>
+            </div>
+          </div>
+          <div class="overlay" id="overlay2048">
+            <h2 id="overlayTitle2048">游戏结束</h2>
+            <p id="overlaySub2048">已无可行移动</p>
+            <button id="retryBtn2048">重新开始</button>
+          </div>
+        </div>
+        <footer>
+          <div class="hint-row"><span id="hint2048">方向键/WASD 或滑动棋盘移动</span></div>
+          <div class="footer-row">
+            <div class="btns">
+              <button id="playBtn2048">自动游玩</button>
+              <button id="newGameBtn2048">新局</button>
+            </div>
+            <div class="chips">
+              <button class="chip" id="turboBtn2048" aria-pressed="false" title="跳过动画,计算速度就是出步速度">极速</button>
+              <button class="chip" id="dynBtn2048" aria-pressed="false" title="实验:棋盘拥挤时多想,安全时少想(平均耗时不变)">动态预算</button>
+              <button class="chip" id="batchBtn2048" aria-pressed="false" title="一局结束后自动开下一局并累计统计">连续对局</button>
+            </div>
+          </div>
+          <div class="footer-row" id="speedHost2048"></div>
+          <div class="tally" id="tally2048" hidden></div>
+        </footer>
+      </div>
+    </div>
+
+    <div id="panel15" class="game-panel">
+      <div class="sheet">
+        <header>
+          <div class="title-block">
+            <h1>数字华容道</h1>
+            <div class="sub">Sliding Puzzle · No. 15&#8209;B</div>
+          </div>
+          <div class="stats">
+            <div class="stat-box"><div class="label">步数</div><div class="val" id="moves15">0</div></div>
+            <div class="stat-box"><div class="label">用时</div><div class="val" id="time15">00:00</div></div>
+          </div>
+        </header>
+        <div class="board-frame" id="board15">
+          <div class="frame-marks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+          <div class="slots" id="slots15"></div>
+          <div class="tiles-layer" id="tiles15"></div>
+          <div class="overlay" id="overlay15">
+            <h2>已还原</h2>
+            <p id="overlaySub15">0 步 · 00:00</p>
+            <button id="retryBtn15">再来一局</button>
+          </div>
+        </div>
+        <footer>
+          <div class="hint-row"><span id="hint15" class="hint">滑动棋盘或点击方块移动，方向键同理</span></div>
+          <div class="footer-row">
+            <div class="btns">
+              <button id="solveBtn15">自动求解</button>
+              <button id="applyBtn15" hidden>结束搜索</button>
+              <button id="shuffleBtn15">打乱</button>
+            </div>
+          </div>
+          <div class="footer-row size-row">
+            <span class="row-label">尺寸</span>
+            <div class="size-switch" id="sizeSwitch15">
+              <button data-size="3">3×3</button>
+              <button data-size="4" class="active">4×4</button>
+              <button data-size="5">5×5</button>
+            </div>
+          </div>
+          <div class="footer-row" id="speedHost15"></div>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ---- GameShared: small utilities reused by both games ----
+const GameShared = (function(){
+
+  // Lock an element's default touch gestures (pan/zoom) so swiping inside it
+  // never scrolls the page. Standards-based fix, no manual preventDefault needed.
+  function lockTouchAction(el){
+    el.style.touchAction = 'none';
+  }
+
+  // Pointer-based swipe detection (unifies mouse-drag and touch on one API).
+  // onSwipe receives 'up'|'down'|'left'|'right'. Deliberately does NOT use
+  // setPointerCapture: capture re-targets the follow-up "click" to the board,
+  // which would silently break click-to-move on individual tiles. Instead the
+  // release is listened for on window, and the click that trails a recognized
+  // swipe is swallowed so a short in-tile drag can't fire swipe AND click.
+  function attachSwipe(el, onSwipe, minDist){
+    minDist = minDist || 24;
+    let startX = 0, startY = 0, tracking = false, pointerId = null, swiped = false;
+    function down(e){
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      tracking = true; swiped = false;
+      pointerId = e.pointerId;
+      startX = e.clientX; startY = e.clientY;
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', cancel);
+    }
+    function up(e){
+      if(!tracking || e.pointerId !== pointerId) return;
+      cleanup();
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      if(Math.abs(dx) < minDist && Math.abs(dy) < minDist) return;
+      swiped = true;
+      if(Math.abs(dx) > Math.abs(dy)) onSwipe(dx > 0 ? 'right' : 'left');
+      else onSwipe(dy > 0 ? 'down' : 'up');
+    }
+    function cancel(){ cleanup(); }
+    function cleanup(){
+      tracking = false;
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+    }
+    function swallowClick(e){
+      if(swiped){ e.stopPropagation(); e.preventDefault(); swiped = false; }
+    }
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('click', swallowClick, true); // capture phase: runs before tile handlers
+    lockTouchAction(el);
+    el.style.userSelect = 'none';
+    el.style.webkitUserSelect = 'none';
+    return function dispose(){
+      cleanup();
+      el.removeEventListener('pointerdown', down);
+      el.removeEventListener('click', swallowClick, true);
+    };
+  }
+
+  // A labeled range slider, wired to onChange(value:number). Two ways to describe the scale:
+  //   {min, max, step}   -- continuous range
+  //   {values:[...]}     -- discrete, uneven steps (e.g. 1,2,5,10,20,50 ms); the thumb moves over
+  //                         indices but onChange/format always see the real value
+  // configure(newOpts) swaps the whole scale/label/format/onChange in place (used when a game
+  // changes what the slider means, e.g. normal vs turbo mode).
+  function createSpeedSlider(container, opts){
+    const wrap = document.createElement('div');
+    wrap.className = 'speed-slider';
+    const label = document.createElement('span');
+    label.className = 'speed-slider-label';
+    const input = document.createElement('input');
+    input.type = 'range';
+    const valOut = document.createElement('span');
+    valOut.className = 'speed-slider-val';
+    let cur = null;
+    function realValue(){
+      return cur.values ? cur.values[Number(input.value)] : Number(input.value);
+    }
+    function show(v){ valOut.textContent = cur.format ? cur.format(v) : (v + 'ms'); }
+    function configure(o){
+      cur = o;
+      label.textContent = o.label || '速度';
+      if(o.values){
+        input.min = 0; input.max = o.values.length - 1; input.step = 1;
+        let idx = o.values.indexOf(o.value);
+        if(idx < 0){                                   // nearest available value
+          idx = 0;
+          for(let i = 1; i < o.values.length; i++) if(Math.abs(o.values[i] - o.value) < Math.abs(o.values[idx] - o.value)) idx = i;
+        }
+        input.value = idx;
+      } else {
+        input.min = o.min; input.max = o.max; input.step = o.step || 10; input.value = o.value;
+      }
+      show(realValue());
+    }
+    input.addEventListener('input', ()=>{ const v = realValue(); show(v); cur.onChange(v); });
+    wrap.appendChild(label); wrap.appendChild(input); wrap.appendChild(valOut);
+    container.appendChild(wrap);
+    configure(opts);
+    return { el: wrap, configure, setValue(v){ configure(Object.assign({}, cur, {value: v})); } };
+  }
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+  // Real on-screen cell geometry for an n x n board, derived from the board's
+  // actual rendered width (so tiles always line up with the slot grid).
+  // Returns null while the board is hidden (width 0, e.g. inactive tab).
+  function layout(boardEl, n){
+    const w = boardEl.clientWidth;
+    if(!w) return null;
+    const cs = getComputedStyle(boardEl);
+    const pad = parseFloat(cs.getPropertyValue('--pad'));
+    const gap = parseFloat(cs.getPropertyValue('--cell-gap'));
+    const size = (w - pad*2 - gap*(n-1)) / n;
+    return {size, gap, pad};
+  }
+
+  // Static n x n slot grid behind the tiles (the "drafting grid").
+  function buildSlots(container, n){
+    container.innerHTML = '';
+    container.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+    container.style.gridTemplateRows = 'repeat(' + n + ', 1fr)';
+    for(let i=0;i<n*n;i++){
+      const d = document.createElement('div');
+      d.className = 'slot';
+      container.appendChild(d);
+    }
+  }
+
+  // Calls fn() whenever the element's rendered width changes to a non-zero
+  // value -- covers window resize AND a hidden tab becoming visible.
+  function onWidthChange(el, fn){
+    let last = -1;
+    const ro = new ResizeObserver(()=>{
+      const w = el.clientWidth;
+      if(w && w !== last){ last = w; fn(); }
+    });
+    ro.observe(el);
+  }
+
+  return { lockTouchAction, attachSwipe, createSpeedSlider, clamp, layout, buildSlots, onWidthChange };
+})();
+
+</script>
+<script>
+// SolverKit: everything the sliding-puzzle solver needs, with no DOM access.
+// Self-contained on purpose: the whole function is stringified into a Web Worker
+// (Function.prototype.toString), and the exact same code runs time-sliced on the
+// main thread if Workers are unavailable.
+//
+// Move encoding used everywhere: 0=up 1=down 2=left 3=right, meaning the direction
+// the BLANK moves. A path is an array of these.
+function SolverKit(){
+  const DR = [-1, 1, 0, 0], DC = [0, 0, -1, 1];
+  const OPP = [1, 0, 3, 2];
+  const now = (typeof performance !== 'undefined') ? function(){ return performance.now(); } : function(){ return Date.now(); };
+
+  // ---- heuristic pieces shared by every algorithm below ----
+  // h = Manhattan + linear conflict. Linear conflict is counted the ADMISSIBLE way:
+  // for each row/column, tiles that belong to that line but sit in the wrong relative
+  // order must be partly moved out; the minimum number of tiles to move out is
+  // (k - LIS), each costing 2 extra moves. (Counting every conflicting *pair*, as the
+  // first version did, over-counts when 3+ tiles conflict and breaks admissibility.)
+  function makeTools(n){
+    const N2 = n * n;
+    const gR = new Uint8Array(N2), gC = new Uint8Array(N2);
+    for(let v = 1; v < N2; v++){ gR[v] = ((v - 1) / n) | 0; gC[v] = (v - 1) % n; }
+    const buf = new Int32Array(8), dp = new Int32Array(8);
+    // line ids: 0..n-1 = rows, n..2n-1 = columns
+    function linePenalty(st, id){
+      let k = 0;
+      if(id < n){
+        for(let c = 0; c < n; c++){ const v = st[id * n + c]; if(v !== 0 && gR[v] === id) buf[k++] = gC[v]; }
+      } else {
+        const c = id - n;
+        for(let r = 0; r < n; r++){ const v = st[r * n + c]; if(v !== 0 && gC[v] === c) buf[k++] = gR[v]; }
+      }
+      if(k < 2) return 0;
+      let best = 0;
+      for(let i = 0; i < k; i++){
+        let d = 1;
+        for(let j = 0; j < i; j++) if(buf[j] < buf[i] && dp[j] + 1 > d) d = dp[j] + 1;
+        dp[i] = d; if(d > best) best = d;
+      }
+      return 2 * (k - best);
+    }
+    function manhattanFull(st){
+      let m = 0;
+      for(let i = 0; i < N2; i++){
+        const v = st[i]; if(v === 0) continue;
+        m += Math.abs(((i / n) | 0) - gR[v]) + Math.abs((i % n) - gC[v]);
+      }
+      return m;
+    }
+    function hFull(st){
+      let h = manhattanFull(st);
+      for(let id = 0; id < 2 * n; id++) h += linePenalty(st, id);
+      return h;
+    }
+    return { N2, gR, gC, linePenalty, manhattanFull, hFull };
+  }
+
+  function keyOf(st){ return String.fromCharCode.apply(null, st); }
+
+  function applyPath(initial, n, path){
+    const st = Uint8Array.from(initial); let b = st.indexOf(0);
+    for(let i = 0; i < path.length; i++){
+      const k = path[i], br = (b / n) | 0, bc = b % n, nr = br + DR[k], nc = bc + DC[k];
+      if(nr < 0 || nr >= n || nc < 0 || nc >= n) return null;
+      const t = nr * n + nc; st[b] = st[t]; st[t] = 0; b = t;
+    }
+    return st;
+  }
+  function isGoal(st){
+    const N2 = st.length;
+    for(let i = 0; i < N2 - 1; i++) if(st[i] !== i + 1) return false;
+    return st[N2 - 1] === 0;
+  }
+
+  // ---------------------------------------------------------------
+  // IDA* with an explicit stack: resumable (run() can stop mid-search and continue
+  // later), uses incremental heuristic updates, and exposes lowerBound -- once an
+  // f-threshold has been fully searched with no goal, the optimum is provably >= it.
+  // ---------------------------------------------------------------
+  function makeIDA(initial, n){
+    const T = makeTools(n), N2 = T.N2, gR = T.gR, gC = T.gC;
+    const st = Uint8Array.from(initial);
+    let blank = st.indexOf(0);
+    const pen = new Int32Array(2 * n);
+    let penSum = 0, md = T.manhattanFull(st);
+    for(let id = 0; id < 2 * n; id++){ pen[id] = T.linePenalty(st, id); penSum += pen[id]; }
+
+    const MAXD = 1024;
+    const dirNext = new Uint8Array(MAXD), moveAt = new Uint8Array(MAXD);
+    const savedMd = new Int32Array(MAXD), savedPenSum = new Int32Array(MAXD);
+    const savedIds = new Uint8Array(MAXD * 3), savedVals = new Int32Array(MAXD * 3);
+
+    function doMove(k, d){
+      const br = (blank / n) | 0, bc = blank % n, tr = br + DR[k], tc = bc + DC[k], t = tr * n + tc, v = st[t];
+      savedMd[d] = md; savedPenSum[d] = penSum;
+      md += (Math.abs(gR[v] - br) + Math.abs(gC[v] - bc)) - (Math.abs(gR[v] - tr) + Math.abs(gC[v] - tc));
+      st[blank] = v; st[t] = 0; blank = t;
+      let a, b, c;
+      if(DR[k] !== 0){ a = br; b = tr; c = n + bc; } else { a = br; b = n + bc; c = n + tc; }
+      const o = d * 3;
+      savedIds[o] = a; savedIds[o + 1] = b; savedIds[o + 2] = c;
+      savedVals[o] = pen[a]; savedVals[o + 1] = pen[b]; savedVals[o + 2] = pen[c];
+      penSum -= pen[a] + pen[b] + pen[c];
+      pen[a] = T.linePenalty(st, a); pen[b] = T.linePenalty(st, b); pen[c] = T.linePenalty(st, c);
+      penSum += pen[a] + pen[b] + pen[c];
+    }
+    function undoMove(k, d){
+      const t = blank, ob = t - (DR[k] * n + DC[k]), v = st[ob];
+      st[t] = v; st[ob] = 0; blank = ob;
+      md = savedMd[d]; penSum = savedPenSum[d];
+      const o = d * 3;
+      pen[savedIds[o]] = savedVals[o]; pen[savedIds[o + 1]] = savedVals[o + 1]; pen[savedIds[o + 2]] = savedVals[o + 2];
+    }
+
+    let threshold = md + penSum, lowerBound = threshold;
+    let depth = 0, entering = true, minNext = Infinity, incumbent = Infinity, nodes = 0, found = null;
+    dirNext[0] = 0;
+
+    function run(untilMs){
+      let tick = 0;
+      for(;;){
+        if(entering){
+          entering = false; nodes++;
+          const h = md + penSum, f = depth + h;
+          if(f > threshold){ if(f < minNext) minNext = f; dirNext[depth] = 4; }
+          else if(h === 0){ found = Array.prototype.slice.call(moveAt, 0, depth); return 'found'; }
+        }
+        let k = dirNext[depth], moved = false;
+        while(k < 4){
+          const cand = k++;
+          if(depth > 0 && cand === OPP[moveAt[depth - 1]]) continue;
+          const br = (blank / n) | 0, bc = blank % n, nr = br + DR[cand], nc = bc + DC[cand];
+          if(nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
+          dirNext[depth] = k; doMove(cand, depth); moveAt[depth] = cand;
+          depth++; dirNext[depth] = 0; entering = true; moved = true; break;
+        }
+        if(moved){ if((++tick & 2047) === 0 && now() > untilMs) return 'running'; continue; }
+        if(depth === 0){                         // whole f<=threshold iteration finished, no goal
+          if(minNext === Infinity) return 'exhausted';
+          threshold = minNext; lowerBound = threshold; minNext = Infinity;
+          if(threshold >= incumbent) return 'bound'; // incumbent is now proven optimal
+          dirNext[0] = 0; entering = true; continue;
+        }
+        depth--; undoMove(moveAt[depth], depth);
+        if((++tick & 2047) === 0 && now() > untilMs) return 'running';
+      }
+    }
+    return {
+      run,
+      setIncumbent(len){ if(len < incumbent) incumbent = len; },
+      get lowerBound(){ return lowerBound; },
+      get nodes(){ return nodes; },
+      get found(){ return found; },
+      // test hook: does the incrementally-maintained h equal a from-scratch recompute?
+      selfCheck(){ return md + penSum === T.hFull(st); }
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // Weighted A* (f = g + W*h), resumable and memory-lean: states live in one big byte
+  // pool, duplicates are found through an open-addressing hash table (exact compare, no
+  // collisions), the open list is a typed-array heap. A search is one "stage":
+  //   start(W, bound)  -- restart with weight W; anything with g+h >= bound is pruned
+  //                       (h is admissible, so this can never discard a better solution)
+  //   run(untilMs, nodeCap) -> 'solved' | 'running' | 'capped'
+  // Running stages with W = 3, 2, 1.5, 1.25 ... (Restarting WA*) gives a first solution in
+  // milliseconds and then steadily shorter ones; the caller keeps the best so far.
+  // ---------------------------------------------------------------
+  function makeWA(initial, n){
+    const T = makeTools(n), N2 = n * n;
+    let cap = 1 << 14, count = 0;
+    let pool = new Uint8Array(cap * N2), parent = new Int32Array(cap), gArr = new Uint16Array(cap);
+    let hArr = new Int16Array(cap), mvArr = new Uint8Array(cap), hashArr = new Int32Array(cap);
+    let tsize = 1 << 15, table = new Int32Array(tsize).fill(-1);
+    let hk = new Float64Array(1 << 14), hi = new Int32Array(1 << 14), hn = 0;
+    let W = 3, bound = Infinity, expanded = 0, solution = null;
+    const tmp = new Uint8Array(N2);
+
+    function grow(){
+      cap *= 2;
+      const p2 = new Uint8Array(cap * N2); p2.set(pool); pool = p2;
+      const a = new Int32Array(cap); a.set(parent); parent = a;
+      const g = new Uint16Array(cap); g.set(gArr); gArr = g;
+      const h = new Int16Array(cap); h.set(hArr); hArr = h;
+      const m = new Uint8Array(cap); m.set(mvArr); mvArr = m;
+      const x = new Int32Array(cap); x.set(hashArr); hashArr = x;
+    }
+    function rehash(){
+      tsize *= 2; table = new Int32Array(tsize).fill(-1);
+      for(let i = 0; i < count; i++){ let p = hashArr[i] & (tsize - 1); while(table[p] !== -1) p = (p + 1) & (tsize - 1); table[p] = i; }
+    }
+    function hashTmp(){ let h = -2128831035; for(let i = 0; i < N2; i++){ h ^= tmp[i]; h = Math.imul(h, 16777619); } return h | 0; }
+    function same(idx){ const o = idx * N2; for(let i = 0; i < N2; i++) if(pool[o + i] !== tmp[i]) return false; return true; }
+    function keyOfNode(i){ return (gArr[i] + W * hArr[i]) * 4096 - gArr[i]; }   // ties: deeper first
+    function hpush(key, idx){
+      if(hn === hk.length){ const k2 = new Float64Array(hn * 2); k2.set(hk); hk = k2; const i2 = new Int32Array(hn * 2); i2.set(hi); hi = i2; }
+      let i = hn++; while(i > 0){ const p = (i - 1) >> 1; if(hk[p] <= key) break; hk[i] = hk[p]; hi[i] = hi[p]; i = p; } hk[i] = key; hi[i] = idx;
+    }
+    function hpop(){   // returns node index, leaves its key in popKey
+      const top = hi[0]; popKey = hk[0]; hn--;
+      if(hn > 0){ const key = hk[hn], idx = hi[hn]; let i = 0;
+        for(;;){ let c = 2 * i + 1; if(c >= hn) break; if(c + 1 < hn && hk[c + 1] < hk[c]) c++; if(hk[c] >= key) break; hk[i] = hk[c]; hi[i] = hi[c]; i = c; }
+        hk[i] = key; hi[i] = idx; }
+      return top;
+    }
+    let popKey = 0;
+
+    function start(Wnew, boundLen){
+      W = Wnew; bound = boundLen; expanded = 0; solution = null;
+      count = 0; table.fill(-1); hn = 0;
+      tmp.set(initial);
+      const h = hashTmp();
+      pool.set(tmp, 0); parent[0] = -1; gArr[0] = 0; mvArr[0] = 0; hashArr[0] = h; hArr[0] = T.hFull(tmp); count = 1;
+      table[h & (tsize - 1)] = 0; hpush(keyOfNode(0), 0);
+    }
+    function run(untilMs, nodeCap){
+      let tick = 0;
+      while(hn > 0){
+        if((++tick & 1023) === 0 && now() > untilMs) return 'running';
+        if(expanded >= nodeCap) return 'capped';
+        const idx = hpop();
+        if(popKey !== keyOfNode(idx)) continue;              // stale heap entry (node was improved later)
+        expanded++;
+        const g = gArr[idx];
+        if(g + hArr[idx] >= bound) continue;                 // cannot beat the best known solution
+        const o = idx * N2;
+        let b = -1; for(let i = 0; i < N2; i++) if(pool[o + i] === 0){ b = i; break; }
+        const br = (b / n) | 0, bc = b % n;
+        for(let k = 0; k < 4; k++){
+          const nr = br + DR[k], nc = bc + DC[k];
+          if(nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
+          for(let i = 0; i < N2; i++) tmp[i] = pool[o + i];
+          const t = nr * n + nc; tmp[b] = tmp[t]; tmp[t] = 0;
+          const hc = T.hFull(tmp), gc = g + 1;
+          if(gc + hc >= bound) continue;
+          if(hc === 0){                                       // reached the goal with a shorter path
+            const path = [k]; for(let i = idx; parent[i] !== -1; i = parent[i]) path.push(mvArr[i]);
+            solution = path.reverse(); return 'solved';
+          }
+          const h = hashTmp(); let p = h & (tsize - 1), found = -1;
+          for(;;){ const c = table[p]; if(c === -1) break; if(hashArr[c] === h && same(c)){ found = c; break; } p = (p + 1) & (tsize - 1); }
+          if(found >= 0){
+            if(gArr[found] <= gc) continue;
+            gArr[found] = gc; parent[found] = idx; mvArr[found] = k; hpush(keyOfNode(found), found);
+          } else {
+            if(count === cap) grow();
+            const ni = count++; pool.set(tmp, ni * N2); parent[ni] = idx; gArr[ni] = gc; mvArr[ni] = k; hashArr[ni] = h; hArr[ni] = hc;
+            table[p] = ni; if(count * 2 > tsize) rehash();
+            hpush(keyOfNode(ni), ni);
+          }
+        }
+      }
+      return 'capped';                                        // open list exhausted
+    }
+    return { start, run, get solution(){ return solution; }, get expanded(){ return expanded; } };
+  }
+
+  // ---------------------------------------------------------------
+  // The job: greedy first solution -> quick exact attempt -> path shortening ->
+  // exact search with whatever time is left. At every moment it holds the best
+  // verified solution found so far, and reports a proven lower bound on the optimum.
+  //   run(sliceMs) does a bit of work and returns true once finished, so the same code
+  //   can run flat-out in a Worker or in small slices on the main thread.
+  // ---------------------------------------------------------------
+  function createJob(initial, n, budgetMs, emit){
+    const t0 = now(), tEnd = t0 + budgetMs;
+    const ida = makeIDA(initial, n), wa = makeWA(initial, n);
+    const NODE_CAP = n >= 5 ? 150000 : 300000; // keeps peak extra heap under ~30MB on mobile
+    const WEIGHTS = [2, 1.5, 1.25, 1.1];
+    const IDA_FIRST_MS = 300, waEnd = t0 + Math.min(budgetMs, Math.max(600, budgetMs * 0.4));
+    let phase = 'first', firstTry = 0, wIdx = 0, stageOn = false;
+    let best = null, greedyLen = null, lastProgress = 0, finished = false;
+
+    function setBest(path){
+      if(best && path.length >= best.length) return;
+      const end = applyPath(initial, n, path);
+      if(!end || !isGoal(end)) return;                      // never publish an unverified path
+      best = path.slice(); ida.setIncumbent(best.length);
+      emit({ type: 'best', path: best.slice(), len: best.length, lb: ida.lowerBound });
+    }
+    function finish(path, optimal, timedOut){
+      finished = true;
+      emit({ type: 'done', path: path.slice(), optimal, lb: optimal ? path.length : ida.lowerBound,
+             greedyLen, timedOut: !!timedOut, elapsedMs: Math.round(now() - t0), nodes: ida.nodes });
+    }
+    function progress(){
+      const t = now(); if(t - lastProgress < 250) return; lastProgress = t;
+      emit({ type: 'progress', lb: ida.lowerBound, len: best ? best.length : null, elapsedMs: Math.round(t - t0), budgetMs, phase });
+    }
+    function runIda(limit, until){
+      const r = ida.run(Math.min(limit, until));
+      if(r === 'found') return 'found';
+      if(r === 'bound' || r === 'exhausted') return 'bound';
+      return now() >= limit ? 'limit' : 'slice';
+    }
+    function run(sliceMs){
+      if(finished) return true;
+      const until = now() + sliceMs;
+      for(;;){
+        if(phase === 'first'){
+          // fastest possible first answer: W=3 (short paths), then W=1000 (almost pure greedy) as a safety net
+          if(!stageOn){ wa.start(firstTry === 0 ? 3 : 1000, Infinity); stageOn = true; }
+          const r = wa.run(until, firstTry === 0 ? 400000 : 1500000);
+          if(r === 'solved'){ greedyLen = wa.solution.length; setBest(wa.solution); stageOn = false; phase = 'ida1'; }
+          else if(r === 'capped'){ stageOn = false; if(++firstTry > 1){ finished = true; emit({ type: 'failed' }); return true; } }
+          else return false;
+        } else if(phase === 'ida1'){
+          const r = runIda(t0 + IDA_FIRST_MS, until);
+          if(r === 'found'){ finish(ida.found, true); return true; }
+          if(r === 'bound'){ finish(best, true); return true; }
+          if(r === 'limit') phase = 'improve'; else return false;
+        } else if(phase === 'improve'){
+          if(wIdx >= WEIGHTS.length || now() >= waEnd){ phase = 'ida2'; continue; }
+          if(!stageOn){ wa.start(WEIGHTS[wIdx], best.length); stageOn = true; }
+          const r = wa.run(Math.min(until, waEnd), NODE_CAP);
+          progress();
+          if(r === 'solved'){ setBest(wa.solution); stageOn = false; wIdx++; }
+          else if(r === 'capped'){ stageOn = false; phase = 'ida2'; }           // memory cap: stop lowering W
+          else if(now() >= waEnd){ stageOn = false; phase = 'ida2'; }
+          else return false;
+        } else {   // 'ida2'
+          if(ida.lowerBound >= best.length){ finish(best, true); return true; }
+          const r = runIda(tEnd, until);
+          progress();
+          if(r === 'found'){ finish(ida.found, true); return true; }
+          if(r === 'bound'){ finish(best, true); return true; }
+          if(r === 'limit'){ finish(best, false, true); return true; }
+          return false;
+        }
+      }
+    }
+    return { run, get best(){ return best; } };
+  }
+
+  return { createJob, makeIDA, makeTools, makeWA, applyPath, isGoal };
+}
+if(typeof module !== 'undefined') module.exports = SolverKit;
+
+</script>
+<script>
+// AI2048Kit: the whole 2048 engine used by auto-play, with no DOM access.
+// Self-contained on purpose: this function is stringified into a Web Worker
+// (Function.prototype.toString) and the very same code runs on the main thread when a
+// Worker isn't available.
+//
+// Board = 4 packed rows (20 bits each, 5 bits per cell holding the EXPONENT: 0 = empty,
+// n = 2^n; 5 bits so the scale reaches 2^17 = 131072, the true maximum on a 4x4 board).
+// Moves: dir 0=up 1=down 2=left 3=right (direction the tiles slide).
+function AI2048Kit(cfg){
+  cfg = cfg || {};
+  // Row-evaluation weights: the classic public heuristic from nneonneo's 2048-ai (implemented
+  // here from its published formula): reward empty cells and mergeable pairs, penalise
+  // non-monotonic rows and large tile sums. `weights` can override any of them (used for tuning).
+  const W = Object.assign({
+    LOST: 200000, EMPTY_W: 270, MERGE_W: 700, MONO_POW: 4, MONO_W: 47, SUM_POW: 3.5, SUM_W: 11,
+    CPROB: 0.0001,       // chance-branches less likely than this are cut off (evaluated instead of searched)
+    LOSTVAL: 0           // value of a position with no legal move
+  }, cfg.weights || {});
+  const now = (typeof performance !== 'undefined') ? function(){ return performance.now(); } : function(){ return Date.now(); };
+
+  // ---- tables: slide+merge results for every possible row, and a per-row heuristic score ----
+  const ROWS = 1 << 20;
+  const LEFT = new Uint32Array(ROWS), RIGHT = new Uint32Array(ROWS), HEUR = new Float32Array(ROWS);
+  // Table construction is resumable: buildStep(sliceMs) does a bounded amount of work and returns
+  // true once everything is built. The default constructor builds it all at once (what a Worker
+  // wants); cfg.lazyBuild leaves it to the caller so the main thread can do it in small slices
+  // instead of freezing the page for ~100ms.
+  const pwSum = new Float64Array(32), pwMono = new Float64Array(32), outBuf = new Int32Array(4), cellBuf = new Int32Array(4);
+  for(let r = 0; r < 32; r++){ pwSum[r] = Math.pow(r, W.SUM_POW); pwMono[r] = Math.pow(r, W.MONO_POW); }
+  let bPhase = 0, bRow = 0;
+  function buildStep(sliceMs){
+    if(bPhase === 2) return true;
+    const t0 = now();
+    if(bPhase === 0){
+      for(; bRow < ROWS; bRow++){
+        const row = bRow;
+        cellBuf[0] = row & 31; cellBuf[1] = (row >> 5) & 31; cellBuf[2] = (row >> 10) & 31; cellBuf[3] = (row >> 15) & 31;
+        let n = 0, prev = 0;
+        for(let i = 0; i < 4; i++){
+          const v = cellBuf[i];
+          if(v === 0) continue;
+          if(prev === v){ outBuf[n - 1] = v + 1; prev = 0; } else { outBuf[n++] = v; prev = v; }
+        }
+        let p = 0; for(let i = 0; i < n; i++) p |= outBuf[i] << (5 * i);
+        LEFT[row] = p;
+        // heuristic for this row read left-to-right
+        let sum = 0, empty = 0, merges = 0, counter = 0; prev = 0;
+        for(let i = 0; i < 4; i++){
+          const rank = cellBuf[i];
+          sum += pwSum[rank];
+          if(rank === 0) empty++;
+          else {
+            if(prev === rank) counter++;
+            else if(counter > 0){ merges += 1 + counter; counter = 0; }
+            prev = rank;
+          }
+        }
+        if(counter > 0) merges += 1 + counter;
+        let monoL = 0, monoR = 0;
+        for(let i = 1; i < 4; i++){
+          if(cellBuf[i - 1] > cellBuf[i]) monoL += pwMono[cellBuf[i - 1]] - pwMono[cellBuf[i]];
+          else monoR += pwMono[cellBuf[i]] - pwMono[cellBuf[i - 1]];
+        }
+        HEUR[row] = W.LOST + W.EMPTY_W * empty + W.MERGE_W * merges - W.MONO_W * Math.min(monoL, monoR) - W.SUM_W * sum;
+        if((row & 511) === 511 && now() - t0 > sliceMs){ bRow++; return false; }
+      }
+      bPhase = 1; bRow = 0;
+    }
+    for(; bRow < ROWS; bRow++){
+      const row = bRow;
+      const rev = ((row & 31) << 15) | (((row >> 5) & 31) << 10) | (((row >> 10) & 31) << 5) | ((row >> 15) & 31);
+      const m = LEFT[rev];
+      RIGHT[row] = ((m & 31) << 15) | (((m >> 5) & 31) << 10) | (((m >> 10) & 31) << 5) | ((m >> 15) & 31);
+      if((row & 2047) === 2047 && now() - t0 > sliceMs){ bRow++; return false; }
+    }
+    bPhase = 2;
+    return true;
+  }
+  if(!cfg.lazyBuild) buildStep(Infinity);
+  function ensureBuilt(){ if(bPhase !== 2) buildStep(Infinity); }
+
+  // ---- search state: one preallocated stack of boards, so the hot loop allocates nothing ----
+  const MAXLV = 24;
+  const STK = new Int32Array((MAXLV + 1) * 8 + 8);
+  const DIRN = ['up', 'down', 'left', 'right'];
+  const ABORT = {};
+  let deadline = Infinity, nodes = 0, limit = 1, hitLimit = false, minNodes = 0;
+  const cpMin = W.CPROB;
+
+  // Transposition table (on by default; cfg.tt:false disables): chance-node results cached by board, as in nneonneo's
+  // search. An entry is reused only if it was computed with at least as many levels still to go
+  // (ttExact: exactly as many -- used by the tests to prove the cache never changes a result).
+  const TT = cfg.tt !== false, TT_EXACT = !!cfg.ttExact, TT_BITS = 18, TT_SHIFT = 32 - TT_BITS;   // on by default (cfg.tt:false disables)
+  const ttA = TT ? new Float64Array(1 << TT_BITS) : null, ttB = TT ? new Float64Array(1 << TT_BITS) : null;
+  const ttVal = TT ? new Float64Array(1 << TT_BITS) : null, ttRem = TT ? new Int8Array(1 << TT_BITS) : null;
+  const ttGen = TT ? new Uint16Array(1 << TT_BITS) : null;
+  let gen = 1, ttHits = 0;
+
+  function evalAt(o){
+    const r0 = STK[o], r1 = STK[o + 1], r2 = STK[o + 2], r3 = STK[o + 3];
+    let s = HEUR[r0] + HEUR[r1] + HEUR[r2] + HEUR[r3];
+    for(let j = 0; j < 20; j += 5){
+      s += HEUR[((r0 >> j) & 31) | (((r1 >> j) & 31) << 5) | (((r2 >> j) & 31) << 10) | (((r3 >> j) & 31) << 15)];
+    }
+    return s;
+  }
+  // slide board at STK[s..] in direction dir into STK[d..]; true if anything changed
+  function moveAt(dir, s, d){
+    if(dir >= 2){
+      const T = dir === 2 ? LEFT : RIGHT;
+      let ch = 0;
+      for(let i = 0; i < 4; i++){ const r = STK[s + i], n = T[r]; STK[d + i] = n; ch |= (n ^ r); }
+      return ch !== 0;
+    }
+    const T = dir === 0 ? LEFT : RIGHT;
+    const r0 = STK[s], r1 = STK[s + 1], r2 = STK[s + 2], r3 = STK[s + 3];
+    let o0 = 0, o1 = 0, o2 = 0, o3 = 0;
+    for(let j = 0; j < 20; j += 5){
+      const n = T[((r0 >> j) & 31) | (((r1 >> j) & 31) << 5) | (((r2 >> j) & 31) << 10) | (((r3 >> j) & 31) << 15)];
+      o0 |= (n & 31) << j; o1 |= ((n >> 5) & 31) << j; o2 |= ((n >> 10) & 31) << j; o3 |= ((n >> 15) & 31) << j;
+    }
+    STK[d] = o0; STK[d + 1] = o1; STK[d + 2] = o2; STK[d + 3] = o3;
+    return ((o0 ^ r0) | (o1 ^ r1) | (o2 ^ r2) | (o3 ^ r3)) !== 0;
+  }
+
+  // Player node: pick the best move. Board lives at STK[o..o+3]; lv = moves made so far.
+  function maxNode(o, lv, cprob){
+    nodes++;
+    if((nodes & 511) === 0 && nodes >= minNodes && now() > deadline) throw ABORT;
+    if(lv >= limit){ hitLimit = true; return evalAt(o); }
+    if(cprob < cpMin) return evalAt(o);
+    let best = -Infinity;
+    const n = o + 4;
+    for(let dir = 0; dir < 4; dir++){
+      if(moveAt(dir, o, n)){ const v = chanceNode(n, lv, cprob); if(v > best) best = v; }
+    }
+    return best === -Infinity ? W.LOSTVAL : best;
+  }
+  // Chance node: a 2 (90%) or 4 (10%) appears in a uniformly random empty cell.
+  function chanceNode(o, lv, cprob){
+    let slot = 0, need = 0, ka = 0, kb = 0;
+    if(TT){
+      need = limit - lv;
+      const q0 = STK[o], q1 = STK[o + 1], q2 = STK[o + 2], q3 = STK[o + 3];
+      ka = q0 + q1 * 1048576; kb = q2 + q3 * 1048576;
+      slot = (Math.imul(q0, 0x9E3779B1) ^ Math.imul(q1, 0x85EBCA6B) ^ Math.imul(q2, 0xC2B2AE35) ^ Math.imul(q3, 0x27D4EB2F)) >>> TT_SHIFT;
+      if(ttGen[slot] === gen && ttA[slot] === ka && ttB[slot] === kb && (TT_EXACT ? ttRem[slot] === need : ttRem[slot] >= need)){
+        ttHits++; return ttVal[slot];
+      }
+    }
+    const c = o + 4;
+    let empties = 0;
+    for(let i = 0; i < 4; i++){ const r = STK[o + i]; for(let j = 0; j < 20; j += 5) if(((r >> j) & 31) === 0) empties++; }
+    if(empties === 0) return evalAt(o);
+    const cp = cprob / empties;
+    let total = 0;
+    for(let i = 0; i < 4; i++){
+      const r = STK[o + i];
+      for(let j = 0; j < 20; j += 5){
+        if(((r >> j) & 31) !== 0) continue;
+        STK[c] = STK[o]; STK[c + 1] = STK[o + 1]; STK[c + 2] = STK[o + 2]; STK[c + 3] = STK[o + 3];
+        STK[c + i] = r | (1 << j);
+        total += 0.9 * maxNode(c, lv + 1, cp * 0.9);
+        STK[c + i] = r | (2 << j);
+        total += 0.1 * maxNode(c, lv + 1, cp * 0.1);
+      }
+    }
+    const res = total / empties;
+    if(TT){ ttGen[slot] = gen; ttA[slot] = ka; ttB[slot] = kb; ttRem[slot] = need; ttVal[slot] = res; }
+    return res;
+  }
+
+  // Best move for `rows` (4 packed rows). Iterative deepening under a wall-clock budget: the
+  // answer is always that of the last FULLY completed depth. opts.fixedDepth searches exactly
+  // that many moves with no clock (used for benchmarking heuristics independent of speed).
+  function bestMove(rows, budgetMs, opts){
+    ensureBuilt();
+    opts = opts || {};
+    STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3];
+    const legal = [];
+    for(let dir = 0; dir < 4; dir++) if(moveAt(dir, 0, 4)) legal.push(dir);
+    if(legal.length === 0) return { dir: null, depth: 0, nodes: 0, value: 0 };
+    if(legal.length === 1 && !opts.fixedDepth) return { dir: DIRN[legal[0]], depth: 0, nodes: 0, value: 0, forced: true };
+    deadline = opts.fixedDepth ? Infinity : now() + budgetMs; minNodes = 0;
+    nodes = 0; ttHits = 0; gen = (gen + 1) & 0xFFFF; if(gen === 0) gen = 1;
+    let bestDir = legal[0], bestVal = 0, reached = 0;
+    const first = opts.fixedDepth || 1, last = opts.fixedDepth || opts.maxDepth || MAXLV;
+    for(limit = first; limit <= last; limit++){
+      let lb = -1, lv = -Infinity;
+      hitLimit = false;
+      try{
+        for(let k = 0; k < legal.length; k++){
+          moveAt(legal[k], 0, 4);
+          const v = chanceNode(4, 0, 1);
+          if(v > lv){ lv = v; lb = legal[k]; }
+        }
+      } catch(e){ if(e === ABORT) break; throw e; }
+      bestDir = lb; bestVal = lv; reached = limit;
+      if(!hitLimit) break;                // whole tree resolved (pruned / terminal): deeper changes nothing
+    }
+    return { dir: DIRN[bestDir], depth: reached, nodes, value: bestVal, ttHits };
+  }
+
+
+  // Resumable search for the main-thread fallback. step(sliceMs) computes for at most sliceMs and
+  // returns null (not finished) or the final answer. `budgetMs` counts COMPUTE time only (idle gaps
+  // between slices are free), so the budget means the same thing here as in a Worker.
+  // How it resumes: an aborted iteration is simply re-run from the root next slice; every chance
+  // node that was already finished is in the transposition table and returns instantly, so the
+  // work done in earlier slices is kept (this is why slicing needs the table; without it the
+  // search just runs in one piece).
+  function searchTask(rows, budgetMs, opts){
+    ensureBuilt();
+    opts = opts || {};
+    const root = [rows[0], rows[1], rows[2], rows[3]];
+    STK[0] = root[0]; STK[1] = root[1]; STK[2] = root[2]; STK[3] = root[3];
+    const legal = [];
+    for(let dir = 0; dir < 4; dir++) if(moveAt(dir, 0, 4)) legal.push(dir);
+    let finished = null;
+    if(legal.length === 0) finished = { dir: null, depth: 0, nodes: 0, value: 0 };
+    else if(legal.length === 1 && !opts.fixedDepth) finished = { dir: DIRN[legal[0]], depth: 0, nodes: 0, value: 0, forced: true };
+    gen = (gen + 1) & 0xFFFF; if(gen === 0) gen = 1; ttHits = 0;
+    const first = opts.fixedDepth || 1, last = opts.fixedDepth || opts.maxDepth || MAXLV;
+    let lim = first, used = 0, totalNodes = 0, bestDir = legal.length ? legal[0] : 0, bestVal = 0, reached = 0, retried = false;
+    function step(sliceMs){
+      if(finished) return finished;
+      const t0 = now();
+      const remaining = opts.fixedDepth ? Infinity : budgetMs - used;
+      const until = t0 + Math.min(TT ? sliceMs : Infinity, remaining);
+      STK[0] = root[0]; STK[1] = root[1]; STK[2] = root[2]; STK[3] = root[3];
+      deadline = until;
+      minNodes = 16384;                            // every slice does real new work, however short the slice
+      while(lim <= last){
+        limit = lim; hitLimit = false; nodes = 0;
+        let lb = -1, lv = -Infinity, aborted = false;
+        try{
+          for(let k = 0; k < legal.length; k++){
+            moveAt(legal[k], 0, 4);
+            const v = chanceNode(4, 0, 1);
+            if(v > lv){ lv = v; lb = legal[k]; }
+          }
+        } catch(e){ if(e === ABORT) aborted = true; else throw e; }
+        totalNodes += nodes;
+        if(aborted){ retried = true; break; }      // this depth is retried (cheaply) next slice
+        bestDir = lb; bestVal = lv; reached = lim;
+        // 'no leaf reached the depth limit' means the tree is fully resolved -- but only believe it
+        // for a fresh pass: a resumed pass is mostly served from the cache and never reaches leaves
+        if(!hitLimit && !retried){ lim = last + 1; break; }
+        lim++; retried = false;
+        if(now() >= until) break;
+      }
+      minNodes = 0;
+      used += now() - t0;
+      if(lim > last || (!opts.fixedDepth && used >= budgetMs - 0.01)){
+        finished = { dir: DIRN[bestDir], depth: reached, nodes: totalNodes, value: bestVal, ttHits };
+        return finished;
+      }
+      return null;
+    }
+    return { step };
+  }
+
+  function canMove(rows){
+    STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3];
+    for(let dir = 0; dir < 4; dir++) if(moveAt(dir, 0, 4)) return true;
+    return false;
+  }
+
+  // test hooks
+  function _move(rows, dir){
+    STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3];
+    if(!moveAt(dir, 0, 4)) return null;
+    return [STK[4], STK[5], STK[6], STK[7]];
+  }
+  function _eval(rows){ STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3]; return evalAt(0); }
+  function _heur(row){ return HEUR[row]; }
+
+  return { bestMove, searchTask, buildStep, canMove, weights: W, _move, _eval, _heur };
+}
+if(typeof module !== 'undefined') module.exports = AI2048Kit;
+
+</script>
+<script>
+(function(){
+  const SIZE = 4;
+  const boardEl = document.getElementById('board2048');
+  const tilesLayer = document.getElementById('tiles2048');
+  const scoreEl = document.getElementById('score2048');
+  const bestEl = document.getElementById('best2048');
+  const overlayEl = document.getElementById('overlay2048');
+  const overlayTitleEl = document.getElementById('overlayTitle2048');
+  const overlaySubEl = document.getElementById('overlaySub2048');
+  const milestoneEl = document.getElementById('milestone2048');
+  const milestoneTextEl = document.getElementById('milestoneText2048');
+  const playBtn = document.getElementById('playBtn2048');
+  const turboBtn = document.getElementById('turboBtn2048');
+  const dynBtn = document.getElementById('dynBtn2048');
+  const batchBtn = document.getElementById('batchBtn2048');
+  const tallyEl = document.getElementById('tally2048');
+  const newGameBtn = document.getElementById('newGameBtn2048');
+  const speedSliderHost = document.getElementById('speedHost2048');
+  GameShared.buildSlots(document.getElementById('slots2048'), SIZE);
+
+  GameShared.attachSwipe(boardEl, (dir)=>{ if(!autoPlaying) handleMove(dir); });
+
+  // Pack the on-screen tiles into the AI's board format: 4 rows, 5 bits per cell (exponent).
+  function boardFromTiles(list){
+    const out = [0,0,0,0];
+    for(const t of list) out[t.r] |= (t.exp << (t.c * 5));
+    return out;
+  }
+
+  // ---------------------------------------------------------------
+  // AI runner. The search engine lives in ai2048.js (AI2048Kit); this only decides WHERE it
+  // runs: a Web Worker when possible (then the think budget can be large without touching the
+  // UI thread), otherwise the same kit on the main thread with the budget capped so the page
+  // stays responsive. The switch is automatic (no Worker / can't construct it / it errors /
+  // it stays silent for 2.5s), and a request in flight is simply re-asked on the main thread.
+  // ---------------------------------------------------------------
+  // Main-thread fallback: the search runs in short slices (SLICE_MS of compute, then yield to the
+  // event loop), so the time budget means the same thing as in a Worker -- the slider is no longer
+  // capped -- while the page stays responsive. MessageChannel is used to yield because setTimeout(0)
+  // is clamped to >=4ms once nested, which would eat most of a 5-10ms budget.
+  const SLICE_MS = 8;
+  const yieldQ = []; let yieldCh = null;
+  if(typeof MessageChannel !== 'undefined'){ yieldCh = new MessageChannel(); yieldCh.port1.onmessage = ()=>{ const f = yieldQ.shift(); if(f) f(); }; }
+  function yieldTask(fn){ if(yieldCh){ yieldQ.push(fn); yieldCh.port2.postMessage(0); } else setTimeout(fn, 0); }
+  let mainKit = null;                                   // created on first use, only if the fallback is really needed
+
+  function createAIRunner(){
+    let worker = null, watchdog = null, heard = false, nextId = 1, pending = null;
+    const api = { mode: 'worker' };
+    function workerSource(){
+      return 'const AI2048Kit = ' + AI2048Kit.toString() + ';\n' + [
+        'self.postMessage({type:"alive"});',           // before the tables are built, so the page knows it started
+        'const kit = AI2048Kit();',
+        'self.onmessage = function(e){',
+        '  const m = e.data; if(m.cmd !== "move") return;',
+        '  const r = kit.bestMove(m.rows, m.budgetMs);',
+        '  self.postMessage({type:"move", id:m.id, dir:r.dir, depth:r.depth, nodes:r.nodes});',
+        '};'
+      ].join('\n');
+    }
+    function finish(req, r){
+      if(pending !== req) return;
+      pending = null;
+      req.resolve({ dir: r.dir, depth: r.depth, nodes: r.nodes, mode: api.mode });
+    }
+    function runMain(req){
+      yieldTask(()=>{
+        if(pending !== req) return;
+        if(!mainKit) mainKit = AI2048Kit({lazyBuild: true});
+        (function build(){                            // first use only: lookup tables are built in small slices too
+          if(pending !== req) return;
+          if(!mainKit.buildStep(5)){ yieldTask(build); return; }
+          const task = mainKit.searchTask(req.rows, req.budgetMs);
+          (function pump(){
+            if(pending !== req) return;               // cancelled / replaced while we were yielding
+            const r = task.step(SLICE_MS);
+            if(r) finish(req, r); else yieldTask(pump);
+          })();
+        })();
+      });
+    }
+    function toMain(){
+      api.mode = 'main'; clearTimeout(watchdog);
+      if(worker){ try{ worker.terminate(); }catch(e){} worker = null; }
+      if(pending) runMain(pending);
+    }
+    function startWorker(){
+      if(typeof Worker === 'undefined') return false;
+      let w;
+      try{ w = new Worker(URL.createObjectURL(new Blob([workerSource()], {type:'application/javascript'}))); }
+      catch(err){ return false; }                     // e.g. CSP / sandbox refuses blob workers
+      worker = w;
+      w.onmessage = e=>{
+        heard = true; clearTimeout(watchdog);
+        if(e.data.type === 'move' && pending && pending.id === e.data.id) finish(pending, e.data);
+      };
+      w.onerror = ev=>{ if(ev && ev.preventDefault) ev.preventDefault(); if(worker === w) toMain(); };
+      watchdog = setTimeout(()=>{ if(!heard && worker === w) toMain(); }, 2500);
+      return true;
+    }
+    if(!startWorker()) api.mode = 'main';
+    api.ask = (rows, budgetMs)=> new Promise(resolve=>{
+      const req = { id: nextId++, rows, budgetMs, resolve };
+      pending = req;
+      if(api.mode === 'worker' && worker) worker.postMessage({cmd:'move', id:req.id, rows, budgetMs});
+      else runMain(req);
+    });
+    api.dispose = ()=>{ pending = null; clearTimeout(watchdog); if(worker){ try{ worker.terminate(); }catch(e){} worker = null; } };
+    return api;
+  }
+
+  // ---------------------------------------------------------------
+  // Identity-tracking move (for the ONE move actually applied, so the
+  // renderer can animate real DOM elements sliding/merging instead of
+  // rebuilding everything from scratch every turn).
+  // ---------------------------------------------------------------
+  function linesFor(dir){
+    const lines=[];
+    if(dir==='left'){ for(let r=0;r<4;r++) lines.push([[r,0],[r,1],[r,2],[r,3]]); }
+    else if(dir==='right'){ for(let r=0;r<4;r++) lines.push([[r,3],[r,2],[r,1],[r,0]]); }
+    else if(dir==='up'){ for(let c=0;c<4;c++) lines.push([[0,c],[1,c],[2,c],[3,c]]); }
+    else { for(let c=0;c<4;c++) lines.push([[3,c],[2,c],[1,c],[0,c]]); }
+    return lines;
+  }
+  function applyRealMove(tiles, dir, idGen){
+    const lines = linesFor(dir);
+    const byPos = new Map();
+    for(const t of tiles) byPos.set(t.r+','+t.c, t);
+    const slides = [];   // {id, toR, toC}
+    const merges = [];   // {sourceIds:[a,b], r, c, newExp}
+    const surviving = [];
+    let gained = 0, moved = false;
+    for(const line of lines){
+      const lineTiles = [];
+      for(const [r,c] of line){ const t = byPos.get(r+','+c); if(t) lineTiles.push(t); }
+      let destSlot = 0, i = 0;
+      while(i < lineTiles.length){
+        const cur = lineTiles[i], next = lineTiles[i+1];
+        const [dr,dc] = line[destSlot];
+        if(next && next.exp === cur.exp){
+          merges.push({sourceIds:[cur.id,next.id], r:dr, c:dc, newExp:cur.exp+1});
+          slides.push({id:cur.id, toR:dr, toC:dc});
+          slides.push({id:next.id, toR:dr, toC:dc});
+          gained += Math.pow(2, cur.exp+1);
+          if(cur.r!==dr||cur.c!==dc) moved=true;
+          if(next.r!==dr||next.c!==dc) moved=true;
+          i+=2;
+        } else {
+          slides.push({id:cur.id, toR:dr, toC:dc});
+          if(cur.r!==dr||cur.c!==dc) moved=true;
+          surviving.push({id:cur.id, r:dr, c:dc, exp:cur.exp});
+          i+=1;
+        }
+        destSlot++;
+      }
+    }
+    const resultTiles = surviving.slice();
+    for(const m of merges) resultTiles.push({id: idGen(), r:m.r, c:m.c, exp:m.newExp});
+    return {resultTiles, slides, merges, gained, moved};
+  }
+
+  // ---------------------------------------------------------------
+  // Game state + rendering
+  // ---------------------------------------------------------------
+  const COLORS = [ // index = exponent-1 (exponent 1 == value 2)
+    {bg:'#DCE6EE', fg:'#1D2B3A'}, {bg:'#C7D8E5', fg:'#1D2B3A'}, {bg:'#A9C4D8', fg:'#1D2B3A'},
+    {bg:'#8AB0CB', fg:'#1D2B3A'}, {bg:'#6B9BBE', fg:'#F5F2E8'}, {bg:'#4C86B1', fg:'#F5F2E8'},
+    {bg:'#B5651D', fg:'#F5F2E8'}, {bg:'#9C5518', fg:'#F5F2E8'}, {bg:'#844610', fg:'#F5F2E8'},
+    {bg:'#6C380C', fg:'#F5F2E8'}, {bg:'#1D2B3A', fg:'#D9A441'}, {bg:'#14424A', fg:'#F0C463'},                    // 4096   deep teal
+    {bg:'#1E4B38', fg:'#F2CC72'},                    // 8192   deep green
+    {bg:'#4B2C5E', fg:'#F5D584'},                    // 16384  plum
+    {bg:'#7A2536', fg:'#FBE0A0'},                    // 32768  crimson
+    {bg:'#111820', fg:'#FFD24A', ring:'#FFD24A'},    // 65536  ink + gold ring
+    {bg:'#000000', fg:'#FFE680', ring:'#FFE680'}     // 131072 black gold (17 tiers total)
+  ];
+  function colorFor(exp){ return COLORS[Math.min(exp-1, COLORS.length-1)]; }
+
+  const MILESTONES = [11,12,13,14,15,16,17]; // exponents for 2048,4096,...,131072
+  let tiles = [];
+  let tileEls = new Map();
+  let nextTileId = 1;
+  let score = 0, best = 0;
+  let over = false;
+  let celebratedThisGame = new Set();
+  let pendingMilestone = false;
+  let autoPlaying = false;
+  let autoTimer = null;
+  let autoSpeedMs = 400;
+  let turbo = false, dynBudget = false, batch = false, turboBudgetMs = 20;
+  let stepsPlayed = 0, dirty = false, rafPending = false, autoPlayedThisGame = false, milestoneAt = 0;
+  const TRANSITION_MS = 140;
+
+  let lastLayout = {size:100, gap:12};
+  function cellLayout(){
+    // layout() is null while the tab is hidden; keep using the last good one.
+    const l = GameShared.layout(boardEl, SIZE);
+    if(l) lastLayout = l;
+    return lastLayout;
+  }
+  function posFor(r,c,layout){ return {left:c*(layout.size+layout.gap), top:r*(layout.size+layout.gap)}; }
+
+  function makeTileEl(exp, r, c, layout, extraClass){
+    const el = document.createElement('div');
+    el.className = 'tile2048' + (extraClass ? ' '+extraClass : '');
+    const col = colorFor(exp);
+    el.style.background = col.bg; el.style.color = col.fg;
+    if(col.ring) el.style.boxShadow = 'inset 0 0 0 2px ' + col.ring;
+    const p = posFor(r,c,layout);
+    el.style.left = p.left+'px'; el.style.top = p.top+'px';
+    el.style.width = layout.size+'px'; el.style.height = layout.size+'px';
+    const val = Math.pow(2, exp);
+    const digits = String(val).length;
+    const k = [0, .44, .44, .36, .30, .25, .20][digits] || .18;
+    el.innerHTML = '<span style="font-size:'+Math.round(layout.size*k)+'px">'+val+'</span>';
+    return el;
+  }
+
+  function fullRender(){
+    tilesLayer.innerHTML = '';
+    tileEls = new Map();
+    const layout = cellLayout();
+    for(const t of tiles){
+      const el = makeTileEl(t.exp, t.r, t.c, layout);
+      tilesLayer.appendChild(el);
+      tileEls.set(t.id, el);
+    }
+    scoreEl.textContent = score;
+    bestEl.textContent = best;
+  }
+
+  function emptyCells(){
+    const occupied = new Set(tiles.map(t=>t.r+','+t.c));
+    const out=[];
+    for(let r=0;r<4;r++) for(let c=0;c<4;c++) if(!occupied.has(r+','+c)) out.push([r,c]);
+    return out;
+  }
+  // logic only: put a 2 (90%) or 4 (10%) on a random empty cell
+  function spawnLogic(){
+    const empties = emptyCells();
+    if(empties.length===0) return null;
+    const [r,c] = empties[Math.floor(Math.random()*empties.length)];
+    const exp = Math.random()<0.9 ? 1 : 2;
+    const t = {id: nextTileId++, r, c, exp};
+    tiles.push(t);
+    return t;
+  }
+  function spawnRandomTile(){
+    const t = spawnLogic();
+    if(!t) return;
+    const el = makeTileEl(t.exp, t.r, t.c, cellLayout(), 'spawn');
+    tilesLayer.appendChild(el);
+    tileEls.set(t.id, el);
+  }
+
+  function canMoveAnywhere(){
+    if(tiles.length < SIZE*SIZE) return true;              // an empty cell exists
+    const g = new Array(SIZE*SIZE).fill(0);
+    for(const t of tiles) g[t.r*SIZE + t.c] = t.exp;
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+      const i = r*SIZE + c;
+      if(c < SIZE-1 && g[i] === g[i+1]) return true;
+      if(r < SIZE-1 && g[i] === g[i+SIZE]) return true;
+    }
+    return false;
+  }
+
+  function showMilestone(exp){
+    milestoneTextEl.textContent = '达成 ' + Math.pow(2,exp) + '!';
+    const t = tiles.find(t=>t.exp===exp);
+    const onTop = !t || t.r >= 2;
+    milestoneEl.style.top = onTop ? '10px' : 'auto';
+    milestoneEl.style.bottom = onTop ? 'auto' : '10px';
+    milestoneEl.classList.add('show');
+    pendingMilestone = true; milestoneAt = performance.now();
+  }
+  function dismissMilestone(){
+    milestoneEl.classList.remove('show');
+    pendingMilestone = false;
+  }
+
+  function checkMilestonesAndGameOver(){
+    for(const exp of MILESTONES){
+      if(!celebratedThisGame.has(exp) && tiles.some(t=>t.exp===exp)){
+        celebratedThisGame.add(exp);
+        showMilestone(exp);
+        break; // one at a time
+      }
+    }
+    if(!canMoveAnywhere()){
+      over = true;
+      overlayTitleEl.textContent = '游戏结束';
+      overlaySubEl.textContent = '已无可行移动 · 得分 ' + score;
+      const wasAuto = autoPlaying;
+      if(wasAuto) recordGame();
+      stopAuto();
+      setTimeout(()=>{ if(over) overlayEl.classList.add('show'); }, 380);
+      if(wasAuto && batch){                       // 连续对局: start the next game by itself
+        setTimeout(()=>{ if(over && batch && !autoPlaying){ newGame(); startAuto(); } }, 1500);
+      }
+    }
+  }
+
+  function handleMove(dir){
+    if(over) return;
+    if(pendingMilestone) dismissMilestone();
+    const {resultTiles, slides, merges, gained, moved} = applyRealMove(tiles, dir, ()=>nextTileId++);
+    if(!moved) return;
+    stepsPlayed++;
+
+    const layout = cellLayout();
+    // slide everything (including merge participants) to their destinations
+    for(const s of slides){
+      const el = tileEls.get(s.id);
+      if(!el) continue;
+      const p = posFor(s.toR, s.toC, layout);
+      el.style.left = p.left+'px'; el.style.top = p.top+'px';
+    }
+    score += gained;
+    if(score > best) best = score;
+    scoreEl.textContent = score; bestEl.textContent = best;
+
+    // Update the logical state immediately either way, so a rapid next
+    // move always computes against the true post-move board. Only the DOM
+    // cleanup (removing merge-source elements, spawning the merged tile's
+    // element) waits for the slide animation to visually finish.
+    tiles = resultTiles;
+    if(merges.length){
+      setTimeout(()=>{
+        for(const m of merges){
+          for(const sid of m.sourceIds){ const el = tileEls.get(sid); if(el){ el.remove(); tileEls.delete(sid); } }
+        }
+        for(const t of resultTiles){
+          if(tileEls.has(t.id)) continue; // already-existing surviving tile
+          const el = makeTileEl(t.exp, t.r, t.c, layout, 'pop');
+          tilesLayer.appendChild(el);
+          tileEls.set(t.id, el);
+        }
+        spawnRandomTile();
+        checkMilestonesAndGameOver();
+      }, TRANSITION_MS);
+    } else {
+      setTimeout(()=>{
+        spawnRandomTile();
+        checkMilestonesAndGameOver();
+      }, TRANSITION_MS);
+    }
+  }
+
+  function newGame(){
+    stopAuto();
+    tiles = []; nextTileId = 1; score = 0; over = false;
+    stepsPlayed = 0; dirty = false; autoPlayedThisGame = false;
+    celebratedThisGame = new Set();
+    dismissMilestone();
+    overlayEl.classList.remove('show');
+    tilesLayer.innerHTML = ''; tileEls = new Map();
+    spawnRandomTile(); spawnRandomTile();
+    scoreEl.textContent = score; bestEl.textContent = best;
+  }
+
+  // ---- instant (turbo) path: game logic only; the DOM is redrawn at most once per frame ----
+  function markDirty(){
+    dirty = true;
+    if(!rafPending){ rafPending = true; requestAnimationFrame(()=>{ rafPending = false; flushRender(); }); }
+  }
+  function flushRender(){ if(dirty){ dirty = false; fullRender(); } }
+  function moveInstant(dir){
+    if(over) return false;
+    const {resultTiles, gained, moved} = applyRealMove(tiles, dir, ()=>nextTileId++);
+    if(!moved) return false;
+    tiles = resultTiles;
+    score += gained; if(score > best) best = score;
+    spawnLogic();
+    stepsPlayed++;
+    checkMilestonesAndGameOver();
+    markDirty();
+    return true;
+  }
+
+  // ---- results of unattended games (只统计自动游玩打完的局) ----
+  const tally = { games: 0, best: 0, sumSteps: 0, sumScore: 0, reach: {4096:0, 8192:0, 16384:0, 32768:0, 65536:0}, last: null };
+  function recordGame(){
+    let me = 0; for(const t of tiles) if(t.exp > me) me = t.exp;
+    const maxTile = Math.pow(2, me);
+    tally.games++; tally.sumSteps += stepsPlayed; tally.sumScore += score; if(score > tally.best) tally.best = score;
+    for(const k of Object.keys(tally.reach)) if(maxTile >= +k) tally.reach[k]++;
+    tally.last = { maxTile, score, steps: stepsPlayed };
+    renderTally();
+  }
+  function renderTally(){
+    if(!tally.games){ tallyEl.hidden = true; return; }
+    tallyEl.hidden = false;
+    const n = tally.games, pct = k => tally.reach[k] + '/' + n;
+    tallyEl.textContent = '自动对局 ' + n + ' 局 · 最高分 ' + tally.best.toLocaleString() + ' · 平均 ' + Math.round(tally.sumSteps/n).toLocaleString() + ' 步\n' +
+      '≥4096 ' + pct(4096) + ' · ≥8192 ' + pct(8192) + ' · ≥16384 ' + pct(16384) + ' · ≥32768 ' + pct(32768) +
+      (tally.last ? '\n上一局 最大块 ' + tally.last.maxTile + ' · 得分 ' + tally.last.score.toLocaleString() + ' · ' + tally.last.steps.toLocaleString() + ' 步' : '');
+  }
+
+  // ---- time budget for one move ----
+  // Dynamic budget (experimental, off by default): spend more where the board is crowded (many
+  // different tile values) and less where it is safe. Measured at 1ms/move with equal mean time:
+  // reaching 8192 went 40% -> 74%. The weights are normalised for the distribution seen in those
+  // games; the mean is NOT guaranteed in general, so the real average is shown while it runs.
+  const DYN_SLOPE = 1.0, DYN_NORM = 0.6017, DYN_MIN_W = 0.25, DYN_MAX_W = 6, DYN_CAP_MS = 10000;
+  function moveBudget(base){
+    if(!dynBudget) return base;
+    const d = new Set(tiles.map(t=>t.exp)).size;
+    const w = Math.min(DYN_MAX_W, Math.max(DYN_MIN_W, Math.pow(2, (d - 8) * DYN_SLOPE)));
+    return Math.max(2, Math.min(DYN_CAP_MS, base * DYN_NORM * w));
+  }
+
+  // ---- auto-play: ask the AI runner, apply its move, repeat ----
+  const hint2048 = document.getElementById('hint2048');
+  const DEFAULT_HINT = hint2048.textContent;
+  let aiRunner = null, autoToken = 0, hintAt = 0, rateAt = 0, rateSteps = 0, rate = 0, spentMs = 0, spentN = 0;
+  function stopAuto(){
+    autoPlaying = false; autoToken++;
+    if(autoTimer){ clearTimeout(autoTimer); autoTimer = null; }
+    if(aiRunner){ aiRunner.dispose(); aiRunner = null; }
+    boardEl.classList.remove('turbo');
+    flushRender();                                     // make the board show the true final state
+    playBtn.textContent = '自动游玩';
+    turboBtn.disabled = false;
+    hint2048.textContent = DEFAULT_HINT;
+  }
+  function startAuto(){
+    autoPlaying = true; autoPlayedThisGame = true;
+    playBtn.textContent = '停止';
+    turboBtn.disabled = true;                          // switching mode mid-run would change what the slider means
+    if(turbo) boardEl.classList.add('turbo');          // CSS: no slide/pop animations while it runs
+    rateAt = performance.now(); rateSteps = 0; rate = 0; spentMs = 0; spentN = 0;
+    aiRunner = createAIRunner();
+    autoTick();
+  }
+  function showStatus(res, budget){
+    const now = performance.now();
+    spentMs += budget; spentN++; rateSteps++;
+    if(now - rateAt >= 1000){ rate = rateSteps * 1000 / (now - rateAt); rateAt = now; rateSteps = 0; }
+    if(turbo && now - hintAt < 250) return;            // keep DOM work off the hot path
+    hintAt = now;
+    const depth = res.depth ? '搜索 ' + res.depth + ' 步深' : '唯一可走';
+    const where = res.mode === 'worker' ? '后台线程' : '主线程分片';
+    hint2048.textContent = (turbo ? '极速 · 第 ' + stepsPlayed.toLocaleString() + ' 步 · ' + Math.round(rate) + ' 步/秒' : '自动游玩') +
+      ' · ' + depth + ' · 预算 ' + (budget < 10 ? budget.toFixed(1) : Math.round(budget)) + 'ms' +
+      (dynBudget ? '（动态，均值 ' + (spentMs/spentN).toFixed(spentMs/spentN < 10 ? 1 : 0) + 'ms）' : '') + ' · ' + where;
+  }
+  function autoTick(){
+    if(!autoPlaying) return;
+    if(over){ stopAuto(); return; }
+    if(pendingMilestone && (!turbo || performance.now() - milestoneAt > 1500)) dismissMilestone();
+    const token = autoToken;
+    // normal mode: the slider is "time per move" INCLUDING the slide animation, so what is left is think time.
+    // turbo mode: no animation, the slider IS the think time.
+    const base = turbo ? turboBudgetMs : Math.max(20, autoSpeedMs - TRANSITION_MS - 10);
+    const budget = moveBudget(base);
+    aiRunner.ask(boardFromTiles(tiles), budget).then(res=>{
+      if(!autoPlaying || token !== autoToken) return;     // stopped / new game while thinking
+      if(!res.dir){ stopAuto(); return; }
+      if(turbo){
+        moveInstant(res.dir);
+        if(!autoPlaying) return;                          // that move ended the game
+        showStatus(res, budget);
+        autoTick();
+      } else {
+        handleMove(res.dir);
+        showStatus(res, budget);
+        autoTimer = setTimeout(autoTick, TRANSITION_MS + 10);
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e)=>{
+    if(!document.getElementById('panel2048').classList.contains('active')) return;
+    if(e.target && e.target.type === 'range') return;
+    const map = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
+      w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+    if(map[e.key]){ e.preventDefault(); if(!autoPlaying) handleMove(map[e.key]); }
+  });
+
+  newGameBtn.addEventListener('click', newGame);
+  document.getElementById('retryBtn2048').addEventListener('click', newGame);
+  document.getElementById('milestoneContinue2048').addEventListener('click', dismissMilestone);
+  document.getElementById('milestoneRestart2048').addEventListener('click', newGame);
+  playBtn.addEventListener('click', ()=>{ if(autoPlaying) stopAuto(); else startAuto(); });
+
+  const TURBO_VALUES = [1, 2, 5, 10, 20, 50, 100, 250, 500, 1000, 2000];
+  const slider = GameShared.createSpeedSlider(speedSliderHost, {
+    label:'每步用时', min:160, max:2000, step:20, value:autoSpeedMs,
+    format:(v)=> v + 'ms',
+    onChange:(v)=>{ autoSpeedMs = v; }
+  });
+  function configureSlider(){
+    if(turbo) slider.configure({ label:'每步计算预算', values:TURBO_VALUES, value:turboBudgetMs,
+      format:(v)=> v + 'ms', onChange:(v)=>{ turboBudgetMs = v; } });
+    else slider.configure({ label:'每步用时', min:160, max:2000, step:20, value:autoSpeedMs,
+      format:(v)=> v + 'ms · 计算≈' + Math.max(20, v - TRANSITION_MS - 10) + 'ms', onChange:(v)=>{ autoSpeedMs = v; } });
+  }
+  function setPressed(btn, on){ btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  turboBtn.addEventListener('click', ()=>{ if(autoPlaying) return; turbo = !turbo; setPressed(turboBtn, turbo); configureSlider(); });
+  dynBtn.addEventListener('click', ()=>{ dynBudget = !dynBudget; setPressed(dynBtn, dynBudget); spentMs = 0; spentN = 0; });
+  batchBtn.addEventListener('click', ()=>{ batch = !batch; setPressed(batchBtn, batch); });
+  configureSlider();
+
+  GameShared.onWidthChange(boardEl, fullRender);
+  document.addEventListener('panelchange', (e)=>{ if(e.detail !== 'panel2048') stopAuto(); });
+
+  newGame();
+})();
+
+</script>
+<script>
+(function(){
+  const boardEl = document.getElementById('board15');
+  const tilesLayer = document.getElementById('tiles15');
+  const movesEl = document.getElementById('moves15');
+  const timeEl = document.getElementById('time15');
+  const overlayEl = document.getElementById('overlay15');
+  const overlaySubEl = document.getElementById('overlaySub15');
+  const hintEl = document.getElementById('hint15');
+  const solveBtn = document.getElementById('solveBtn15');
+  const shuffleBtn = document.getElementById('shuffleBtn15');
+  const applyBtn = document.getElementById('applyBtn15');
+  const speedSliderHost = document.getElementById('speedHost15');
+  const slotsEl = document.getElementById('slots15');
+  const sizeButtons = document.querySelectorAll('#sizeSwitch15 button');
+
+  let N = 4;
+  let grid, blankR, blankC;
+  let moves = 0, seconds = 0, timerHandle = null, started = false, solved = false;
+  // ready  = board is showing the solved arrangement of the chosen size, waiting for 打乱
+  // phase  = 'idle' | 'search' | 'play'  (auto-solve is a two-stage thing: find a path, then demo it)
+  // paused = applies to whichever stage is active;  solving is derived from phase in syncUI()
+  let ready = false, phase = 'idle', paused = false, solving = false;
+  const DEFAULT_HINT = '滑动棋盘或点击方块移动，方向键同理';
+  let tileEls = new Map();
+  let voidEl = null;
+  let playbackSpeedMs = 220;
+
+  // Blank-movement directions (dr,dc applied to the blank's own position).
+  // Kept separate from the UI-facing "gesture" directions below -- solver
+  // paths are always expressed in this convention.
+  const BLANK_DIRS = [
+    {dr:-1,dc:0,name:'up'}, {dr:1,dc:0,name:'down'},
+    {dr:0,dc:-1,name:'left'}, {dr:0,dc:1,name:'right'}
+  ];
+  const OPP = {up:'down',down:'up',left:'right',right:'left'};
+
+  // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  // Board state
+  // ---------------------------------------------------------------
+  function solvedGrid(){
+    const g=[]; let v=1;
+    for(let r=0;r<N;r++){ const row=[]; for(let c=0;c<N;c++){ row.push(r===N-1&&c===N-1 ? 0 : v++); } g.push(row); }
+    return g;
+  }
+  function isSolved(){ return JSON.stringify(grid)===JSON.stringify(solvedGrid()); }
+  function flatten(){ const out=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++) out.push(grid[r][c]); return out; }
+
+  let lastLayout = {size:100, gap:12};
+  function cellLayout(){
+    const l = GameShared.layout(boardEl, N);
+    if(l) lastLayout = l;
+    return lastLayout;
+  }
+  function posFor(r,c,layout){ return {left:c*(layout.size+layout.gap), top:r*(layout.size+layout.gap)}; }
+
+  function positionEl(el, r, c, layout){
+    const p = posFor(r,c,layout);
+    el.style.left=p.left+'px'; el.style.top=p.top+'px';
+    el.style.width=layout.size+'px'; el.style.height=layout.size+'px';
+  }
+
+  function buildTiles(){
+    tilesLayer.innerHTML = '';
+    tileEls = new Map();
+    GameShared.buildSlots(slotsEl, N);
+    const layout = cellLayout();
+    for(let r=0;r<N;r++){
+      for(let c=0;c<N;c++){
+        const v = grid[r][c];
+        if(v===0){
+          voidEl = document.createElement('div');
+          voidEl.className = 'void15';
+          positionEl(voidEl, r, c, layout);
+          tilesLayer.appendChild(voidEl);
+          continue;
+        }
+        const el = document.createElement('div');
+        el.className = 'tile15';
+        const isMovable = !ready && (Math.abs(r-blankR)+Math.abs(c-blankC))===1;
+        if(isMovable) el.classList.add('movable15');
+        positionEl(el, r, c, layout);
+        if(v === r*N + c + 1) el.classList.add('placed15');
+        el.textContent = v;
+        el.style.fontSize = Math.round(layout.size*0.38)+'px';
+        el.addEventListener('click', ()=>{ if(!guardInput()) attemptMove(r,c); });
+        tilesLayer.appendChild(el);
+        tileEls.set(v, el);
+      }
+    }
+    movesEl.textContent = moves;
+  }
+
+  function shuffle(){
+    grid = solvedGrid();
+    blankR = N-1; blankC = N-1;
+    let lastDir = null;
+    let count = 0;
+    const steps = N===3 ? 60 : N===4 ? 160 : 400;
+    while(count < steps){
+      const opts = BLANK_DIRS.filter(d=>{
+        const nr=blankR+d.dr, nc=blankC+d.dc;
+        return nr>=0&&nr<N&&nc>=0&&nc<N && (!lastDir || d.name!==OPP[lastDir]);
+      });
+      const pick = opts[Math.floor(Math.random()*opts.length)];
+      const nr=blankR+pick.dr, nc=blankC+pick.dc;
+      grid[blankR][blankC]=grid[nr][nc]; grid[nr][nc]=0;
+      blankR=nr; blankC=nc; lastDir=pick.name;
+      count++;
+    }
+    if(isSolved()) shuffle(); // vanishingly rare, but a pre-solved board would look broken
+  }
+
+  function stopTimer(){ if(timerHandle){ clearInterval(timerHandle); timerHandle=null; } }
+  function formatTime(s){ const m=Math.floor(s/60).toString().padStart(2,'0'); const ss=(s%60).toString().padStart(2,'0'); return m+':'+ss; }
+  function startTimerIfNeeded(){
+    if(started) return; started=true;
+    timerHandle = setInterval(()=>{ seconds++; timeEl.textContent=formatTime(seconds); }, 1000);
+  }
+
+  function attemptMove(r,c){
+    if(solved) return;
+    const isAdjacent = (Math.abs(r-blankR)+Math.abs(c-blankC))===1;
+    if(!isAdjacent) return;
+    startTimerIfNeeded();
+    const layout = cellLayout();
+    const movedValue = grid[r][c];
+    grid[blankR][blankC] = movedValue;
+    grid[r][c] = 0;
+    const oldBlankR=blankR, oldBlankC=blankC;
+    blankR=r; blankC=c;
+    moves++;
+
+    const tileEl = tileEls.get(movedValue);
+    if(tileEl){
+      positionEl(tileEl, oldBlankR, oldBlankC, layout);
+      tileEl.classList.toggle('placed15', movedValue === oldBlankR*N + oldBlankC + 1);
+    }
+    if(voidEl) positionEl(voidEl, r, c, layout);
+
+    // refresh which tiles show the "movable" highlight ring
+    for(const [v, el] of tileEls){
+      el.classList.remove('movable15');
+    }
+    const neighbors = [[blankR-1,blankC],[blankR+1,blankC],[blankR,blankC-1],[blankR,blankC+1]];
+    for(const [nr,nc] of neighbors){
+      if(nr<0||nr>=N||nc<0||nc>=N) continue;
+      const v = grid[nr][nc];
+      if(v!==0){ const el = tileEls.get(v); if(el) el.classList.add('movable15'); }
+    }
+    movesEl.textContent = moves;
+
+    if(isSolved()){
+      solved = true;
+      stopTimer();
+      syncUI();
+      overlaySubEl.textContent = moves + ' 步 · ' + formatTime(seconds);
+      setTimeout(()=>{ if(solved) overlayEl.classList.add('show'); }, 340);
+    }
+  }
+  function moveBlankByDelta(dr,dc){
+    if(solved) return false;
+    const nr=blankR+dr, nc=blankC+dc;
+    if(nr<0||nr>=N||nc<0||nc>=N) return false;
+    attemptMove(nr,nc);
+    return true;
+  }
+  // brief "can't go that way" feedback so a rejected swipe never feels like a dropped input.
+  // The class MUST be removed once the animation finishes -- otherwise it lingers on the
+  // element, and toggling the panel's display:none/block (switching tabs) makes the browser
+  // replay the animation on an element that still carries its animation-name class.
+  boardEl.addEventListener('animationend', (e)=>{ if(e.animationName==='shake') boardEl.classList.remove('shake'); });
+  function nudge(){
+    boardEl.classList.remove('shake'); void boardEl.offsetWidth; boardEl.classList.add('shake');
+    setTimeout(()=>boardEl.classList.remove('shake'), 250); // fallback for prefers-reduced-motion (animation:none never fires animationend)
+  }
+
+  // ---- gesture input (swipe + arrow keys): named by the direction a TILE
+  // moves, which is the more intuitive convention for touch/drag input and
+  // is the opposite sign of BLANK_DIRS above. ----
+  const GESTURE_DELTA = {up:[1,0], down:[-1,0], left:[0,1], right:[0,-1]};
+  // true = ignore this input. While solving the board belongs to the solver; while it is
+  // still in the solved arrangement, moves are refused and the hint says how to start.
+  function guardInput(){
+    if(solving) return true;
+    if(ready){ hintEl.textContent = N+'×'+N+' 还原状态 · 点击「打乱」开始'; nudge(); return true; }
+    return false;
+  }
+  function handleGesture(name){
+    if(guardInput()) return;
+    const [dr,dc] = GESTURE_DELTA[name];
+    if(!moveBlankByDelta(dr,dc) && !solved) nudge();
+  }
+  GameShared.attachSwipe(boardEl, handleGesture);
+  document.addEventListener('keydown', (e)=>{
+    if(!document.getElementById('panel15').classList.contains('active')) return;
+    if(e.target && e.target.type === 'range') return;
+    const map = {ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right'};
+    if(map[e.key]){ e.preventDefault(); handleGesture(map[e.key]); }
+  });
+
+  // newGame(false): shuffle the current size.   newGame(true): show that size's solved
+  // arrangement (size buttons) -- choosing a size and shuffling are separate actions.
+  function newGame(ordered){
+    abortSolve();
+    stopTimer();
+    moves=0; seconds=0; started=false; solved=false;
+    timeEl.textContent='00:00';
+    overlayEl.classList.remove('show');
+    boardEl.dataset.n = N;
+    if(ordered){
+      grid = solvedGrid(); blankR = N-1; blankC = N-1; ready = true;
+      hintEl.textContent = N+'×'+N+' 还原状态 · 点击「打乱」开始';
+    } else {
+      ready = false; shuffle();
+      hintEl.textContent = DEFAULT_HINT;
+    }
+    buildTiles();
+    syncUI();
+  }
+
+  // ---------------------------------------------------------------
+  // Auto-solve: tries the optimal IDA* solver first (bounded by a node
+  // budget so a hard 4x4 scramble can't hang the page), and transparently
+  // falls back to the fast, non-optimal greedy solver for 5x5 (always) or
+  // whenever the optimal search runs out of budget.
+  // ---------------------------------------------------------------
+  let runner = null;
+  let solveAnimTimer = null;
+  let lastBest = null;       // {path, len, lb} -- most recent verified solution, updated live
+  let jobStartT = 0, pauseStart = 0;
+  let modeNote = '';
+
+  // Numeric move encoding used by solver.js: 0=up 1=down 2=left 3=right (delta applied
+  // to the BLANK). Same convention as BLANK_DIRS above, just indexed instead of named.
+  const SOLVER_DELTA = [[-1,0],[1,0],[0,-1],[0,1]];
+
+  // Per-size search budgets, deliberately unequal: 3x3 (181,440 positions) is solved in
+  // milliseconds; 4x4 usually resolves in well under a second but a hard scramble can
+  // need real time; 5x5 can never be proven optimal in a browser and simply keeps getting
+  // shorter the longer the anytime search runs, so it gets the most time. Pause and
+  // "use current" mean nobody is ever stuck waiting.
+  function budgetFor(n){ return n===3 ? 4000 : n===4 ? 8000 : 20000; }
+
+  // ---------------------------------------------------------------
+  // Solver runner. Same SolverKit job either way; only WHERE it runs differs:
+  //   1) a Web Worker (preferred: search never touches the UI thread), or
+  //   2) time-sliced on the main thread when a Worker can't be used.
+  // The switch happens automatically if Worker is missing, can't be constructed (CSP,
+  // sandboxing), errors out, or stays silent for 2.5s. Pause/resume/cancel behave
+  // identically in both modes because both just decide whether to schedule another slice.
+  // ---------------------------------------------------------------
+  function workerSource(){
+    return 'const SolverKit = ' + SolverKit.toString() + ';\n' + [
+      'self.postMessage({type:"alive"});',          // lets the page tell "started fine" from "dead worker"
+      'let job = null, cancelled = false, paused = false;',
+      'self.onmessage = function(e){',
+      '  const msg = e.data;',
+      '  if(msg.cmd === "start"){',
+      '    cancelled = false; paused = false;',
+      '    job = SolverKit().createJob(msg.flat, msg.n, msg.budgetMs, ev => self.postMessage(ev));',
+      '    loop();',
+      '  } else if(msg.cmd === "pause"){ paused = true; }',
+      '  else if(msg.cmd === "resume"){ if(paused){ paused = false; loop(); } }',
+      '  else if(msg.cmd === "cancel"){ cancelled = true; paused = true; job = null; }',
+      '};',
+      // the only place another slice is ever scheduled: once `paused` is set the chain
+      // stops, and the job (all its search state) sits untouched until "resume"
+      'function loop(){',
+      '  if(cancelled || paused || !job) return;',
+      '  const done = job.run(50);',
+      '  if(done || cancelled || paused) return;',
+      '  setTimeout(loop, 0);',
+      '}'
+    ].join('\n');
+  }
+
+  function createRunner(onEvent){
+    let worker = null, job = null, timer = null, watchdog = null;
+    let paused = false, cancelled = false, heard = false, payload = null;
+    const api = { mode: 'worker' };
+
+    function tickMain(){
+      timer = null;
+      if(cancelled || paused || !job) return;
+      const done = job.run(8);                       // short slices keep the page responsive
+      if(done || cancelled || paused) return;
+      timer = setTimeout(tickMain, 0);
+    }
+    function startMain(reason){
+      if(cancelled) return;
+      api.mode = 'main';
+      clearTimeout(watchdog);
+      if(worker){ try{ worker.terminate(); }catch(e){} worker = null; }
+      job = SolverKit().createJob(payload.flat, payload.n, payload.budgetMs, ev=>{ if(!cancelled) onEvent(ev); });
+      onEvent({type:'mode', mode:'main', reason});
+      if(!paused) tickMain();
+    }
+    function startWorker(){
+      if(typeof Worker === 'undefined') return false;
+      let w;
+      try{
+        w = new Worker(URL.createObjectURL(new Blob([workerSource()], {type:'application/javascript'})));
+      }catch(err){ return false; }                  // e.g. CSP / sandbox refuses blob workers
+      worker = w;
+      w.onmessage = e=>{
+        heard = true; clearTimeout(watchdog);
+        if(e.data.type !== 'alive' && !cancelled) onEvent(e.data);
+      };
+      w.onerror = ev=>{                              // async failure (script blocked, crash...)
+        if(ev && ev.preventDefault) ev.preventDefault();
+        if(worker === w) startMain('error');
+      };
+      watchdog = setTimeout(()=>{ if(!heard && worker === w) startMain('silent'); }, 2500);
+      w.postMessage({cmd:'start', flat: payload.flat, n: payload.n, budgetMs: payload.budgetMs});
+      return true;
+    }
+
+    api.start = p=>{ payload = p; cancelled = false; paused = false; heard = false; if(!startWorker()) startMain('unavailable'); };
+    api.pause = ()=>{ paused = true; if(worker) worker.postMessage({cmd:'pause'}); };
+    api.resume = ()=>{ paused = false; if(worker) worker.postMessage({cmd:'resume'}); else if(job) tickMain(); };
+    api.cancel = ()=>{
+      cancelled = true; clearTimeout(timer); clearTimeout(watchdog); job = null;
+      if(worker){ try{ worker.postMessage({cmd:'cancel'}); worker.terminate(); }catch(e){} worker = null; }
+    };
+    return api;
+  }
+
+  // ---------------------------------------------------------------
+  // Solve UI state machine:  idle -> search -> play -> idle   (paused applies to the
+  // active stage). Every label / enabled state / "结束搜索" visibility is DERIVED here from
+  // (phase, paused, ready, solved, lastBest), so a button can never offer something the
+  // running stage cannot do.
+  // ---------------------------------------------------------------
+  function syncUI(){
+    solving = phase !== 'idle';
+    solveBtn.textContent = phase === 'idle' ? '自动求解'
+      : phase === 'search' ? (paused ? '继续搜索' : '暂停搜索')
+      : (paused ? '继续演示' : '暂停演示');
+    solveBtn.disabled = phase === 'idle' && (ready || solved);
+    // "结束搜索" only makes sense while searching, once there is a solution to demo, and
+    // only when the search is long enough that skipping the wait is worth offering.
+    applyBtn.hidden = !(phase === 'search' && lastBest && (paused || performance.now()-jobStartT >= 1200));
+    const lock = solving && !paused;        // a paused solve may be abandoned via 打乱 / size
+    shuffleBtn.disabled = lock;
+    sizeButtons.forEach(b=> b.disabled = lock);
+  }
+  function fmtSec(ms){ return (ms/1000).toFixed(1)+'s'; }
+  function updateHint(){
+    if(phase === 'search'){
+      if(!lastBest){ hintEl.textContent = (paused ? '已暂停 · ' : '') + '求解中…' + modeNote; }
+      else {
+        const provenOptimal = lastBest.lb !== null && lastBest.lb >= lastBest.len;
+        const tag = provenOptimal ? '已确认最优' : ('当前最短 ' + lastBest.len + ' 步，下界 ' + lastBest.lb);
+        hintEl.textContent = (paused ? '已暂停 · ' : '搜索中 · ') + tag + ' · 已用时 ' + fmtSec(performance.now()-jobStartT) + modeNote;
+      }
+    } else if(phase === 'play'){
+      hintEl.textContent = (paused ? '已暂停演示 · ' : '演示中 · ') + (playOptimal ? '最优解' : '非最优解') + ' · ' + playIdx + '/' + playPath.length + ' 步';
+    }
+    syncUI();
+  }
+
+  function abortSolve(){
+    if(solveAnimTimer){ clearTimeout(solveAnimTimer); solveAnimTimer = null; }
+    if(runner){ runner.cancel(); runner = null; }
+    phase = 'idle'; paused = false; lastBest = null; modeNote = '';
+    syncUI();
+  }
+
+  // ---- stage 2: demo the path on the board (pausable) ----
+  let playPath = null, playIdx = 0, playOptimal = false, playNote = '';
+  function startPlay(path, optimal, note, startPaused){
+    phase = 'play'; paused = !!startPaused;
+    playPath = path; playIdx = 0; playOptimal = optimal; playNote = note || '';
+    lastBest = null; modeNote = '';
+    if(!path.length){ finishPlay(); return; }
+    updateHint();
+    if(!paused) stepPlay();
+  }
+  function stepPlay(){
+    solveAnimTimer = null;
+    if(phase !== 'play' || paused) return;
+    const d = SOLVER_DELTA[playPath[playIdx]];
+    moveBlankByDelta(d[0], d[1]);
+    playIdx++;
+    if(playIdx >= playPath.length || solved){ finishPlay(); return; }
+    updateHint();
+    solveAnimTimer = setTimeout(stepPlay, playbackSpeedMs);
+  }
+  function finishPlay(){
+    phase = 'idle'; paused = false; syncUI();
+    hintEl.textContent = (playOptimal ? '已找到最优解' : '已求解（非最优）') + ' · ' + playPath.length + ' 步' + playNote;
+  }
+
+  // ---- stage 1: search events from the runner ----
+  function handleSolverEvent(ev){
+    if(phase !== 'search') return;            // stale event from a run that was already ended
+    if(ev.type === 'mode'){
+      modeNote = ' · 后台线程不可用，已改用主线程分片求解';
+      updateHint();
+    } else if(ev.type === 'best'){
+      lastBest = { path: ev.path, len: ev.len, lb: ev.lb };
+      updateHint();
+    } else if(ev.type === 'progress'){
+      if(lastBest) lastBest.lb = ev.lb;
+      updateHint();
+    } else if(ev.type === 'done'){
+      const note = ev.optimal ? '' : (ev.timedOut ? '（搜索超时已回退到当前最优结果）' : '（该尺寸不追求最短路径）');
+      if(runner){ runner.cancel(); runner = null; }
+      startPlay(ev.path, ev.optimal, note, paused);   // finished while paused -> stay paused
+    } else if(ev.type === 'failed'){
+      if(runner){ runner.cancel(); runner = null; }
+      phase = 'idle'; paused = false; modeNote = ''; syncUI();
+      hintEl.textContent = '未能求解，可重试或重新打乱';
+    }
+  }
+
+  setInterval(()=>{ if(phase === 'search' && !paused) updateHint(); }, 500);
+
+  solveBtn.addEventListener('click', ()=>{
+    if(phase === 'idle'){
+      if(ready || solved) return;
+      phase = 'search'; paused = false; lastBest = null; modeNote = ''; jobStartT = performance.now();
+      hintEl.textContent = '求解中…';
+      syncUI();
+      runner = createRunner(handleSolverEvent);
+      runner.start({ flat: flatten(), n: N, budgetMs: budgetFor(N) });
+    } else if(phase === 'search'){
+      if(!paused){ paused = true; pauseStart = performance.now(); if(runner) runner.pause(); }
+      else { paused = false; jobStartT += performance.now() - pauseStart; if(runner) runner.resume(); }
+      updateHint();
+    } else {                                    // phase === 'play'
+      if(!paused){ paused = true; if(solveAnimTimer){ clearTimeout(solveAnimTimer); solveAnimTimer = null; } }
+      else { paused = false; stepPlay(); }
+      updateHint();
+    }
+  });
+
+  applyBtn.addEventListener('click', ()=>{
+    if(phase !== 'search' || !lastBest) return;
+    const path = lastBest.path, optimal = lastBest.lb !== null && lastBest.lb >= lastBest.len;
+    if(runner){ runner.cancel(); runner = null; }
+    startPlay(path, optimal, optimal ? '' : '（已提前结束搜索）', false);
+  });
+
+  shuffleBtn.addEventListener('click', ()=>newGame(false));
+  document.getElementById('retryBtn15').addEventListener('click', ()=>newGame(false));
+
+  // Size buttons only choose the size (board shows that size, solved); 打乱 starts a game.
+  sizeButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.disabled) return;
+      sizeButtons.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      N = parseInt(btn.dataset.size, 10);
+      newGame(true);
+    });
+  });
+
+  GameShared.createSpeedSlider(speedSliderHost, {
+    label:'演示速度', min:150, max:800, step:25, value:playbackSpeedMs,
+    format:(v)=> v + 'ms/步',
+    onChange:(v)=>{ playbackSpeedMs = v; }
+  });
+
+  GameShared.onWidthChange(boardEl, buildTiles);
+  document.addEventListener('panelchange', (e)=>{ if(e.detail !== 'panel15') abortSolve(); });
+
+  newGame(false);
+})();
+
+</script>
+<script>
+(function(){
+  const btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      btns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.game-panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById(btn.dataset.panel).classList.add('active');
+      document.dispatchEvent(new CustomEvent('panelchange', {detail: btn.dataset.panel}));
+    });
+  });
+})();
+</script>
+</body>
+</html>
