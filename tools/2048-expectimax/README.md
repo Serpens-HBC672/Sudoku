@@ -8,6 +8,7 @@
 
 - `expectimax2048.js`：求解器、独立游戏规则、种子随机数，无运行时依赖
 - `benchmark.js`：可复现实验，逐局 JSONL、配置、源码 SHA-256、轨迹摘要、耗时、Wilson 置信区间
+- `analyze.js` / `test-analyze.js`：按预注册协议汇总，拒绝混合版本/重复种子，并独立检查生成质量与得分守恒
 - `test-expectimax2048.js`：独立参考实现、穷举行表、随机棋盘、搜索 oracle 等
 - `worker.js`：可选浏览器 Worker 适配层
 - `API.md`：完整接口、方向编号、终止语义及预算说明

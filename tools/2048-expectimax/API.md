@@ -123,3 +123,14 @@ node benchmark.js --games 30 --seed 50001 --profile strong \
 这是可复现的命令示例，并不表示对应的 30 局已经跑完。实际执行范围见实验报告。
 
 其他参数：`--depth`、`--table-bits`、`--no-iterative`、`--fixed-depth`、`--progress`、`--max-moves`；完整帮助为 `node benchmark.js --help`。达到 max-moves 的局计为 `censored`，不会假报成功或普通输局。
+
+## 汇总与独立核验
+
+```sh
+node analyze.js --protocol results/HOLDOUT_PROTOCOL.json \
+  results/holdout-seeds50001-50015.jsonl \
+  results/holdout-seeds50016-50030.jsonl
+node test-analyze.js
+```
+
+仅对相同源码与配置合并；校验协议、种子唯一性、最终棋盘、终局状态、种子生成流的总质量和合并得分恒等式。文件缺少完成记录、种子缺失或仍有 censored 时，输出 `complete: false`；不能把该部分比例当作完成的预注册结果。轨迹 SHA-256 是复现摘要，质量/得分检查并不等于重新运行了整局搜索。

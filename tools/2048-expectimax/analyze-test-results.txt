@@ -1,0 +1,15 @@
+PASS all completed registered seeds aggregate exactly once
+PASS missing holdout seed remains incomplete
+PASS batch without final summary remains incomplete
+PASS duplicate seeds are rejected
+PASS different versions are rejected
+PASS different configurations are rejected
+PASS wrong preregistered source is rejected
+PASS unregistered seed is rejected
+PASS corrupted score is caught independently
+PASS corrupted spawn count is caught independently
+PASS an initial target tile uses both initial spawns
+PASS a claimed loss must have no legal moves
+PASS censored games remain explicitly censored
+PASS incomplete trailing writes are rejected
+14 aggregation tests passed.

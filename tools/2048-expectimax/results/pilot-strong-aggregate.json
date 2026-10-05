@@ -1,0 +1,48 @@
+{
+  "type": "aggregate",
+  "protocolRecordedAt": null,
+  "sourceSha256": "8c6334c3b6ebddd1087a6d6f286f5a92af38bdbf092b452034a7a6965726ae99",
+  "complete": true,
+  "expectedGames": null,
+  "games": 2,
+  "completed": 2,
+  "censored": 0,
+  "missingSeeds": [],
+  "successes": 0,
+  "successRate": 0,
+  "wilson95": [
+    0,
+    0.6576197724933469
+  ],
+  "totalMoves": 18084,
+  "totalNodes": 99735996936,
+  "totalGameWallSeconds": 5176.4459208690005,
+  "totalCpuSeconds": 5178.708191,
+  "weightedMeanMoveMs": 286.17690030574045,
+  "maxTileHistogram": {
+    "8192": 1,
+    "16384": 1
+  },
+  "validation": "Each final board, terminal state, seeded spawn mass, and score identity checked independently of the search.",
+  "note": "All supplied batches completed. No preregistration protocol supplied; do not infer independent holdout status.",
+  "perGame": [
+    {
+      "seed": 2001,
+      "outcome": "loss",
+      "maxTile": 8192,
+      "score": 176660,
+      "moves": 7420,
+      "wallSeconds": 1971.4284476609998,
+      "trajectorySha256": "262ce7ed0db9d0e9b72725b32b4701356f376ffb13dc0fcdeaca589ac78d1d0c"
+    },
+    {
+      "seed": 2002,
+      "outcome": "loss",
+      "maxTile": 16384,
+      "score": 281284,
+      "moves": 10664,
+      "wallSeconds": 3205.0174732080004,
+      "trajectorySha256": "cfd7b5f9b1cfbeb44c8646d762046ab403712185e0d5c6743bb0f75e303f29ed"
+    }
+  ]
+}
