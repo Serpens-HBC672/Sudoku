@@ -31,19 +31,34 @@
   function potential(lo,hi){return POTENTIAL[lo&65535]+POTENTIAL[lo>>>16]+POTENTIAL[hi&65535]+POTENTIAL[hi>>>16];}
   function countEmpty(lo,hi){return EMPTY[lo&65535]+EMPTY[lo>>>16]+EMPTY[hi&65535]+EMPTY[hi>>>16];}
   function tupleIndices(board,patterns=PATTERNS){const[lo,hi]=Game._internals.pack(board),result=[],cells=featureCells(patterns);for(let i=0;i<patterns.length*8;i++){let index=0;for(let k=0;k<6;k++)index|=rankAt(lo,hi,cells[i*6+k])<<(k*4);result.push(index);}return result;}
+  function validatePackedWord(word,name){
+    if(!Number.isFinite(word)||!Number.isInteger(word)||word<0||word>0xffffffff)throw new RangeError(name+' must be an unsigned 32-bit integer (0..4294967295).');
+  }
+  // Private hot path: pack/movePacked/spawn already produce unsigned words.
+  // Each six-nibble index remains in 0..16^6-1, including rank 15 (32768).
+  function evaluatePackedUnchecked(model,lo,hi){
+    let sum=0;const cells=model.cells;
+    for(let i=0;i<model.tables.length*8;i++){
+      const offset=i*6;
+      const index=rankAt(lo,hi,cells[offset])|(rankAt(lo,hi,cells[offset+1])<<4)|(rankAt(lo,hi,cells[offset+2])<<8)|(rankAt(lo,hi,cells[offset+3])<<12)|(rankAt(lo,hi,cells[offset+4])<<16)|(rankAt(lo,hi,cells[offset+5])<<20);
+      sum+=model.tables[i>>>3][index];
+    }
+    if(!Number.isFinite(sum))throw new Error('Model contains a non-finite weight at an evaluated feature.');
+    return sum;
+  }
   class NTupleModel{
     constructor(tables,patterns=PATTERNS){if(!Array.isArray(patterns)||!patterns.length||patterns.length>16||patterns.some(p=>typeof p!=='string'||!/^[0-9a-f]{6}$/i.test(p)))throw new TypeError('Expected six-cell hexadecimal pattern IDs.');if(!Array.isArray(tables)||tables.length!==patterns.length||tables.some(t=>!(t instanceof Float32Array)||t.length!==TABLE_LENGTH))throw new TypeError('Expected one Float32Array of16^6 entries per pattern.');this.tables=tables;this.patterns=Object.freeze(patterns.slice());this.cells=featureCells(patterns);}
-    evaluate(board){const[lo,hi]=Game._internals.pack(board);return this.evaluatePacked(lo,hi);}
+    evaluate(board){const[lo,hi]=Game._internals.pack(board);return evaluateTrusted(this,lo,hi);}
     evaluatePacked(lo,hi){
-      let sum=0;const cells=this.cells;
-      for(let i=0;i<this.tables.length*8;i++){
-        const offset=i*6;
-        const index=rankAt(lo,hi,cells[offset])|(rankAt(lo,hi,cells[offset+1])<<4)|(rankAt(lo,hi,cells[offset+2])<<8)|(rankAt(lo,hi,cells[offset+3])<<12)|(rankAt(lo,hi,cells[offset+4])<<16)|(rankAt(lo,hi,cells[offset+5])<<20);
-        sum+=this.tables[i>>>3][index];
-      }
-      if(!Number.isFinite(sum))throw new Error('Model contains a non-finite weight at an evaluated feature.');
-      return sum;
+      validatePackedWord(lo,'lo');validatePackedWord(hi,'hi');
+      return evaluatePackedUnchecked(this,lo,hi);
     }
+  }
+  const defaultEvaluatePacked=NTupleModel.prototype.evaluatePacked;
+  function evaluateTrusted(model,lo,hi){
+    // Retain caller-supplied diagnostic/custom wrappers without charging normal
+    // search leaves for the checked public boundary.
+    return model.evaluatePacked===defaultEvaluatePacked?evaluatePackedUnchecked(model,lo,hi):model.evaluatePacked(lo,hi);
   }
   function loadModel(manifestPath){
     if(!nodeRequire)throw new Error('loadModel(path) is Node-only. In a browser supply Float32Array tables to NTupleModel.');
@@ -75,9 +90,9 @@
       this.model=model;Game._internals.initTables();
     }
     _afterValue(lo,hi,remaining){
-      if(remaining<=0)return this.model.evaluatePacked(lo,hi);
+      if(remaining<=0)return evaluateTrusted(this.model,lo,hi);
       // Goal states remain leaves; never expand a rank15 board toward rank16.
-      for(let i=0;i<8;i++)if(((lo>>>(i*4))&15)>=this.targetRank||((hi>>>(i*4))&15)>=this.targetRank)return this.model.evaluatePacked(lo,hi);
+      for(let i=0;i<8;i++)if(((lo>>>(i*4))&15)>=this.targetRank||((hi>>>(i*4))&15)>=this.targetRank)return evaluateTrusted(this.model,lo,hi);
       return this._expectation(lo,hi,remaining);
     }
     _bestAfterSpawn(lo,hi,remaining){

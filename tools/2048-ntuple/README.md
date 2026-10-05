@@ -4,6 +4,8 @@
 
 这满足本次标准规则测试的目标，不保证任意连续三局必胜一局。规则、版本、种子与原始数据见 [EXPERIMENTS.md](EXPERIMENTS.md)。上游模型历史成绩没有当作这里的实测成绩。
 
+上述 49/100 属于原冻结求解器 SHA-256 `ab2e0c4eca2e84061602f9d4b80a45debd9986a35a618f32478cb0ae097261ed`。当前新增的 packed 输入校验和边界回归测试保持合法棋盘的查表与决策行为，不改权重或搜索策略；没有重跑一百局，不能将旧成绩标为修改后源码的新实测结果。
+
 这套脚本与数独页面独立。先前的纯启发式 Expectimax 长测试已按用户要求停止，保留在相邻目录用于审计；当前推荐使用本目录的 TD 学习模型路线。
 
 ## 一次准备，随后本地运行
@@ -54,6 +56,8 @@ console.log(answer.direction, answer.name, answer.actualPly);
 
 推荐配置必须显式开启 `criticalSearch`；默认普通 2-ply 不等于经过 49% 测试的选择性 3-ply 配置。输入已达目标或无合法动作时，`direction` 为 `null`，用 `targetReached` 区分。
 
+TD 模型的直接评价/特征索引最多支持 **32768（rank 15）**，65536 和 131072 会被拒绝。`chooseMove` 遇到已达目标的合法棋盘会直接终止，不会评价大块；`target` 也不能高于 32768。网页手动继续或切回原有启发式使用不同路径，不代表这份权重能处理更高块。低级 packed 接口的 uint32 范围、符号位和逐方法边界见 [API.md](API.md)。
+
 Node.js ESM 可以默认导入本目录的 CommonJS 模块：
 
 ```js
@@ -78,6 +82,8 @@ node test-selective.js --model models/8x6patt.json
 ```
 
 4x6 对应 `test-ntuple.js --model models/4x6patt.json --raw-model models/4x6patt.w`。测试覆盖原始权重抽样、64 项模式索引、对称变换、独立数组棋盘、奖励、期望值及目标叶终止。模型不存在时不会偷偷下载，实际权重测试是否跳过会明确输出。
+
+`npm test` 也运行 `test-boundaries.js`：覆盖 uint32 两端和高符号位、非法 packed 参数、32768 最后一个合法索引、两个 16384 的目标终止、超界数值评价拒绝及终止根零查表；用合成权重逐次检查索引，并与原冻结求解器比较合法输入的精确决策和值。它是回归检查，不是新的胜率实验。
 
 ## 文件与授权
 
