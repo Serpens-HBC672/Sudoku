@@ -1,0 +1,184 @@
+name: Publish verified 2048 model
+run-name: Publish pinned 2048 8x6 model
+
+# This bootstrap push trigger is limited to this file on the authorized branch.
+# Documentation updates do not trigger downloads or releases.
+on:
+  push:
+    branches: [codex/2048-expectimax-32768]
+    paths: [.github/workflows/publish-2048-model.yml]
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: publish-2048-model-8x6-0899be24-v1
+  cancel-in-progress: false
+
+jobs:
+  publish-model:
+    if: github.repository == 'Serpens-HBC672/Sudoku' && github.ref == 'refs/heads/codex/2048-expectimax-32768'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_REPO: Serpens-HBC672/Sudoku
+      MODEL_COMMIT: 584f363b5a504e4464555b3558f8dd4516fcf955
+      MODEL_TAG: 2048-model-8x6-0899be24-v1
+    steps:
+      - name: Check public repository and pinned tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GH_REPO" --jq .private)" = false
+          refs="$(gh api "repos/$GH_REPO/git/matching-refs/tags/$MODEL_TAG")"
+          echo "$refs" | jq -e --arg ref "refs/tags/$MODEL_TAG" --arg sha "$MODEL_COMMIT" \
+            'all(.[] | select(.ref == $ref); .object.type == "commit" and .object.sha == $sha)'
+
+      - name: Checkout reviewed converter and manifest
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          ref: 584f363b5a504e4464555b3558f8dd4516fcf955
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+
+      - name: Test converter and browser contracts
+        working-directory: tools/2048-ntuple
+        run: npm test
+
+      - name: Download pinned MIT model and convert
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Each existing downloader attempt is bounded to 180 seconds. A failed
+          # download keeps a partial file; the second attempt resumes it.
+          node tools/2048-ntuple/prepare-model.js --network 8x6 --download --out "$RUNNER_TEMP/model" || \
+            node tools/2048-ntuple/prepare-model.js --network 8x6 --download --out "$RUNNER_TEMP/model"
+          test "$(stat -c %s "$RUNNER_TEMP/model/8x6patt.f32")" = 536870912
+          printf '%s  %s\n' \
+            4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297 \
+            "$RUNNER_TEMP/model/8x6patt.f32" | sha256sum --check
+          node tools/2048-ntuple/test-ntuple8.js \
+            --model "$RUNNER_TEMP/model/8x6patt.json" --raw-model "$RUNNER_TEMP/model/8x6patt.w"
+          node tools/2048-ntuple/test-selective.js --model "$RUNNER_TEMP/model/8x6patt.json"
+
+      - name: Prepare reproducible release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir dist
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const expected = JSON.parse(fs.readFileSync('tools/2048-ntuple/results/MODEL-8x6-MANIFEST.json'));
+          const actual = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/model/8x6patt.json'));
+          // The reviewed manifest records the original conversion timestamp.
+          // Compare every other field, then distribute that canonical manifest.
+          delete expected.createdAt;
+          delete actual.createdAt;
+          assert.deepEqual(actual, expected);
+          NODE
+          cp "$RUNNER_TEMP/model/8x6patt.f32" dist/8x6patt.f32
+          cp tools/2048-ntuple/results/MODEL-8x6-MANIFEST.json dist/8x6patt.json
+          cp tools/2048-ntuple/LICENSE-TDL2048.md dist/LICENSE-TDL2048.md
+          (cd dist && sha256sum 8x6patt.f32 8x6patt.json LICENSE-TDL2048.md > SHA256SUMS)
+
+      - name: Publish only verified model assets, without replacing existing files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          repo, tag, commit = (os.environ[k] for k in ('GH_REPO', 'MODEL_TAG', 'MODEL_COMMIT'))
+          title = '2048 model: MIT TDL2048 8x6 inference weights'
+          def gh(*args):
+              return subprocess.check_output(['gh', *args], text=True)
+          def api(path, method='GET', data=None):
+              args = ['gh', 'api', '--method', method, path]
+              if data is not None:
+                  args += ['--input', '-']
+              result = subprocess.run(args, input=json.dumps(data) if data is not None else None,
+                                      text=True, check=True, stdout=subprocess.PIPE)
+              return json.loads(result.stdout)
+          pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repo}/releases'))
+          matches = [r for page in pages for r in page if r['tag_name'] == tag]
+          assert len(matches) <= 1, 'Duplicate model release; refusing to modify it'
+          notes = f'''MIT-licensed TDL2048 8x6 inference weights for the standalone 2048 game.
+
+          Download 8x6patt.f32 (512 MiB) and choose it in the game's local weights picker. No Node.js conversion is needed for this download. Keep 8x6patt.json alongside it for the Node.js API. SHA256SUMS and the upstream MIT license are included.
+
+          Upstream: https://huggingface.co/moporgic/TDL2048/tree/0899be24f2f53d1199225960330e6742177af81d
+          Reviewed converter/game commit: https://github.com/{repo}/commit/{commit}
+          Inference SHA-256: 4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297
+          Raw model SHA-256: bb8678095de7b5a934be105e51f7bb13f762eeb48b42a99e0ebc0da3fcbbbe9f
+
+          This model-only prerelease does not include a Sudoku application update. Training state has been removed; inference values are unchanged. The manifest retains its original verified-conversion timestamp. This workflow never replaces existing assets or retargets the tag.
+          '''
+          if matches:
+              release = matches[0]
+              assert release['prerelease'] is True, 'Existing release is not a prerelease'
+              assert release['target_commitish'] == commit, 'Existing release targets a different commit'
+              assert release['name'] == title, 'Existing release has a different purpose'
+          else:
+              release = api(f'repos/{repo}/releases', 'POST', {
+                  'tag_name': tag, 'target_commitish': commit, 'name': title,
+                  'body': notes, 'draft': True, 'prerelease': True, 'make_latest': 'false'})
+          names = ['8x6patt.f32', '8x6patt.json', 'LICENSE-TDL2048.md', 'SHA256SUMS']
+          hashes = {}
+          for name in names:
+              h = hashlib.sha256()
+              with open(pathlib.Path('dist') / name, 'rb') as f:
+                  for chunk in iter(lambda: f.read(4 * 1024 * 1024), b''):
+                      h.update(chunk)
+              hashes[name] = h.hexdigest()
+          def validate(asset):
+              name = asset['name']
+              assert name in names, f'Unexpected existing asset: {name}'
+              assert asset['state'] == 'uploaded', f'Incomplete existing asset: {name}'
+              assert asset['size'] == (pathlib.Path('dist') / name).stat().st_size, f'Size mismatch: {name}'
+              assert asset.get('digest') == 'sha256:' + hashes[name], f'Digest mismatch: {name}'
+          existing = {a['name']: a for a in release['assets']}
+          for asset in existing.values():
+              validate(asset)
+          for name in names:
+              if name not in existing:
+                  subprocess.run(['gh', 'release', 'upload', tag, str(pathlib.Path('dist') / name),
+                                  '--repo', repo], check=True)
+          release = api(f"repos/{repo}/releases/{release['id']}")
+          assert sorted(a['name'] for a in release['assets']) == sorted(names)
+          for asset in release['assets']:
+              validate(asset)
+          if release['draft']:
+              release = api(f"repos/{repo}/releases/{release['id']}", 'PATCH', {
+                  'draft': False, 'prerelease': True, 'make_latest': 'false'})
+          ref = api(f'repos/{repo}/git/ref/tags/{tag}')
+          assert ref['object']['type'] == 'commit' and ref['object']['sha'] == commit
+          assert release['prerelease'] is True and release['draft'] is False
+          print(release['html_url'])
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write(f"Model prerelease: {release['html_url']}\n\nCommit: {commit}\n")
+          PY
+
+      - name: Verify unauthenticated public downloads byte for byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/public-download"
+          for asset in 8x6patt.f32 8x6patt.json LICENSE-TDL2048.md SHA256SUMS; do
+            curl --fail --location --silent --show-error --connect-timeout 20 \
+              --max-time 240 --retry 2 --retry-max-time 300 \
+              "https://github.com/$GH_REPO/releases/download/$MODEL_TAG/$asset" \
+              --output "$RUNNER_TEMP/public-download/$asset"
+            cmp "dist/$asset" "$RUNNER_TEMP/public-download/$asset"
+          done
+          (cd "$RUNNER_TEMP/public-download" && sha256sum --check SHA256SUMS)
+          echo 'Unauthenticated public download: all four assets match; SHA-256 checks passed.' >> "$GITHUB_STEP_SUMMARY"
