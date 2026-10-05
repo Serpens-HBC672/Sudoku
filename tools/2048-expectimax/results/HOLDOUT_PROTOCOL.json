@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "type": "preregistered_protocol",
+  "recordedAt": "2026-10-05T06:15:52.724Z",
+  "sourceSha256": "225ea64e5c317374e04f30b3efb1ffbcc40c0b5bbda1a182a08dc679ee03d49d",
+  "benchmarkSha256": "51f1c89773a384241f6c35bff1f3594b84df0de9c7c8618b81ea470f56e2da9c",
+  "testSha256": "23c2e405fad748d07d082e5af26d9cadc33316007db3ab3035e41d73bc47962c",
+  "games": 30,
+  "seeds": [
+    50001,
+    50002,
+    50003,
+    50004,
+    50005,
+    50006,
+    50007,
+    50008,
+    50009,
+    50010,
+    50011,
+    50012,
+    50013,
+    50014,
+    50015,
+    50016,
+    50017,
+    50018,
+    50019,
+    50020,
+    50021,
+    50022,
+    50023,
+    50024,
+    50025,
+    50026,
+    50027,
+    50028,
+    50029,
+    50030
+  ],
+  "batches": [
+    [
+      50001,
+      50015
+    ],
+    [
+      50016,
+      50030
+    ]
+  ],
+  "options": {
+    "profile": "strong",
+    "maxDepth": 10,
+    "probabilityCutoff": 0.0001,
+    "nodeBudget": 8000000,
+    "tableBits": 18,
+    "target": 32768,
+    "timeBudgetMs": 0,
+    "iterative": true,
+    "adaptiveDepth": true
+  },
+  "maxParallelGames": 2,
+  "maxMoves": 200000,
+  "termination": "Complete every game to first 32768 or no legal moves; no stopping according to observed wins/losses. Pause only for user cancellation or concrete runtime/safety blockers.",
+  "holdoutDefinition": "These seeds have not been used in development games. No further source/option tuning during this batch.",
+  "analysis": {
+    "primary": "Fraction reaching 32768 among all 30 completed games",
+    "interval": "Two-sided 95% Wilson interval",
+    "report": "all outcomes, censoring, max tile distribution, scores, move counts, timing, trajectory hashes, full command/source metadata",
+    "claim": "Observed proportion >= 1/3 is not proof the population probability >= 1/3. Report uncertainty and no selective exclusion."
+  },
+  "startCondition": "Both development strong pilots seed2001 and2002 have completed."
+}
