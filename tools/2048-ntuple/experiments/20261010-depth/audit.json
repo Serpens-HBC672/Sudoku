@@ -1,0 +1,22 @@
+{
+  "auditedAt": "2026-10-10T15:38:12.313111+00:00",
+  "passed": true,
+  "issues": [],
+  "preregisteredJobs": 120,
+  "started": 120,
+  "reported": 120,
+  "statusCounts": {
+    "reported": 120
+  },
+  "peakExperimentalProcesses": 3,
+  "completeMarkers": 2,
+  "completion": {
+    "finishedAt": "2026-10-10T15:37:45.668Z",
+    "jobs": 120,
+    "overallBudgetReached": false
+  },
+  "replayPassed": 120,
+  "movesReplayed": 1937506,
+  "milestonesVerified": 53,
+  "sourceArtifactsUnchanged": true
+}

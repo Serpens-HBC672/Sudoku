@@ -1,0 +1,385 @@
+{
+  "purpose": "Seed62001 resource feasibility only; excluded from formal matrix. Fixed4 is time-censored, not a loss.",
+  "games": [
+    {
+      "configuration": {
+        "id": "ply1",
+        "ply": 1,
+        "criticalSearch": false
+      },
+      "seed": 62001,
+      "moves": 21357,
+      "score": 609460,
+      "maxTile": 32768,
+      "board": [
+        8,
+        16,
+        2,
+        256,
+        8192,
+        2,
+        512,
+        8,
+        4096,
+        32768,
+        1024,
+        4,
+        4,
+        2,
+        128,
+        2
+      ],
+      "stopReason": "no_legal_moves",
+      "censored": false,
+      "first32768": {
+        "moves": 14935,
+        "score": 453156,
+        "elapsedMs": 306.70720600000004,
+        "board": [
+          32,
+          32768,
+          2,
+          2,
+          16,
+          32,
+          32,
+          4,
+          8,
+          4,
+          4,
+          16,
+          2,
+          0,
+          2,
+          4
+        ]
+      },
+      "firstPair": null,
+      "tdMoves": 21358,
+      "heuristicMoves": 0,
+      "plyCounts": {
+        "1": 21358
+      },
+      "nodes": 0,
+      "elapsedMs": 435.583569,
+      "moveMs": {
+        "median": 0.011867999999935819,
+        "p95": 0.022092999999927088,
+        "max": 4.078715999999986
+      },
+      "rss": 590852096,
+      "trajectorySha256": "92a6b5ae6805c9ce63a9051a563e1f5c97fbb533d14c7360b05118cde3705279"
+    },
+    {
+      "configuration": {
+        "id": "ply2",
+        "ply": 2,
+        "criticalSearch": false
+      },
+      "seed": 62001,
+      "moves": 13008,
+      "score": 342852,
+      "maxTile": 16384,
+      "board": [
+        16384,
+        64,
+        2,
+        8,
+        8192,
+        128,
+        32,
+        2,
+        2048,
+        512,
+        16,
+        4,
+        1024,
+        256,
+        4,
+        2
+      ],
+      "stopReason": "no_legal_moves",
+      "censored": false,
+      "first32768": null,
+      "firstPair": null,
+      "tdMoves": 13009,
+      "heuristicMoves": 0,
+      "plyCounts": {
+        "2": 13009
+      },
+      "nodes": 1718485,
+      "elapsedMs": 2339.954822,
+      "moveMs": {
+        "median": 0.14653100000009545,
+        "p95": 0.347152000000051,
+        "max": 6.3060050000003685
+      },
+      "rss": 602398720,
+      "trajectorySha256": "bb1778b186b4787134ed3ff3e7954b331ed2486a80f125f9135eb0c1dfe4a9cd"
+    },
+    {
+      "configuration": {
+        "id": "selective3",
+        "ply": 2,
+        "criticalSearch": true
+      },
+      "seed": 62001,
+      "moves": 18798,
+      "score": 539772,
+      "maxTile": 32768,
+      "board": [
+        2,
+        4,
+        2,
+        4,
+        4,
+        8,
+        32,
+        8,
+        256,
+        64,
+        2048,
+        16,
+        4096,
+        2048,
+        64,
+        32768
+      ],
+      "stopReason": "no_legal_moves",
+      "censored": false,
+      "first32768": {
+        "moves": 14880,
+        "score": 452732,
+        "elapsedMs": 4062.509724,
+        "board": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          2,
+          2,
+          4,
+          4,
+          2,
+          4,
+          16,
+          32768
+        ]
+      },
+      "firstPair": null,
+      "tdMoves": 18799,
+      "heuristicMoves": 0,
+      "plyCounts": {
+        "2": 16113,
+        "3": 2686
+      },
+      "nodes": 5083235,
+      "elapsedMs": 5389.879063999999,
+      "moveMs": {
+        "median": 0.16394600000057835,
+        "p95": 1.0787229999987176,
+        "max": 5.499353000000156
+      },
+      "rss": 603758592,
+      "trajectorySha256": "ba40eb2706e1e6b7a4104d0ff0f812044815741be4a51e6f18b5f49fd54f58b8"
+    },
+    {
+      "configuration": {
+        "id": "ply3",
+        "ply": 3,
+        "criticalSearch": false
+      },
+      "seed": 62001,
+      "moves": 12972,
+      "score": 342448,
+      "maxTile": 16384,
+      "board": [
+        16,
+        8,
+        4,
+        2,
+        1024,
+        128,
+        256,
+        4,
+        8,
+        2048,
+        8192,
+        512,
+        2,
+        4,
+        2,
+        16384
+      ],
+      "stopReason": "no_legal_moves",
+      "censored": false,
+      "first32768": null,
+      "firstPair": null,
+      "tdMoves": 12973,
+      "heuristicMoves": 0,
+      "plyCounts": {
+        "3": 12973
+      },
+      "nodes": 58958929,
+      "elapsedMs": 55170.501686,
+      "moveMs": {
+        "median": 3.3500090000015916,
+        "p95": 10.648327999995672,
+        "max": 52.49264499999981
+      },
+      "rss": 602750976,
+      "trajectorySha256": "fea54f27d9a9ab3fbf5f33dfd8b0704b5f9eaf3e21b5eaf2b54db2211e40ab7a"
+    },
+    {
+      "configuration": {
+        "id": "ply4",
+        "ply": 4,
+        "criticalSearch": false
+      },
+      "seed": 62001,
+      "moves": 389,
+      "score": 5804,
+      "maxTile": 512,
+      "board": [
+        128,
+        512,
+        128,
+        32,
+        2,
+        16,
+        32,
+        16,
+        0,
+        0,
+        0,
+        4,
+        0,
+        2,
+        0,
+        2
+      ],
+      "stopReason": "time_cap",
+      "censored": true,
+      "first32768": null,
+      "firstPair": null,
+      "tdMoves": 389,
+      "heuristicMoves": 0,
+      "plyCounts": {
+        "4": 389
+      },
+      "nodes": 138135509,
+      "elapsedMs": 120248.95540100001,
+      "moveMs": {
+        "median": 201.55083900000318,
+        "p95": 846.3974140000064,
+        "max": 3655.985115000003
+      },
+      "rss": 604192768,
+      "trajectorySha256": "cc991ca96d8ab50d5d65134629d02ec3872e65773a5a846406d2bbb68ae5add4"
+    }
+  ],
+  "constructedHandoff": {
+    "constructedFixture": true,
+    "seed": 62001,
+    "events": [
+      {
+        "move": 1,
+        "direction": "down",
+        "board": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          32768,
+          32768,
+          2,
+          2
+        ],
+        "scoreGain": 0
+      },
+      {
+        "move": 2,
+        "direction": "down",
+        "board": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          32768,
+          32768,
+          2,
+          2
+        ],
+        "scoreGain": 0
+      },
+      {
+        "move": 3,
+        "direction": "down",
+        "board": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          32768,
+          32768,
+          4,
+          2
+        ],
+        "scoreGain": 4
+      },
+      {
+        "move": 4,
+        "direction": "left",
+        "board": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          4,
+          0,
+          0,
+          0,
+          65536,
+          4,
+          2,
+          0
+        ],
+        "scoreGain": 65540
+      }
+    ],
+    "score": 65544,
+    "targetReached": true
+  }
+}

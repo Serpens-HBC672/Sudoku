@@ -1,0 +1,512 @@
+{
+  "sourceCommit": "8b5a41f33a14a3132543658e32135dcfc4ab5cc4",
+  "startedAt": "2026-10-10T15:22:51.000Z",
+  "deadline": "2026-10-10T15:52:51.000Z",
+  "seeds": [
+    62002,
+    62031
+  ],
+  "arms": [
+    "1",
+    "2",
+    "selective",
+    "3"
+  ],
+  "ordering": "Latin-square rotation of arm order within successive seeds; serial queue, maximum 3 simultaneous processes",
+  "jobs": [
+    {
+      "seed": 62002,
+      "mode": "1"
+    },
+    {
+      "seed": 62002,
+      "mode": "2"
+    },
+    {
+      "seed": 62002,
+      "mode": "selective"
+    },
+    {
+      "seed": 62002,
+      "mode": "3"
+    },
+    {
+      "seed": 62003,
+      "mode": "2"
+    },
+    {
+      "seed": 62003,
+      "mode": "selective"
+    },
+    {
+      "seed": 62003,
+      "mode": "3"
+    },
+    {
+      "seed": 62003,
+      "mode": "1"
+    },
+    {
+      "seed": 62004,
+      "mode": "selective"
+    },
+    {
+      "seed": 62004,
+      "mode": "3"
+    },
+    {
+      "seed": 62004,
+      "mode": "1"
+    },
+    {
+      "seed": 62004,
+      "mode": "2"
+    },
+    {
+      "seed": 62005,
+      "mode": "3"
+    },
+    {
+      "seed": 62005,
+      "mode": "1"
+    },
+    {
+      "seed": 62005,
+      "mode": "2"
+    },
+    {
+      "seed": 62005,
+      "mode": "selective"
+    },
+    {
+      "seed": 62006,
+      "mode": "1"
+    },
+    {
+      "seed": 62006,
+      "mode": "2"
+    },
+    {
+      "seed": 62006,
+      "mode": "selective"
+    },
+    {
+      "seed": 62006,
+      "mode": "3"
+    },
+    {
+      "seed": 62007,
+      "mode": "2"
+    },
+    {
+      "seed": 62007,
+      "mode": "selective"
+    },
+    {
+      "seed": 62007,
+      "mode": "3"
+    },
+    {
+      "seed": 62007,
+      "mode": "1"
+    },
+    {
+      "seed": 62008,
+      "mode": "selective"
+    },
+    {
+      "seed": 62008,
+      "mode": "3"
+    },
+    {
+      "seed": 62008,
+      "mode": "1"
+    },
+    {
+      "seed": 62008,
+      "mode": "2"
+    },
+    {
+      "seed": 62009,
+      "mode": "3"
+    },
+    {
+      "seed": 62009,
+      "mode": "1"
+    },
+    {
+      "seed": 62009,
+      "mode": "2"
+    },
+    {
+      "seed": 62009,
+      "mode": "selective"
+    },
+    {
+      "seed": 62010,
+      "mode": "1"
+    },
+    {
+      "seed": 62010,
+      "mode": "2"
+    },
+    {
+      "seed": 62010,
+      "mode": "selective"
+    },
+    {
+      "seed": 62010,
+      "mode": "3"
+    },
+    {
+      "seed": 62011,
+      "mode": "2"
+    },
+    {
+      "seed": 62011,
+      "mode": "selective"
+    },
+    {
+      "seed": 62011,
+      "mode": "3"
+    },
+    {
+      "seed": 62011,
+      "mode": "1"
+    },
+    {
+      "seed": 62012,
+      "mode": "selective"
+    },
+    {
+      "seed": 62012,
+      "mode": "3"
+    },
+    {
+      "seed": 62012,
+      "mode": "1"
+    },
+    {
+      "seed": 62012,
+      "mode": "2"
+    },
+    {
+      "seed": 62013,
+      "mode": "3"
+    },
+    {
+      "seed": 62013,
+      "mode": "1"
+    },
+    {
+      "seed": 62013,
+      "mode": "2"
+    },
+    {
+      "seed": 62013,
+      "mode": "selective"
+    },
+    {
+      "seed": 62014,
+      "mode": "1"
+    },
+    {
+      "seed": 62014,
+      "mode": "2"
+    },
+    {
+      "seed": 62014,
+      "mode": "selective"
+    },
+    {
+      "seed": 62014,
+      "mode": "3"
+    },
+    {
+      "seed": 62015,
+      "mode": "2"
+    },
+    {
+      "seed": 62015,
+      "mode": "selective"
+    },
+    {
+      "seed": 62015,
+      "mode": "3"
+    },
+    {
+      "seed": 62015,
+      "mode": "1"
+    },
+    {
+      "seed": 62016,
+      "mode": "selective"
+    },
+    {
+      "seed": 62016,
+      "mode": "3"
+    },
+    {
+      "seed": 62016,
+      "mode": "1"
+    },
+    {
+      "seed": 62016,
+      "mode": "2"
+    },
+    {
+      "seed": 62017,
+      "mode": "3"
+    },
+    {
+      "seed": 62017,
+      "mode": "1"
+    },
+    {
+      "seed": 62017,
+      "mode": "2"
+    },
+    {
+      "seed": 62017,
+      "mode": "selective"
+    },
+    {
+      "seed": 62018,
+      "mode": "1"
+    },
+    {
+      "seed": 62018,
+      "mode": "2"
+    },
+    {
+      "seed": 62018,
+      "mode": "selective"
+    },
+    {
+      "seed": 62018,
+      "mode": "3"
+    },
+    {
+      "seed": 62019,
+      "mode": "2"
+    },
+    {
+      "seed": 62019,
+      "mode": "selective"
+    },
+    {
+      "seed": 62019,
+      "mode": "3"
+    },
+    {
+      "seed": 62019,
+      "mode": "1"
+    },
+    {
+      "seed": 62020,
+      "mode": "selective"
+    },
+    {
+      "seed": 62020,
+      "mode": "3"
+    },
+    {
+      "seed": 62020,
+      "mode": "1"
+    },
+    {
+      "seed": 62020,
+      "mode": "2"
+    },
+    {
+      "seed": 62021,
+      "mode": "3"
+    },
+    {
+      "seed": 62021,
+      "mode": "1"
+    },
+    {
+      "seed": 62021,
+      "mode": "2"
+    },
+    {
+      "seed": 62021,
+      "mode": "selective"
+    },
+    {
+      "seed": 62022,
+      "mode": "1"
+    },
+    {
+      "seed": 62022,
+      "mode": "2"
+    },
+    {
+      "seed": 62022,
+      "mode": "selective"
+    },
+    {
+      "seed": 62022,
+      "mode": "3"
+    },
+    {
+      "seed": 62023,
+      "mode": "2"
+    },
+    {
+      "seed": 62023,
+      "mode": "selective"
+    },
+    {
+      "seed": 62023,
+      "mode": "3"
+    },
+    {
+      "seed": 62023,
+      "mode": "1"
+    },
+    {
+      "seed": 62024,
+      "mode": "selective"
+    },
+    {
+      "seed": 62024,
+      "mode": "3"
+    },
+    {
+      "seed": 62024,
+      "mode": "1"
+    },
+    {
+      "seed": 62024,
+      "mode": "2"
+    },
+    {
+      "seed": 62025,
+      "mode": "3"
+    },
+    {
+      "seed": 62025,
+      "mode": "1"
+    },
+    {
+      "seed": 62025,
+      "mode": "2"
+    },
+    {
+      "seed": 62025,
+      "mode": "selective"
+    },
+    {
+      "seed": 62026,
+      "mode": "1"
+    },
+    {
+      "seed": 62026,
+      "mode": "2"
+    },
+    {
+      "seed": 62026,
+      "mode": "selective"
+    },
+    {
+      "seed": 62026,
+      "mode": "3"
+    },
+    {
+      "seed": 62027,
+      "mode": "2"
+    },
+    {
+      "seed": 62027,
+      "mode": "selective"
+    },
+    {
+      "seed": 62027,
+      "mode": "3"
+    },
+    {
+      "seed": 62027,
+      "mode": "1"
+    },
+    {
+      "seed": 62028,
+      "mode": "selective"
+    },
+    {
+      "seed": 62028,
+      "mode": "3"
+    },
+    {
+      "seed": 62028,
+      "mode": "1"
+    },
+    {
+      "seed": 62028,
+      "mode": "2"
+    },
+    {
+      "seed": 62029,
+      "mode": "3"
+    },
+    {
+      "seed": 62029,
+      "mode": "1"
+    },
+    {
+      "seed": 62029,
+      "mode": "2"
+    },
+    {
+      "seed": 62029,
+      "mode": "selective"
+    },
+    {
+      "seed": 62030,
+      "mode": "1"
+    },
+    {
+      "seed": 62030,
+      "mode": "2"
+    },
+    {
+      "seed": 62030,
+      "mode": "selective"
+    },
+    {
+      "seed": 62030,
+      "mode": "3"
+    },
+    {
+      "seed": 62031,
+      "mode": "2"
+    },
+    {
+      "seed": 62031,
+      "mode": "selective"
+    },
+    {
+      "seed": 62031,
+      "mode": "3"
+    },
+    {
+      "seed": 62031,
+      "mode": "1"
+    }
+  ],
+  "maxParallel": 3,
+  "maxSecondsPerGame": 120,
+  "maxMovesPerGame": 50000,
+  "handoffMs": 200,
+  "target": 65536,
+  "model": "fixed official 8x6patt.f32",
+  "depthExtension": "Only constructor whitelist changes [1,2] to [1,2,3,4]; fixed arms disable critical override",
+  "stop": "Each game stops at first65536, no legal move, time cap, move cap, runtime error, or global deadline. Continue other preregistered games after any success.",
+  "censoring": "Time/move/global-budget censored games are not losses; unstarted and process errors separately reported",
+  "timing": "Concurrent wall-clock cost includes contention and is not an isolated timing benchmark",
+  "fixed4": "Cost-only pilot excluded from matrix and inference",
+  "priorPilotSeeds": [
+    62001
+  ]
+}
