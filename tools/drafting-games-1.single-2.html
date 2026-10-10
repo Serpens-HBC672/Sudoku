@@ -1,0 +1,2584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2048 &amp; 数字华容道 · 制图台</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Archivo:wght@400;600;700&display=swap');
+
+  /* ---- design tokens: light = paper drafting sheet, dark = blueprint ---- */
+  :root{
+    --paper:#EFEBE0; --paper-line:#C9D3DB;
+    --ink:#1D2B3A; --ink-soft:#5A6B7D;
+    --accent:#B5651D; --accent-dark:#7C4313;
+    --slot-bg:#E4DFD1; --slot-line:#CFC9B8;
+    --tile-edge:rgba(0,0,0,.07);
+    --tile15-bg:#DCE6EE; --tile15-hover:#C7D8E5;
+    --overlay-bg:rgba(239,235,224,.80);
+    --toast-bg:#1D2B3A; --toast-fg:#E2B354;
+    --btn-bg:#1D2B3A; --btn-fg:#EFEBE0; --btn-hover:#7C4313;
+    --cell-gap:12px; --pad:14px;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0F1B2A; --paper-line:#1D3147;
+      --ink:#E7E2D3; --ink-soft:#8FA4B8;
+      --accent:#E3A45B; --accent-dark:#F0BC80;
+      --slot-bg:#14263A; --slot-line:#24405A;
+      --tile-edge:rgba(255,255,255,.14);
+      --tile15-bg:#1C3550; --tile15-hover:#264767;
+      --overlay-bg:rgba(15,27,42,.80);
+      --toast-bg:#E7E2D3; --toast-fg:#7C4313;
+      --btn-bg:#E7E2D3; --btn-fg:#0F1B2A; --btn-hover:#F0BC80;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0F1B2A; --paper-line:#1D3147;
+    --ink:#E7E2D3; --ink-soft:#8FA4B8;
+    --accent:#E3A45B; --accent-dark:#F0BC80;
+    --slot-bg:#14263A; --slot-line:#24405A;
+    --tile-edge:rgba(255,255,255,.14);
+    --tile15-bg:#1C3550; --tile15-hover:#264767;
+    --overlay-bg:rgba(15,27,42,.80);
+    --toast-bg:#E7E2D3; --toast-fg:#7C4313;
+    --btn-bg:#E7E2D3; --btn-fg:#0F1B2A; --btn-hover:#F0BC80;
+  }
+  @media (max-width:480px){ :root{ --pad:10px; --cell-gap:8px; } }
+  #board15[data-n="5"]{ --cell-gap:8px; }
+  @media (max-width:480px){ #board15[data-n="5"]{ --cell-gap:5px; } }
+
+  *{box-sizing:border-box;}
+  html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+  body{
+    margin:0; display:flex; justify-content:center; align-items:flex-start;
+    padding:clamp(14px,4vh,40px) 16px 40px;
+    background:
+      linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px) 0 0/28px 28px,
+      var(--paper);
+    font-family:'Archivo', system-ui, sans-serif;
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app-shell{ width:512px; max-width:100%; }
+
+  /* ---- tabs: a segmented control, clear of the header below ---- */
+  .tabbar{ display:flex; width:max-content; margin:0 0 20px; border:2px solid var(--ink); background:var(--paper); }
+  .tab-btn{
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; letter-spacing:.5px;
+    padding:9px 18px; background:transparent; color:var(--ink-soft); border:none; cursor:pointer;
+  }
+  .tab-btn + .tab-btn{ border-left:2px solid var(--ink); }
+  .tab-btn.active{ background:var(--ink); color:var(--paper); }
+  .tab-btn:not(.active):hover{ background:var(--slot-bg); color:var(--ink); }
+  .game-panel{ display:none; }
+  .game-panel.active{ display:block; }
+
+  .sheet{ width:100%; position:relative; }
+  .frame-marks{ position:absolute; inset:0; pointer-events:none; }
+  .frame-marks span{ position:absolute; width:16px; height:16px; border:2px solid var(--ink); }
+  .frame-marks .tl{top:-8px;left:-8px;border-right:none;border-bottom:none;}
+  .frame-marks .tr{top:-8px;right:-8px;border-left:none;border-bottom:none;}
+  .frame-marks .bl{bottom:-8px;left:-8px;border-right:none;border-top:none;}
+  .frame-marks .br{bottom:-8px;right:-8px;border-left:none;border-top:none;}
+
+  header{ display:flex; justify-content:space-between; align-items:flex-end; gap:10px; border-bottom:2px solid var(--ink); padding-bottom:10px; margin-bottom:16px; }
+  .title-block h1{ font-family:'JetBrains Mono', monospace; font-weight:800; margin:0; line-height:1; white-space:nowrap; }
+  #panel2048 .title-block h1{ font-size:34px; letter-spacing:-1px; }
+  #panel15 .title-block h1{ font-size:26px; letter-spacing:-0.5px; line-height:1.1; }
+  .title-block .sub{ font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-soft); margin-top:4px; }
+  .stats{ display:flex; gap:8px; }
+  .stat-box{ border:1.5px solid var(--ink); background:var(--paper); padding:5px 10px; min-width:54px; text-align:center; }
+  .stat-box .label{ font-size:9px; letter-spacing:1px; color:var(--ink-soft); text-transform:uppercase; }
+  .stat-box .val{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:17px; font-variant-numeric:tabular-nums; }
+
+  /* ---- board ---- */
+  .board-frame{ position:relative; width:100%; aspect-ratio:1/1; background:var(--paper); border:2px solid var(--ink); touch-action:none; user-select:none; -webkit-user-select:none; }
+  .slots{ position:absolute; inset:var(--pad); display:grid; gap:var(--cell-gap); pointer-events:none; }
+  .slot{ background:var(--slot-bg); border:1px dashed var(--slot-line); }
+  .tiles-layer{ position:absolute; inset:var(--pad); }
+  .board-frame.shake{ animation:shake .2s ease; }
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
+
+  /* ---- 2048 tiles ---- */
+  .tile2048{
+    position:absolute; border-radius:2px; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-variant-numeric:tabular-nums;
+    transition:left .14s ease, top .14s ease;
+    box-shadow:inset 0 0 0 1px var(--tile-edge);
+  }
+  .tile2048.spawn{ animation:spawn2048 .16s ease; }
+  .tile2048.pop{ animation:pop2048 .18s ease; }
+  @keyframes spawn2048{ from{transform:scale(.3); opacity:0;} to{transform:scale(1); opacity:1;} }
+  @keyframes pop2048{ 0%{transform:scale(.7);} 60%{transform:scale(1.12);} 100%{transform:scale(1);} }
+
+  /* ---- 15-puzzle tiles ---- */
+  .tile15{
+    position:absolute; background:var(--tile15-bg); border:1.5px solid var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--ink);
+    cursor:pointer; user-select:none; transition:left .14s ease, top .14s ease;
+  }
+  /* corner registration mark: lights up when the tile sits in its final position */
+  .tile15.placed15::before{ content:''; position:absolute; top:6px; left:6px; width:7px; height:7px; background:var(--accent); }
+  @media (hover:hover){ .tile15:hover{ background:var(--tile15-hover); } }
+  .tile15.movable15::after{ content:''; position:absolute; inset:0; box-shadow:inset 0 0 0 1.5px var(--accent); opacity:.55; pointer-events:none; }
+  .void15{ position:absolute; background:repeating-linear-gradient(45deg, var(--paper-line) 0, var(--paper-line) 1px, transparent 1px, transparent 8px); border:1.5px dashed var(--slot-line); transition:left .14s ease, top .14s ease; }
+
+  /* ---- overlays (game over / puzzle solved) ---- */
+  .overlay{ position:absolute; inset:0; z-index:6; background:var(--overlay-bg); display:none; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center; border:2px solid var(--ink); }
+  .overlay.show{ display:flex; animation:fadeIn .25s ease; }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .overlay h2{ font-family:'JetBrains Mono', monospace; font-size:24px; margin:0; }
+  .overlay p{ margin:0 0 6px; font-size:12px; color:var(--ink-soft); letter-spacing:1px; text-transform:uppercase; }
+
+  /* ---- milestone toast (non-blocking banner) ---- */
+  .milestone-toast{
+    position:absolute; left:10px; right:10px; top:10px; z-index:5;
+    background:var(--toast-bg); color:var(--toast-fg);
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 10px 8px 14px; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,.3);
+  }
+  .milestone-toast.show{ display:flex; animation:toastIn .22s ease; }
+  @keyframes toastIn{ from{transform:translateY(-10px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .milestone-toast .actions{ display:flex; gap:6px; }
+  .milestone-toast button{ background:transparent; color:var(--toast-fg); border:1.5px solid var(--toast-fg); padding:5px 10px; font-size:11px; }
+  .milestone-toast button:hover{ background:var(--toast-fg); color:var(--toast-bg); }
+
+  /* ---- footer / controls ---- */
+  footer{ display:flex; flex-direction:column; gap:12px; margin-top:16px; font-size:11px; color:var(--ink-soft); letter-spacing:.5px; }
+  .footer-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .hint-row{ min-height:2.7em; line-height:1.35; }
+  .btns{ display:flex; gap:8px; }
+  button{
+    font-family:'Archivo', sans-serif; font-weight:600; font-size:12px; letter-spacing:1px; text-transform:uppercase;
+    background:var(--btn-bg); color:var(--btn-fg); border:none; padding:9px 16px; cursor:pointer;
+  }
+  button:hover{ background:var(--btn-hover); }
+  button:disabled{ opacity:.45; cursor:default; }
+  button:disabled:hover{ background:var(--btn-bg); }
+  button:focus-visible, input[type=range]:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  @media (pointer:coarse){ button{ min-height:44px; } .milestone-toast button{ min-height:36px; } }
+
+  .speed-slider{ display:flex; align-items:center; gap:8px; width:100%; }
+  .speed-slider-label{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .speed-slider input[type=range]{ flex:1; accent-color:var(--accent); height:28px; }
+  .speed-slider-val{ font-family:'JetBrains Mono', monospace; font-size:11px; min-width:66px; text-align:right; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  .model-controls{ display:flex; flex-direction:column; gap:8px; border:1px dashed var(--slot-line); padding:10px; }
+  .model-controls select{ max-width:100%; background:var(--paper); color:var(--ink); border:1px solid var(--ink-soft); padding:7px; font:inherit; }
+  .model-controls input[type=file]{ max-width:100%; width:100%; font:inherit; color:var(--ink-soft); }
+  .model-controls input::file-selector-button{ border:1px solid var(--ink); padding:7px; margin-right:8px; background:var(--paper); color:var(--ink); cursor:pointer; }
+  .model-controls p{ margin:0; line-height:1.5; letter-spacing:0; overflow-wrap:anywhere; }
+  .model-controls .model-state{ color:var(--ink); }
+  .model-controls [data-state="error"]{ color:var(--accent-dark); }
+  .model-controls progress{ width:100%; accent-color:var(--accent); }
+  .model-controls button{ padding:6px 10px; }
+  .model-controls .model-help{ border-top:1px dotted var(--slot-line); padding-top:8px; }
+  .model-controls .model-help summary{ cursor:pointer; color:var(--accent-dark); }
+  .model-controls .model-help summary:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .model-controls .model-help ol{ margin:8px 0 0; padding-left:1.4em; line-height:1.55; letter-spacing:0; overflow-wrap:anywhere; }
+  .model-controls .model-help li+li{ margin-top:6px; }
+  .model-controls .model-help a{ color:var(--accent-dark); }
+  .model-controls select:focus-visible,.model-controls input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .size-switch{ display:flex; gap:6px; }
+  .size-switch button{ background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); padding:6px 12px; min-width:48px; }
+  .size-switch button:hover:not(:disabled):not(.active){ background:var(--slot-bg); }
+  .size-switch button.active:hover{ background:var(--ink); }
+  .size-switch button.active{ background:var(--ink); color:var(--paper); }
+
+  .size-row{ justify-content:flex-start; gap:12px; }
+  .row-label{ font-size:11px; color:var(--ink-soft); }
+
+
+  /* ---- 2048 option chips, turbo mode, result tally ---- */
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{ background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); padding:6px 10px; font-size:11px; }
+  .chip:hover:not(:disabled):not([aria-pressed="true"]){ background:var(--slot-bg); }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:var(--btn-fg); }
+  .chip[aria-pressed="true"]:hover{ background:var(--accent-dark); border-color:var(--accent-dark); }
+  .chip:disabled{ opacity:.55; }
+  .board-frame.turbo .tile2048{ transition:none; }
+  .board-frame.turbo .tile2048.spawn, .board-frame.turbo .tile2048.pop{ animation:none; }
+  .tally{ font-family:'JetBrains Mono', monospace; font-size:11px; line-height:1.6; color:var(--ink-soft); white-space:pre-line; border-top:1px dashed var(--slot-line); padding-top:8px; }
+
+  @media (max-width:420px){ #panel2048 .title-block h1{ font-size:30px; } #panel15 .title-block h1{ font-size:22px; } .stat-box{ min-width:48px; padding:5px 8px; } }
+  @media (prefers-reduced-motion:reduce){
+    .tile2048,.tile15,.void15{ transition:none; }
+    .tile2048.spawn,.tile2048.pop,.board-frame.shake,.overlay.show,.milestone-toast.show{ animation:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="tabbar">
+      <button class="tab-btn active" data-panel="panel2048">2048</button>
+      <button class="tab-btn" data-panel="panel15">数字华容道</button>
+    </nav>
+
+    <div id="panel2048" class="game-panel active">
+      <div class="sheet">
+        <header>
+          <div class="title-block">
+            <h1>2048</h1>
+            <div class="sub">合并方块 · No. 2048&#8209;A</div>
+          </div>
+          <div class="stats">
+            <div class="stat-box"><div class="label">分数</div><div class="val" id="score2048">0</div></div>
+            <div class="stat-box"><div class="label">最佳</div><div class="val" id="best2048">0</div></div>
+          </div>
+        </header>
+        <div class="board-frame" id="board2048">
+          <div class="frame-marks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+          <div class="slots" id="slots2048"></div>
+          <div class="tiles-layer" id="tiles2048"></div>
+          <div class="milestone-toast" id="milestone2048">
+            <span id="milestoneText2048">达成 2048!</span>
+            <div class="actions">
+              <button id="milestoneContinue2048">继续</button>
+              <button id="milestoneRestart2048">重开</button>
+            </div>
+          </div>
+          <div class="overlay" id="overlay2048">
+            <h2 id="overlayTitle2048">游戏结束</h2>
+            <p id="overlaySub2048">已无可行移动</p>
+            <button id="retryBtn2048">重新开始</button>
+          </div>
+        </div>
+        <footer>
+          <div class="hint-row"><span id="hint2048">方向键/WASD 或滑动棋盘移动</span></div>
+          <div class="model-controls" aria-label="2048 AI 与权重">
+            <label for="engine2048">自动游玩策略</label>
+            <select id="engine2048">
+              <option value="heuristic">原有启发式 · 无需权重</option>
+              <option value="td8">TD 8×6 · 2-ply / 困难局面 3-ply · 目标 65536</option>
+            </select>
+            <label for="modelFile2048">本地权重文件（8x6patt.f32，512 MiB）</label>
+            <input id="modelFile2048" type="file" aria-describedby="modelNote2048 modelStatus2048">
+            <p class="model-state" id="modelStatus2048" role="status" aria-live="polite" data-state="empty">未加载权重 · 当前可使用原有启发式</p>
+            <progress id="modelProgress2048" value="0" max="1" aria-label="权重读取与校验进度" hidden></progress>
+            <div><button id="unloadModel2048" disabled>释放权重</button></div>
+            <p id="modelNote2048">文件仅在本机读取，不会上传。需先从 Release 下载 8x6patt.f32；加载时完整校验 SHA-256。建议桌面浏览器，并预留至少 1 GiB 可用内存。TD 越过首个 32768 后继续推进；场上出现第 2 个 32768 时交给原有启发式去合成，达到 65536 即停止。</p>
+            <details class="model-help">
+              <summary>准备与使用说明</summary>
+              <ol>
+                <li>下载权重：打开 <a href="https://github.com/Serpens-HBC672/Sudoku/releases/tag/2048-model-8x6-0899be24-v1" target="_blank" rel="noopener">Release 页面</a>，只需下载 <b>8x6patt.f32</b>（512 MiB）。不需要 Node.js 转换，也不需要 JSON 等其他文件。</li>
+                <li>选择文件：在上方「本地权重文件」选择它，页面会自动切换到 TD 8×6 策略。等待进度走完并显示「SHA-256 已验证」后，「自动游玩」才可用；校验期间仍可手动游戏。</li>
+                <li>自动游玩：普通模式保留动画，「每步间隔」控制节奏，计算超时则完成后再走，不截断搜索。要最快速度，先停止，再打开「极速」并重新开始。TD 不支持「动态预算」。</li>
+                <li>策略：常规 2-ply；当前棋盘空格 ≤1 且最大块 ≥8192 时用 3-ply。目标 65536：TD 越过首个 32768 后继续推进；场上出现第 2 个 32768 时，在合成之前交给原有启发式接手（TD 的 4 位表示放不下 65536，也不能合并两个 32768），合成后即停止。Node.js 端独立 100 局评估有 49 局达到 32768；32768 之后 TD 的表现没有评估过，不保证成功。</li>
+                <li>设备：建议桌面 64 位浏览器，预留至少 1 GiB 可用内存；手机和低内存设备可能无法分配 512 MiB。文件只在本机读取，不会上传；刷新或离开页面后需重新选择文件。</li>
+                <li>出错时：「大小/格式错误」说明选的不是 8x6patt.f32；「SHA-256 不匹配」说明文件损坏或版本不对，请重新下载；超过 60 秒无进度会自动停止，可重新选文件。提示「当前环境不支持后台线程或本地文件读取」说明这是受限的预览或沙盒环境，请下载页面，用桌面浏览器打开。</li>
+              </ol>
+            </details>
+          </div>
+          <div class="footer-row">
+            <div class="btns">
+              <button id="playBtn2048">自动游玩</button>
+              <button id="newGameBtn2048">新局</button>
+            </div>
+            <div class="chips">
+              <button class="chip" id="turboBtn2048" aria-pressed="false" title="跳过动画,计算速度就是出步速度">极速</button>
+              <button class="chip" id="dynBtn2048" aria-pressed="false" title="实验:棋盘拥挤时多想,安全时少想(平均耗时不变)">动态预算</button>
+              <button class="chip" id="batchBtn2048" aria-pressed="false" title="一局结束后自动开下一局并累计统计">连续对局</button>
+            </div>
+          </div>
+          <div class="footer-row" id="speedHost2048"></div>
+          <div class="tally" id="tally2048" hidden></div>
+        </footer>
+      </div>
+    </div>
+
+    <div id="panel15" class="game-panel">
+      <div class="sheet">
+        <header>
+          <div class="title-block">
+            <h1>数字华容道</h1>
+            <div class="sub">Sliding Puzzle · No. 15&#8209;B</div>
+          </div>
+          <div class="stats">
+            <div class="stat-box"><div class="label">步数</div><div class="val" id="moves15">0</div></div>
+            <div class="stat-box"><div class="label">用时</div><div class="val" id="time15">00:00</div></div>
+          </div>
+        </header>
+        <div class="board-frame" id="board15">
+          <div class="frame-marks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+          <div class="slots" id="slots15"></div>
+          <div class="tiles-layer" id="tiles15"></div>
+          <div class="overlay" id="overlay15">
+            <h2>已还原</h2>
+            <p id="overlaySub15">0 步 · 00:00</p>
+            <button id="retryBtn15">再来一局</button>
+          </div>
+        </div>
+        <footer>
+          <div class="hint-row"><span id="hint15" class="hint">滑动棋盘或点击方块移动，方向键同理</span></div>
+          <div class="footer-row">
+            <div class="btns">
+              <button id="solveBtn15">自动求解</button>
+              <button id="applyBtn15" hidden>结束搜索</button>
+              <button id="shuffleBtn15">打乱</button>
+            </div>
+          </div>
+          <div class="footer-row size-row">
+            <span class="row-label">尺寸</span>
+            <div class="size-switch" id="sizeSwitch15">
+              <button data-size="3">3×3</button>
+              <button data-size="4" class="active">4×4</button>
+              <button data-size="5">5×5</button>
+            </div>
+          </div>
+          <div class="footer-row" id="speedHost15"></div>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ---- GameShared: small utilities reused by both games ----
+const GameShared = (function(){
+
+  // Lock an element's default touch gestures (pan/zoom) so swiping inside it
+  // never scrolls the page. Standards-based fix, no manual preventDefault needed.
+  function lockTouchAction(el){
+    el.style.touchAction = 'none';
+  }
+
+  // Pointer-based swipe detection (unifies mouse-drag and touch on one API).
+  // onSwipe receives 'up'|'down'|'left'|'right'. Deliberately does NOT use
+  // setPointerCapture: capture re-targets the follow-up "click" to the board,
+  // which would silently break click-to-move on individual tiles. Instead the
+  // release is listened for on window, and the click that trails a recognized
+  // swipe is swallowed so a short in-tile drag can't fire swipe AND click.
+  function attachSwipe(el, onSwipe, minDist){
+    minDist = minDist || 24;
+    let startX = 0, startY = 0, tracking = false, pointerId = null, swiped = false;
+    function down(e){
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      tracking = true; swiped = false;
+      pointerId = e.pointerId;
+      startX = e.clientX; startY = e.clientY;
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', cancel);
+    }
+    function up(e){
+      if(!tracking || e.pointerId !== pointerId) return;
+      cleanup();
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      if(Math.abs(dx) < minDist && Math.abs(dy) < minDist) return;
+      swiped = true;
+      if(Math.abs(dx) > Math.abs(dy)) onSwipe(dx > 0 ? 'right' : 'left');
+      else onSwipe(dy > 0 ? 'down' : 'up');
+    }
+    function cancel(){ cleanup(); }
+    function cleanup(){
+      tracking = false;
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+    }
+    function swallowClick(e){
+      if(swiped){ e.stopPropagation(); e.preventDefault(); swiped = false; }
+    }
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('click', swallowClick, true); // capture phase: runs before tile handlers
+    lockTouchAction(el);
+    el.style.userSelect = 'none';
+    el.style.webkitUserSelect = 'none';
+    return function dispose(){
+      cleanup();
+      el.removeEventListener('pointerdown', down);
+      el.removeEventListener('click', swallowClick, true);
+    };
+  }
+
+  // A labeled range slider, wired to onChange(value:number). Two ways to describe the scale:
+  //   {min, max, step}   -- continuous range
+  //   {values:[...]}     -- discrete, uneven steps (e.g. 1,2,5,10,20,50 ms); the thumb moves over
+  //                         indices but onChange/format always see the real value
+  // configure(newOpts) swaps the whole scale/label/format/onChange in place (used when a game
+  // changes what the slider means, e.g. normal vs turbo mode).
+  function createSpeedSlider(container, opts){
+    const wrap = document.createElement('div');
+    wrap.className = 'speed-slider';
+    const label = document.createElement('span');
+    label.className = 'speed-slider-label';
+    const input = document.createElement('input');
+    input.type = 'range';
+    const valOut = document.createElement('span');
+    valOut.className = 'speed-slider-val';
+    let cur = null;
+    function realValue(){
+      return cur.values ? cur.values[Number(input.value)] : Number(input.value);
+    }
+    function show(v){ valOut.textContent = cur.format ? cur.format(v) : (v + 'ms'); }
+    function configure(o){
+      cur = o;
+      label.textContent = o.label || '速度';
+      if(o.values){
+        input.min = 0; input.max = o.values.length - 1; input.step = 1;
+        let idx = o.values.indexOf(o.value);
+        if(idx < 0){                                   // nearest available value
+          idx = 0;
+          for(let i = 1; i < o.values.length; i++) if(Math.abs(o.values[i] - o.value) < Math.abs(o.values[idx] - o.value)) idx = i;
+        }
+        input.value = idx;
+      } else {
+        input.min = o.min; input.max = o.max; input.step = o.step || 10; input.value = o.value;
+      }
+      show(realValue());
+    }
+    input.addEventListener('input', ()=>{ const v = realValue(); show(v); cur.onChange(v); });
+    wrap.appendChild(label); wrap.appendChild(input); wrap.appendChild(valOut);
+    container.appendChild(wrap);
+    configure(opts);
+    return { el: wrap, configure, setValue(v){ configure(Object.assign({}, cur, {value: v})); } };
+  }
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+  // Real on-screen cell geometry for an n x n board, derived from the board's
+  // actual rendered width (so tiles always line up with the slot grid).
+  // Returns null while the board is hidden (width 0, e.g. inactive tab).
+  function layout(boardEl, n){
+    const w = boardEl.clientWidth;
+    if(!w) return null;
+    const cs = getComputedStyle(boardEl);
+    const pad = parseFloat(cs.getPropertyValue('--pad'));
+    const gap = parseFloat(cs.getPropertyValue('--cell-gap'));
+    const size = (w - pad*2 - gap*(n-1)) / n;
+    return {size, gap, pad};
+  }
+
+  // Static n x n slot grid behind the tiles (the "drafting grid").
+  function buildSlots(container, n){
+    container.innerHTML = '';
+    container.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+    container.style.gridTemplateRows = 'repeat(' + n + ', 1fr)';
+    for(let i=0;i<n*n;i++){
+      const d = document.createElement('div');
+      d.className = 'slot';
+      container.appendChild(d);
+    }
+  }
+
+  // Calls fn() whenever the element's rendered width changes to a non-zero
+  // value -- covers window resize AND a hidden tab becoming visible.
+  function onWidthChange(el, fn){
+    let last = -1;
+    const ro = new ResizeObserver(()=>{
+      const w = el.clientWidth;
+      if(w && w !== last){ last = w; fn(); }
+    });
+    ro.observe(el);
+  }
+
+  return { lockTouchAction, attachSwipe, createSpeedSlider, clamp, layout, buildSlots, onWidthChange };
+})();
+
+</script>
+<script>
+// SolverKit: everything the sliding-puzzle solver needs, with no DOM access.
+// Self-contained on purpose: the whole function is stringified into a Web Worker
+// (Function.prototype.toString), and the exact same code runs time-sliced on the
+// main thread if Workers are unavailable.
+//
+// Move encoding used everywhere: 0=up 1=down 2=left 3=right, meaning the direction
+// the BLANK moves. A path is an array of these.
+function SolverKit(){
+  const DR = [-1, 1, 0, 0], DC = [0, 0, -1, 1];
+  const OPP = [1, 0, 3, 2];
+  const now = (typeof performance !== 'undefined') ? function(){ return performance.now(); } : function(){ return Date.now(); };
+
+  // ---- heuristic pieces shared by every algorithm below ----
+  // h = Manhattan + linear conflict. Linear conflict is counted the ADMISSIBLE way:
+  // for each row/column, tiles that belong to that line but sit in the wrong relative
+  // order must be partly moved out; the minimum number of tiles to move out is
+  // (k - LIS), each costing 2 extra moves. (Counting every conflicting *pair*, as the
+  // first version did, over-counts when 3+ tiles conflict and breaks admissibility.)
+  function makeTools(n){
+    const N2 = n * n;
+    const gR = new Uint8Array(N2), gC = new Uint8Array(N2);
+    for(let v = 1; v < N2; v++){ gR[v] = ((v - 1) / n) | 0; gC[v] = (v - 1) % n; }
+    const buf = new Int32Array(8), dp = new Int32Array(8);
+    // line ids: 0..n-1 = rows, n..2n-1 = columns
+    function linePenalty(st, id){
+      let k = 0;
+      if(id < n){
+        for(let c = 0; c < n; c++){ const v = st[id * n + c]; if(v !== 0 && gR[v] === id) buf[k++] = gC[v]; }
+      } else {
+        const c = id - n;
+        for(let r = 0; r < n; r++){ const v = st[r * n + c]; if(v !== 0 && gC[v] === c) buf[k++] = gR[v]; }
+      }
+      if(k < 2) return 0;
+      let best = 0;
+      for(let i = 0; i < k; i++){
+        let d = 1;
+        for(let j = 0; j < i; j++) if(buf[j] < buf[i] && dp[j] + 1 > d) d = dp[j] + 1;
+        dp[i] = d; if(d > best) best = d;
+      }
+      return 2 * (k - best);
+    }
+    function manhattanFull(st){
+      let m = 0;
+      for(let i = 0; i < N2; i++){
+        const v = st[i]; if(v === 0) continue;
+        m += Math.abs(((i / n) | 0) - gR[v]) + Math.abs((i % n) - gC[v]);
+      }
+      return m;
+    }
+    function hFull(st){
+      let h = manhattanFull(st);
+      for(let id = 0; id < 2 * n; id++) h += linePenalty(st, id);
+      return h;
+    }
+    return { N2, gR, gC, linePenalty, manhattanFull, hFull };
+  }
+
+  function keyOf(st){ return String.fromCharCode.apply(null, st); }
+
+  function applyPath(initial, n, path){
+    const st = Uint8Array.from(initial); let b = st.indexOf(0);
+    for(let i = 0; i < path.length; i++){
+      const k = path[i], br = (b / n) | 0, bc = b % n, nr = br + DR[k], nc = bc + DC[k];
+      if(nr < 0 || nr >= n || nc < 0 || nc >= n) return null;
+      const t = nr * n + nc; st[b] = st[t]; st[t] = 0; b = t;
+    }
+    return st;
+  }
+  function isGoal(st){
+    const N2 = st.length;
+    for(let i = 0; i < N2 - 1; i++) if(st[i] !== i + 1) return false;
+    return st[N2 - 1] === 0;
+  }
+
+  // ---------------------------------------------------------------
+  // IDA* with an explicit stack: resumable (run() can stop mid-search and continue
+  // later), uses incremental heuristic updates, and exposes lowerBound -- once an
+  // f-threshold has been fully searched with no goal, the optimum is provably >= it.
+  // ---------------------------------------------------------------
+  function makeIDA(initial, n){
+    const T = makeTools(n), N2 = T.N2, gR = T.gR, gC = T.gC;
+    const st = Uint8Array.from(initial);
+    let blank = st.indexOf(0);
+    const pen = new Int32Array(2 * n);
+    let penSum = 0, md = T.manhattanFull(st);
+    for(let id = 0; id < 2 * n; id++){ pen[id] = T.linePenalty(st, id); penSum += pen[id]; }
+
+    const MAXD = 1024;
+    const dirNext = new Uint8Array(MAXD), moveAt = new Uint8Array(MAXD);
+    const savedMd = new Int32Array(MAXD), savedPenSum = new Int32Array(MAXD);
+    const savedIds = new Uint8Array(MAXD * 3), savedVals = new Int32Array(MAXD * 3);
+
+    function doMove(k, d){
+      const br = (blank / n) | 0, bc = blank % n, tr = br + DR[k], tc = bc + DC[k], t = tr * n + tc, v = st[t];
+      savedMd[d] = md; savedPenSum[d] = penSum;
+      md += (Math.abs(gR[v] - br) + Math.abs(gC[v] - bc)) - (Math.abs(gR[v] - tr) + Math.abs(gC[v] - tc));
+      st[blank] = v; st[t] = 0; blank = t;
+      let a, b, c;
+      if(DR[k] !== 0){ a = br; b = tr; c = n + bc; } else { a = br; b = n + bc; c = n + tc; }
+      const o = d * 3;
+      savedIds[o] = a; savedIds[o + 1] = b; savedIds[o + 2] = c;
+      savedVals[o] = pen[a]; savedVals[o + 1] = pen[b]; savedVals[o + 2] = pen[c];
+      penSum -= pen[a] + pen[b] + pen[c];
+      pen[a] = T.linePenalty(st, a); pen[b] = T.linePenalty(st, b); pen[c] = T.linePenalty(st, c);
+      penSum += pen[a] + pen[b] + pen[c];
+    }
+    function undoMove(k, d){
+      const t = blank, ob = t - (DR[k] * n + DC[k]), v = st[ob];
+      st[t] = v; st[ob] = 0; blank = ob;
+      md = savedMd[d]; penSum = savedPenSum[d];
+      const o = d * 3;
+      pen[savedIds[o]] = savedVals[o]; pen[savedIds[o + 1]] = savedVals[o + 1]; pen[savedIds[o + 2]] = savedVals[o + 2];
+    }
+
+    let threshold = md + penSum, lowerBound = threshold;
+    let depth = 0, entering = true, minNext = Infinity, incumbent = Infinity, nodes = 0, found = null;
+    dirNext[0] = 0;
+
+    function run(untilMs){
+      let tick = 0;
+      for(;;){
+        if(entering){
+          entering = false; nodes++;
+          const h = md + penSum, f = depth + h;
+          if(f > threshold){ if(f < minNext) minNext = f; dirNext[depth] = 4; }
+          else if(h === 0){ found = Array.prototype.slice.call(moveAt, 0, depth); return 'found'; }
+        }
+        let k = dirNext[depth], moved = false;
+        while(k < 4){
+          const cand = k++;
+          if(depth > 0 && cand === OPP[moveAt[depth - 1]]) continue;
+          const br = (blank / n) | 0, bc = blank % n, nr = br + DR[cand], nc = bc + DC[cand];
+          if(nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
+          dirNext[depth] = k; doMove(cand, depth); moveAt[depth] = cand;
+          depth++; dirNext[depth] = 0; entering = true; moved = true; break;
+        }
+        if(moved){ if((++tick & 2047) === 0 && now() > untilMs) return 'running'; continue; }
+        if(depth === 0){                         // whole f<=threshold iteration finished, no goal
+          if(minNext === Infinity) return 'exhausted';
+          threshold = minNext; lowerBound = threshold; minNext = Infinity;
+          if(threshold >= incumbent) return 'bound'; // incumbent is now proven optimal
+          dirNext[0] = 0; entering = true; continue;
+        }
+        depth--; undoMove(moveAt[depth], depth);
+        if((++tick & 2047) === 0 && now() > untilMs) return 'running';
+      }
+    }
+    return {
+      run,
+      setIncumbent(len){ if(len < incumbent) incumbent = len; },
+      get lowerBound(){ return lowerBound; },
+      get nodes(){ return nodes; },
+      get found(){ return found; },
+      // test hook: does the incrementally-maintained h equal a from-scratch recompute?
+      selfCheck(){ return md + penSum === T.hFull(st); }
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // Weighted A* (f = g + W*h), resumable and memory-lean: states live in one big byte
+  // pool, duplicates are found through an open-addressing hash table (exact compare, no
+  // collisions), the open list is a typed-array heap. A search is one "stage":
+  //   start(W, bound)  -- restart with weight W; anything with g+h >= bound is pruned
+  //                       (h is admissible, so this can never discard a better solution)
+  //   run(untilMs, nodeCap) -> 'solved' | 'running' | 'capped'
+  // Running stages with W = 3, 2, 1.5, 1.25 ... (Restarting WA*) gives a first solution in
+  // milliseconds and then steadily shorter ones; the caller keeps the best so far.
+  // ---------------------------------------------------------------
+  function makeWA(initial, n){
+    const T = makeTools(n), N2 = n * n;
+    let cap = 1 << 14, count = 0;
+    let pool = new Uint8Array(cap * N2), parent = new Int32Array(cap), gArr = new Uint16Array(cap);
+    let hArr = new Int16Array(cap), mvArr = new Uint8Array(cap), hashArr = new Int32Array(cap);
+    let tsize = 1 << 15, table = new Int32Array(tsize).fill(-1);
+    let hk = new Float64Array(1 << 14), hi = new Int32Array(1 << 14), hn = 0;
+    let W = 3, bound = Infinity, expanded = 0, solution = null;
+    const tmp = new Uint8Array(N2);
+
+    function grow(){
+      cap *= 2;
+      const p2 = new Uint8Array(cap * N2); p2.set(pool); pool = p2;
+      const a = new Int32Array(cap); a.set(parent); parent = a;
+      const g = new Uint16Array(cap); g.set(gArr); gArr = g;
+      const h = new Int16Array(cap); h.set(hArr); hArr = h;
+      const m = new Uint8Array(cap); m.set(mvArr); mvArr = m;
+      const x = new Int32Array(cap); x.set(hashArr); hashArr = x;
+    }
+    function rehash(){
+      tsize *= 2; table = new Int32Array(tsize).fill(-1);
+      for(let i = 0; i < count; i++){ let p = hashArr[i] & (tsize - 1); while(table[p] !== -1) p = (p + 1) & (tsize - 1); table[p] = i; }
+    }
+    function hashTmp(){ let h = -2128831035; for(let i = 0; i < N2; i++){ h ^= tmp[i]; h = Math.imul(h, 16777619); } return h | 0; }
+    function same(idx){ const o = idx * N2; for(let i = 0; i < N2; i++) if(pool[o + i] !== tmp[i]) return false; return true; }
+    function keyOfNode(i){ return (gArr[i] + W * hArr[i]) * 4096 - gArr[i]; }   // ties: deeper first
+    function hpush(key, idx){
+      if(hn === hk.length){ const k2 = new Float64Array(hn * 2); k2.set(hk); hk = k2; const i2 = new Int32Array(hn * 2); i2.set(hi); hi = i2; }
+      let i = hn++; while(i > 0){ const p = (i - 1) >> 1; if(hk[p] <= key) break; hk[i] = hk[p]; hi[i] = hi[p]; i = p; } hk[i] = key; hi[i] = idx;
+    }
+    function hpop(){   // returns node index, leaves its key in popKey
+      const top = hi[0]; popKey = hk[0]; hn--;
+      if(hn > 0){ const key = hk[hn], idx = hi[hn]; let i = 0;
+        for(;;){ let c = 2 * i + 1; if(c >= hn) break; if(c + 1 < hn && hk[c + 1] < hk[c]) c++; if(hk[c] >= key) break; hk[i] = hk[c]; hi[i] = hi[c]; i = c; }
+        hk[i] = key; hi[i] = idx; }
+      return top;
+    }
+    let popKey = 0;
+
+    function start(Wnew, boundLen){
+      W = Wnew; bound = boundLen; expanded = 0; solution = null;
+      count = 0; table.fill(-1); hn = 0;
+      tmp.set(initial);
+      const h = hashTmp();
+      pool.set(tmp, 0); parent[0] = -1; gArr[0] = 0; mvArr[0] = 0; hashArr[0] = h; hArr[0] = T.hFull(tmp); count = 1;
+      table[h & (tsize - 1)] = 0; hpush(keyOfNode(0), 0);
+    }
+    function run(untilMs, nodeCap){
+      let tick = 0;
+      while(hn > 0){
+        if((++tick & 1023) === 0 && now() > untilMs) return 'running';
+        if(expanded >= nodeCap) return 'capped';
+        const idx = hpop();
+        if(popKey !== keyOfNode(idx)) continue;              // stale heap entry (node was improved later)
+        expanded++;
+        const g = gArr[idx];
+        if(g + hArr[idx] >= bound) continue;                 // cannot beat the best known solution
+        const o = idx * N2;
+        let b = -1; for(let i = 0; i < N2; i++) if(pool[o + i] === 0){ b = i; break; }
+        const br = (b / n) | 0, bc = b % n;
+        for(let k = 0; k < 4; k++){
+          const nr = br + DR[k], nc = bc + DC[k];
+          if(nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
+          for(let i = 0; i < N2; i++) tmp[i] = pool[o + i];
+          const t = nr * n + nc; tmp[b] = tmp[t]; tmp[t] = 0;
+          const hc = T.hFull(tmp), gc = g + 1;
+          if(gc + hc >= bound) continue;
+          if(hc === 0){                                       // reached the goal with a shorter path
+            const path = [k]; for(let i = idx; parent[i] !== -1; i = parent[i]) path.push(mvArr[i]);
+            solution = path.reverse(); return 'solved';
+          }
+          const h = hashTmp(); let p = h & (tsize - 1), found = -1;
+          for(;;){ const c = table[p]; if(c === -1) break; if(hashArr[c] === h && same(c)){ found = c; break; } p = (p + 1) & (tsize - 1); }
+          if(found >= 0){
+            if(gArr[found] <= gc) continue;
+            gArr[found] = gc; parent[found] = idx; mvArr[found] = k; hpush(keyOfNode(found), found);
+          } else {
+            if(count === cap) grow();
+            const ni = count++; pool.set(tmp, ni * N2); parent[ni] = idx; gArr[ni] = gc; mvArr[ni] = k; hashArr[ni] = h; hArr[ni] = hc;
+            table[p] = ni; if(count * 2 > tsize) rehash();
+            hpush(keyOfNode(ni), ni);
+          }
+        }
+      }
+      return 'capped';                                        // open list exhausted
+    }
+    return { start, run, get solution(){ return solution; }, get expanded(){ return expanded; } };
+  }
+
+  // ---------------------------------------------------------------
+  // 3x3: exact distances. A pattern database whose pattern is ALL eight tiles is simply the true distance to the goal
+  // of every reachable position (9!/2 = 181,440 of them). One BFS from the goal builds it (tens of ms); after that the
+  // optimal path is read off by walking downhill, with no search at all. Cached on SolverKit itself, so it is built
+  // once per context (page or Worker).
+  // ---------------------------------------------------------------
+  const FACT9 = [40320, 5040, 720, 120, 24, 6, 2, 1, 1];     // Lehmer-code weights: position i counts (8-i)!
+  function rank9(st){
+    let r = 0;
+    for(let i = 0; i < 8; i++){ let c = 0; const v = st[i]; for(let j = i + 1; j < 9; j++) if(st[j] < v) c++; r += c * FACT9[i]; }
+    return r;
+  }
+  function exact3Table(){
+    if(SolverKit.exact3) return SolverKit.exact3;
+    const dist = new Uint8Array(362880).fill(255);            // 9! slots, half of them are unreachable (unsolvable) and stay 255
+    const queue = new Uint8Array(181440 * 9), cur = new Uint8Array(9);
+    queue.set([1, 2, 3, 4, 5, 6, 7, 8, 0], 0); dist[rank9(queue)] = 0;
+    let head = 0, tail = 1;
+    while(head < tail){
+      for(let i = 0; i < 9; i++) cur[i] = queue[head * 9 + i];
+      head++;
+      const d = dist[rank9(cur)], b = cur.indexOf(0), br = (b / 3) | 0, bc = b % 3;
+      for(let k = 0; k < 4; k++){
+        const nr = br + DR[k], nc = bc + DC[k]; if(nr < 0 || nr > 2 || nc < 0 || nc > 2) continue;
+        const t = nr * 3 + nc; cur[b] = cur[t]; cur[t] = 0;
+        const rk = rank9(cur);
+        if(dist[rk] === 255){ dist[rk] = d + 1; queue.set(cur, tail * 9); tail++; }
+        cur[t] = cur[b]; cur[b] = 0;                           // undo the trial move
+      }
+    }
+    return SolverKit.exact3 = dist;
+  }
+  function exactDistance3(st){ return exact3Table()[rank9(st)]; }   // 255 = unsolvable position
+
+  function createJob3(initial, emit){
+    const t0 = now(); let finished = false, best = null;
+    function run(){
+      if(finished) return true;
+      finished = true;
+      emit({ type: 'info', heuristic: 'exact3' });
+      const T = exact3Table(), st = Uint8Array.from(initial);
+      let d = T[rank9(st)], b = st.indexOf(0);
+      if(d === 255){ emit({ type: 'failed' }); return true; }   // unsolvable position
+      const path = [];
+      while(d > 0){
+        let moved = false;
+        for(let k = 0; k < 4 && !moved; k++){
+          const br = (b / 3) | 0, bc = b % 3, nr = br + DR[k], nc = bc + DC[k]; if(nr < 0 || nr > 2 || nc < 0 || nc > 2) continue;
+          const t = nr * 3 + nc; st[b] = st[t]; st[t] = 0;
+          if(T[rank9(st)] === d - 1){ path.push(k); b = t; d--; moved = true; } else { st[t] = st[b]; st[b] = 0; }
+        }
+        if(!moved){ emit({ type: 'failed' }); return true; }   // cannot happen: every non-goal state has a neighbour one step closer
+      }
+      best = path;
+      emit({ type: 'best', path: path.slice(), len: path.length, lb: path.length });
+      emit({ type: 'done', path: path.slice(), optimal: true, lb: path.length, greedyLen: path.length, timedOut: false,
+             elapsedMs: Math.round(now() - t0), nodes: 0 });
+      return true;
+    }
+    return { run, get best(){ return best; } };
+  }
+
+  // ---------------------------------------------------------------
+  // 4x4: additive pattern databases. For a group of tiles, the table holds the fewest moves OF THOSE TILES (moves of
+  // other tiles are free) needed to bring them home. Tables for disjoint groups that together cover all 15 tiles can
+  // be ADDED and the sum is still a lower bound (admissible), and a far tighter one than Manhattan + linear conflict.
+  //   index = cell of each pattern tile, 4 bits each, first tile of the group in the lowest bits (tables are sparse:
+  //           16^k slots, only 16!/(16-k)! used; 255 = unused slot)
+  // Built backwards from the goal with a 0-1 BFS over (pattern-tile cells, blank cell); the stored value is the cheapest
+  // over all blank positions. Generation is resumable (step(untilMs)), so it can run in a Worker or in main-thread slices.
+  // Default 5-5-5 groups: ~1-2 s and 3 MiB; a 6-6-3 set is only ~10% fewer nodes but ~14x the build time.
+  // ---------------------------------------------------------------
+  const PDB_PARTS_555 = [[1, 5, 6, 9, 10], [2, 3, 4, 7, 8], [11, 12, 13, 14, 15]];
+  const NB4 = [];
+  for(let c = 0; c < 16; c++){
+    NB4.push([]);
+    for(let k = 0; k < 4; k++){ const r = (c >> 2) + DR[k], q = (c & 3) + DC[k]; if(r >= 0 && r < 4 && q >= 0 && q < 4) NB4[c].push(r * 4 + q); }
+  }
+  function IntList(){ this.a = new Int32Array(1 << 16); this.n = 0; }
+  IntList.prototype.push = function(v){
+    if(this.n === this.a.length){ const b = new Int32Array(this.a.length * 2); b.set(this.a); this.a = b; }
+    this.a[this.n++] = v;
+  };
+  function makePdbGen(tiles){
+    const k = tiles.length;
+    if(k < 1 || k > 6) throw new RangeError('a pattern group needs 1..6 tiles');
+    const visited = new Uint32Array(1 << (4 * (k + 1) - 5)), table = new Uint8Array(1 << (4 * k)).fill(255), pmask = (1 << (4 * k)) - 1;
+    const pos = new Int32Array(k);
+    let goal = 15 << (4 * k);                                   // blank starts in its goal cell 15
+    for(let i = 0; i < k; i++) goal |= (tiles[i] - 1) << (4 * i);
+    let cur = new IntList(), next = new IntList(), qi = 0, cost = 0, done = false;
+    cur.push(goal); visited[goal >>> 5] |= 1 << (goal & 31);
+    function step(untilMs){
+      let tick = 0;
+      while(!done){
+        while(qi < cur.n){
+          const key = cur.a[qi++], pk = key & pmask;
+          if(table[pk] === 255) table[pk] = cost;               // first (= cheapest) visit of this pattern layout
+          for(let i = 0; i < k; i++) pos[i] = (key >>> (4 * i)) & 15;
+          const b = key >>> (4 * k), nbs = NB4[b];
+          for(let q = 0; q < nbs.length; q++){
+            const t = nbs[q]; let pi = -1;
+            for(let i = 0; i < k; i++) if(pos[i] === t){ pi = i; break; }
+            if(pi < 0){                                          // a tile outside the group moves: free
+              const nk = pk | (t << (4 * k));
+              if(!((visited[nk >>> 5] >>> (nk & 31)) & 1)){ visited[nk >>> 5] |= 1 << (nk & 31); cur.push(nk); }
+            } else {                                             // a tile of the group moves: costs 1
+              const nk = (pk & ~(15 << (4 * pi))) | (b << (4 * pi)) | (t << (4 * k));
+              if(!((visited[nk >>> 5] >>> (nk & 31)) & 1)) next.push(nk);
+            }
+          }
+          if((++tick & 4095) === 0 && now() > untilMs) return false;
+        }
+        const fresh = new IntList();                             // level finished: promote the cost+1 candidates
+        for(let i = 0; i < next.n; i++){
+          const nk = next.a[i];
+          if(!((visited[nk >>> 5] >>> (nk & 31)) & 1)){ visited[nk >>> 5] |= 1 << (nk & 31); fresh.push(nk); }
+        }
+        cur = fresh; next = new IntList(); qi = 0; cost++;
+        if(cur.n === 0) done = true;
+      }
+      return true;
+    }
+    return { step, table };
+  }
+  function pdbBuilder(parts){
+    const tables = []; let idx = 0, gen = null;
+    function step(untilMs){
+      while(idx < parts.length){
+        if(!gen) gen = makePdbGen(parts[idx]);
+        if(!gen.step(untilMs)) return false;
+        tables.push(gen.table); gen = null; idx++;
+      }
+      return true;
+    }
+    return { step, tables, get progress(){ return idx / parts.length; } };
+  }
+  // A usable table set must split ALL 15 tiles into disjoint groups (otherwise "sum = 0" would not mean "solved").
+  function pdbOk(pdb){
+    if(!pdb || !pdb.parts || !pdb.tables || pdb.parts.length !== pdb.tables.length || pdb.parts.length < 1) return false;
+    const seen = new Uint8Array(16);
+    for(let pi = 0; pi < pdb.parts.length; pi++){
+      const g = pdb.parts[pi], t = pdb.tables[pi];
+      if(!t || g.length < 1 || g.length > 6 || t.length !== (1 << (4 * g.length))) return false;
+      for(let i = 0; i < g.length; i++){ const v = g[i]; if(!(v >= 1 && v <= 15) || seen[v]) return false; seen[v] = 1; }
+    }
+    for(let v = 1; v <= 15; v++) if(!seen[v]) return false;
+    return true;
+  }
+
+  // IDA* over a pattern database: same resumable explicit-stack search as makeIDA, but h is the sum of table lookups,
+  // updated incrementally (one tile moves per step, so only one table's index changes).
+  function makeIDAPdb(initial, pdb){
+    const st = Uint8Array.from(initial), tables = pdb.tables, parts = pdb.parts, P = parts.length;
+    const tilePat = new Int8Array(16), tileShift = new Uint8Array(16), keys = new Int32Array(P);
+    for(let pi = 0; pi < P; pi++) for(let i = 0; i < parts[pi].length; i++){ tilePat[parts[pi][i]] = pi; tileShift[parts[pi][i]] = 4 * i; }
+    function keysFromScratch(out){ out.fill(0); for(let c = 0; c < 16; c++){ const v = st[c]; if(v !== 0) out[tilePat[v]] |= c << tileShift[v]; } return out; }
+    function hOf(ks){ let h = 0; for(let pi = 0; pi < P; pi++) h += tables[pi][ks[pi]]; return h; }
+    keysFromScratch(keys);
+    let hs = hOf(keys), blank = st.indexOf(0);
+
+    const MAXD = 1024;
+    const dirNext = new Uint8Array(MAXD), moveAt = new Uint8Array(MAXD);
+    const savedKey = new Int32Array(MAXD), savedPat = new Uint8Array(MAXD), savedH = new Int32Array(MAXD);
+    function doMove(k, d){
+      const t = blank + DR[k] * 4 + DC[k], v = st[t], pi = tilePat[v], sh = tileShift[v], old = keys[pi];
+      const nk = (old & ~(15 << sh)) | (blank << sh);            // tile v moves from t into the blank's cell
+      savedKey[d] = old; savedPat[d] = pi; savedH[d] = hs;
+      hs += tables[pi][nk] - tables[pi][old]; keys[pi] = nk;
+      st[blank] = v; st[t] = 0; blank = t;
+    }
+    function undoMove(k, d){
+      const t = blank, ob = t - (DR[k] * 4 + DC[k]), v = st[ob];
+      st[t] = v; st[ob] = 0; blank = ob;
+      keys[savedPat[d]] = savedKey[d]; hs = savedH[d];
+    }
+
+    let threshold = hs, lowerBound = threshold;
+    let depth = 0, entering = true, minNext = Infinity, incumbent = Infinity, nodes = 0, found = null;
+    dirNext[0] = 0;
+
+    function run(untilMs){
+      let tick = 0;
+      for(;;){
+        if(entering){
+          entering = false; nodes++;
+          const f = depth + hs;
+          if(f > threshold){ if(f < minNext) minNext = f; dirNext[depth] = 4; }
+          else if(hs === 0){ found = Array.prototype.slice.call(moveAt, 0, depth); return 'found'; }
+        }
+        let k = dirNext[depth], moved = false;
+        while(k < 4){
+          const cand = k++;
+          if(depth > 0 && cand === OPP[moveAt[depth - 1]]) continue;
+          const br = blank >> 2, bc = blank & 3, nr = br + DR[cand], nc = bc + DC[cand];
+          if(nr < 0 || nr >= 4 || nc < 0 || nc >= 4) continue;
+          dirNext[depth] = k; doMove(cand, depth); moveAt[depth] = cand;
+          depth++; dirNext[depth] = 0; entering = true; moved = true; break;
+        }
+        if(moved){ if((++tick & 2047) === 0 && now() > untilMs) return 'running'; continue; }
+        if(depth === 0){
+          if(minNext === Infinity) return 'exhausted';
+          threshold = minNext; lowerBound = threshold; minNext = Infinity;
+          if(threshold >= incumbent) return 'bound';
+          dirNext[0] = 0; entering = true; continue;
+        }
+        depth--; undoMove(moveAt[depth], depth);
+        if((++tick & 2047) === 0 && now() > untilMs) return 'running';
+      }
+    }
+    return {
+      run,
+      setIncumbent(len){ if(len < incumbent) incumbent = len; },
+      get lowerBound(){ return lowerBound; },
+      get nodes(){ return nodes; },
+      get found(){ return found; },
+      selfCheck(){                                              // test hook: incremental keys/h equal a from-scratch recompute?
+        const ks = keysFromScratch(new Int32Array(P));
+        for(let pi = 0; pi < P; pi++) if(ks[pi] !== keys[pi]) return false;
+        return hOf(ks) === hs && st[blank] === 0;
+      }
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // The job: greedy first solution -> quick exact attempt -> path shortening ->
+  // exact search with whatever time is left. At every moment it holds the best
+  // verified solution found so far, and reports a proven lower bound on the optimum.
+  //   run(sliceMs) does a bit of work and returns true once finished, so the same code
+  //   can run flat-out in a Worker or in small slices on the main thread.
+  // ---------------------------------------------------------------
+  //   opts.pdb (4x4 only): an additive pattern database {parts, tables}; without it (or if it is not a valid
+  //   partition of all 15 tiles) the search falls back to Manhattan + linear conflict exactly as before.
+  function createJob(initial, n, budgetMs, emit, opts){
+    if(n === 3) return createJob3(initial, emit);               // exact table: no search, optimal by construction
+    const t0 = now(), tEnd = t0 + budgetMs;
+    const usePdb = n === 4 && !!opts && pdbOk(opts.pdb);
+    const ida = usePdb ? makeIDAPdb(initial, opts.pdb) : makeIDA(initial, n), wa = makeWA(initial, n);
+    if(usePdb) emit({ type: 'info', heuristic: 'pdb' });
+    const NODE_CAP = n >= 5 ? 150000 : 300000; // keeps peak extra heap under ~30MB on mobile
+    // 5x5 and up: IDA* can never prove optimality in time, so it is skipped and the WHOLE budget goes to anytime weighted A*
+    // with a finer weight ladder. A stage that hits its node cap just moves on to the next weight (the old code gave up on
+    // improving at the first capped stage and spent the rest of the budget in a hopeless IDA*), and a stage that improved
+    // the solution is repeated with the new, tighter bound. Measured on 11 random 5x5 positions at 8 s: mean path 134->120
+    // and 144->136 on two sets, never meaningfully worse.
+    const BIG = n >= 5;
+    const WEIGHTS = BIG ? [2.5, 2.25, 2, 1.8, 1.6, 1.45, 1.3, 1.2, 1.1, 1.05] : [2, 1.5, 1.25, 1.1];
+    const IDA_FIRST_MS = usePdb ? 1500 : 300, waEnd = BIG ? tEnd : t0 + Math.min(budgetMs, Math.max(600, budgetMs * 0.4));   // pattern-database IDA* usually finishes in well under a second
+    let phase = 'first', firstTry = 0, wIdx = 0, stageOn = false;
+    let best = null, greedyLen = null, lastProgress = 0, finished = false;
+
+    function setBest(path){
+      if(best && path.length >= best.length) return;
+      const end = applyPath(initial, n, path);
+      if(!end || !isGoal(end)) return;                      // never publish an unverified path
+      best = path.slice(); ida.setIncumbent(best.length);
+      emit({ type: 'best', path: best.slice(), len: best.length, lb: ida.lowerBound });
+    }
+    function finish(path, optimal, timedOut){
+      finished = true;
+      emit({ type: 'done', path: path.slice(), optimal, lb: optimal ? path.length : ida.lowerBound,
+             greedyLen, timedOut: !!timedOut, elapsedMs: Math.round(now() - t0), nodes: ida.nodes });
+    }
+    function progress(){
+      const t = now(); if(t - lastProgress < 250) return; lastProgress = t;
+      emit({ type: 'progress', lb: ida.lowerBound, len: best ? best.length : null, elapsedMs: Math.round(t - t0), budgetMs, phase });
+    }
+    function runIda(limit, until){
+      const r = ida.run(Math.min(limit, until));
+      if(r === 'found') return 'found';
+      if(r === 'bound' || r === 'exhausted') return 'bound';
+      return now() >= limit ? 'limit' : 'slice';
+    }
+    function run(sliceMs){
+      if(finished) return true;
+      const until = now() + sliceMs;
+      for(;;){
+        if(phase === 'first'){
+          // fastest possible first answer: W=3 (short paths), then W=1000 (almost pure greedy) as a safety net
+          if(!stageOn){ wa.start(firstTry === 0 ? 3 : 1000, Infinity); stageOn = true; }
+          const r = wa.run(until, firstTry === 0 ? 400000 : 1500000);
+          if(r === 'solved'){ greedyLen = wa.solution.length; setBest(wa.solution); stageOn = false; phase = BIG ? 'improve' : 'ida1'; }
+          else if(r === 'capped'){ stageOn = false; if(++firstTry > 1){ finished = true; emit({ type: 'failed' }); return true; } }
+          else return false;
+        } else if(phase === 'ida1'){
+          const r = runIda(t0 + IDA_FIRST_MS, until);
+          if(r === 'found'){ finish(ida.found, true); return true; }
+          if(r === 'bound'){ finish(best, true); return true; }
+          if(r === 'limit') phase = 'improve'; else return false;
+        } else if(phase === 'improve'){
+          if(wIdx >= WEIGHTS.length || now() >= waEnd){
+            if(BIG){ finish(best, false, now() >= tEnd); return true; }          // ladder used up (or time is): nothing more to try
+            phase = 'ida2'; continue;
+          }
+          if(!stageOn){ wa.start(WEIGHTS[wIdx], best.length); stageOn = true; }
+          const r = wa.run(Math.min(until, waEnd), NODE_CAP);
+          progress();
+          if(r === 'solved'){ setBest(wa.solution); stageOn = false; if(!BIG) wIdx++; }   // BIG: stay on this weight while it keeps improving
+          else if(r === 'capped'){ stageOn = false; if(BIG) wIdx++; else phase = 'ida2'; }   // memory cap: stop lowering W (4x4: hand over to IDA*)
+          else if(now() >= waEnd){ stageOn = false; if(BIG){ finish(best, false, true); return true; } phase = 'ida2'; }
+          else return false;
+        } else {   // 'ida2'
+          if(ida.lowerBound >= best.length){ finish(best, true); return true; }
+          const r = runIda(tEnd, until);
+          progress();
+          if(r === 'found'){ finish(ida.found, true); return true; }
+          if(r === 'bound'){ finish(best, true); return true; }
+          if(r === 'limit'){ finish(best, false, true); return true; }
+          return false;
+        }
+      }
+    }
+    return { run, get best(){ return best; } };
+  }
+
+  return { createJob, makeIDA, makeIDAPdb, makeTools, makeWA, pdbBuilder, pdbOk, exactDistance3, applyPath, isGoal,
+           defaultPdbParts: PDB_PARTS_555.map(g => g.slice()) };
+}
+if(typeof module !== 'undefined') module.exports = SolverKit;
+
+</script>
+<script>
+// AI2048Kit: the whole 2048 engine used by auto-play, with no DOM access.
+// Self-contained on purpose: this function is stringified into a Web Worker
+// (Function.prototype.toString) and the very same code runs on the main thread when a
+// Worker isn't available.
+//
+// Board = 4 packed rows (20 bits each, 5 bits per cell holding the EXPONENT: 0 = empty,
+// n = 2^n; 5 bits so the scale reaches 2^17 = 131072, the true maximum on a 4x4 board).
+// Moves: dir 0=up 1=down 2=left 3=right (direction the tiles slide).
+function AI2048Kit(cfg){
+  cfg = cfg || {};
+  // Row-evaluation weights: the classic public heuristic from nneonneo's 2048-ai (implemented
+  // here from its published formula): reward empty cells and mergeable pairs, penalise
+  // non-monotonic rows and large tile sums. `weights` can override any of them (used for tuning).
+  const W = Object.assign({
+    LOST: 200000, EMPTY_W: 270, MERGE_W: 700, MONO_POW: 4, MONO_W: 47, SUM_POW: 3.5, SUM_W: 11,
+    CPROB: 0.0001,       // chance-branches less likely than this are cut off (evaluated instead of searched)
+    LOSTVAL: 0           // value of a position with no legal move
+  }, cfg.weights || {});
+  const now = (typeof performance !== 'undefined') ? function(){ return performance.now(); } : function(){ return Date.now(); };
+
+  // ---- tables: slide+merge results for every possible row, and a per-row heuristic score ----
+  const ROWS = 1 << 20;
+  const LEFT = new Uint32Array(ROWS), RIGHT = new Uint32Array(ROWS), HEUR = new Float32Array(ROWS);
+  // Table construction is resumable: buildStep(sliceMs) does a bounded amount of work and returns
+  // true once everything is built. The default constructor builds it all at once (what a Worker
+  // wants); cfg.lazyBuild leaves it to the caller so the main thread can do it in small slices
+  // instead of freezing the page for ~100ms.
+  const pwSum = new Float64Array(32), pwMono = new Float64Array(32), outBuf = new Int32Array(4), cellBuf = new Int32Array(4);
+  for(let r = 0; r < 32; r++){ pwSum[r] = Math.pow(r, W.SUM_POW); pwMono[r] = Math.pow(r, W.MONO_POW); }
+  let bPhase = 0, bRow = 0;
+  function buildStep(sliceMs){
+    if(bPhase === 2) return true;
+    const t0 = now();
+    if(bPhase === 0){
+      for(; bRow < ROWS; bRow++){
+        const row = bRow;
+        cellBuf[0] = row & 31; cellBuf[1] = (row >> 5) & 31; cellBuf[2] = (row >> 10) & 31; cellBuf[3] = (row >> 15) & 31;
+        let n = 0, prev = 0;
+        for(let i = 0; i < 4; i++){
+          const v = cellBuf[i];
+          if(v === 0) continue;
+          if(prev === v){ outBuf[n - 1] = v + 1; prev = 0; } else { outBuf[n++] = v; prev = v; }
+        }
+        let p = 0; for(let i = 0; i < n; i++) p |= outBuf[i] << (5 * i);
+        LEFT[row] = p;
+        // heuristic for this row read left-to-right
+        let sum = 0, empty = 0, merges = 0, counter = 0; prev = 0;
+        for(let i = 0; i < 4; i++){
+          const rank = cellBuf[i];
+          sum += pwSum[rank];
+          if(rank === 0) empty++;
+          else {
+            if(prev === rank) counter++;
+            else if(counter > 0){ merges += 1 + counter; counter = 0; }
+            prev = rank;
+          }
+        }
+        if(counter > 0) merges += 1 + counter;
+        let monoL = 0, monoR = 0;
+        for(let i = 1; i < 4; i++){
+          if(cellBuf[i - 1] > cellBuf[i]) monoL += pwMono[cellBuf[i - 1]] - pwMono[cellBuf[i]];
+          else monoR += pwMono[cellBuf[i]] - pwMono[cellBuf[i - 1]];
+        }
+        HEUR[row] = W.LOST + W.EMPTY_W * empty + W.MERGE_W * merges - W.MONO_W * Math.min(monoL, monoR) - W.SUM_W * sum;
+        if((row & 511) === 511 && now() - t0 > sliceMs){ bRow++; return false; }
+      }
+      bPhase = 1; bRow = 0;
+    }
+    for(; bRow < ROWS; bRow++){
+      const row = bRow;
+      const rev = ((row & 31) << 15) | (((row >> 5) & 31) << 10) | (((row >> 10) & 31) << 5) | ((row >> 15) & 31);
+      const m = LEFT[rev];
+      RIGHT[row] = ((m & 31) << 15) | (((m >> 5) & 31) << 10) | (((m >> 10) & 31) << 5) | ((m >> 15) & 31);
+      if((row & 2047) === 2047 && now() - t0 > sliceMs){ bRow++; return false; }
+    }
+    bPhase = 2;
+    return true;
+  }
+  if(!cfg.lazyBuild) buildStep(Infinity);
+  function ensureBuilt(){ if(bPhase !== 2) buildStep(Infinity); }
+
+  // ---- search state: one preallocated stack of boards, so the hot loop allocates nothing ----
+  const MAXLV = 24;
+  const STK = new Int32Array((MAXLV + 1) * 8 + 8);
+  const DIRN = ['up', 'down', 'left', 'right'];
+  const ABORT = {};
+  let deadline = Infinity, nodes = 0, limit = 1, hitLimit = false, minNodes = 0;
+  const cpMin = W.CPROB;
+
+  // Transposition table (on by default; cfg.tt:false disables): chance-node results cached by board, as in nneonneo's
+  // search. An entry is reused only if it was computed with at least as many levels still to go
+  // (ttExact: exactly as many -- used by the tests to prove the cache never changes a result).
+  const TT = cfg.tt !== false, TT_EXACT = !!cfg.ttExact, TT_BITS = 18, TT_SHIFT = 32 - TT_BITS;   // on by default (cfg.tt:false disables)
+  const ttA = TT ? new Float64Array(1 << TT_BITS) : null, ttB = TT ? new Float64Array(1 << TT_BITS) : null;
+  const ttVal = TT ? new Float64Array(1 << TT_BITS) : null, ttRem = TT ? new Int8Array(1 << TT_BITS) : null;
+  const ttGen = TT ? new Uint16Array(1 << TT_BITS) : null;
+  let gen = 1, ttHits = 0;
+
+  function evalAt(o){
+    const r0 = STK[o], r1 = STK[o + 1], r2 = STK[o + 2], r3 = STK[o + 3];
+    let s = HEUR[r0] + HEUR[r1] + HEUR[r2] + HEUR[r3];
+    for(let j = 0; j < 20; j += 5){
+      s += HEUR[((r0 >> j) & 31) | (((r1 >> j) & 31) << 5) | (((r2 >> j) & 31) << 10) | (((r3 >> j) & 31) << 15)];
+    }
+    return s;
+  }
+  // slide board at STK[s..] in direction dir into STK[d..]; true if anything changed
+  function moveAt(dir, s, d){
+    if(dir >= 2){
+      const T = dir === 2 ? LEFT : RIGHT;
+      let ch = 0;
+      for(let i = 0; i < 4; i++){ const r = STK[s + i], n = T[r]; STK[d + i] = n; ch |= (n ^ r); }
+      return ch !== 0;
+    }
+    const T = dir === 0 ? LEFT : RIGHT;
+    const r0 = STK[s], r1 = STK[s + 1], r2 = STK[s + 2], r3 = STK[s + 3];
+    let o0 = 0, o1 = 0, o2 = 0, o3 = 0;
+    for(let j = 0; j < 20; j += 5){
+      const n = T[((r0 >> j) & 31) | (((r1 >> j) & 31) << 5) | (((r2 >> j) & 31) << 10) | (((r3 >> j) & 31) << 15)];
+      o0 |= (n & 31) << j; o1 |= ((n >> 5) & 31) << j; o2 |= ((n >> 10) & 31) << j; o3 |= ((n >> 15) & 31) << j;
+    }
+    STK[d] = o0; STK[d + 1] = o1; STK[d + 2] = o2; STK[d + 3] = o3;
+    return ((o0 ^ r0) | (o1 ^ r1) | (o2 ^ r2) | (o3 ^ r3)) !== 0;
+  }
+
+  // Player node: pick the best move. Board lives at STK[o..o+3]; lv = moves made so far.
+  function maxNode(o, lv, cprob){
+    nodes++;
+    if((nodes & 511) === 0 && nodes >= minNodes && now() > deadline) throw ABORT;
+    if(lv >= limit){ hitLimit = true; return evalAt(o); }
+    if(cprob < cpMin) return evalAt(o);
+    let best = -Infinity;
+    const n = o + 4;
+    for(let dir = 0; dir < 4; dir++){
+      if(moveAt(dir, o, n)){ const v = chanceNode(n, lv, cprob); if(v > best) best = v; }
+    }
+    return best === -Infinity ? W.LOSTVAL : best;
+  }
+  // Chance node: a 2 (90%) or 4 (10%) appears in a uniformly random empty cell.
+  function chanceNode(o, lv, cprob){
+    let slot = 0, need = 0, ka = 0, kb = 0;
+    if(TT){
+      need = limit - lv;
+      const q0 = STK[o], q1 = STK[o + 1], q2 = STK[o + 2], q3 = STK[o + 3];
+      ka = q0 + q1 * 1048576; kb = q2 + q3 * 1048576;
+      slot = (Math.imul(q0, 0x9E3779B1) ^ Math.imul(q1, 0x85EBCA6B) ^ Math.imul(q2, 0xC2B2AE35) ^ Math.imul(q3, 0x27D4EB2F)) >>> TT_SHIFT;
+      if(ttGen[slot] === gen && ttA[slot] === ka && ttB[slot] === kb && (TT_EXACT ? ttRem[slot] === need : ttRem[slot] >= need)){
+        ttHits++; return ttVal[slot];
+      }
+    }
+    const c = o + 4;
+    let empties = 0;
+    for(let i = 0; i < 4; i++){ const r = STK[o + i]; for(let j = 0; j < 20; j += 5) if(((r >> j) & 31) === 0) empties++; }
+    if(empties === 0) return evalAt(o);
+    const cp = cprob / empties;
+    let total = 0;
+    for(let i = 0; i < 4; i++){
+      const r = STK[o + i];
+      for(let j = 0; j < 20; j += 5){
+        if(((r >> j) & 31) !== 0) continue;
+        STK[c] = STK[o]; STK[c + 1] = STK[o + 1]; STK[c + 2] = STK[o + 2]; STK[c + 3] = STK[o + 3];
+        STK[c + i] = r | (1 << j);
+        total += 0.9 * maxNode(c, lv + 1, cp * 0.9);
+        STK[c + i] = r | (2 << j);
+        total += 0.1 * maxNode(c, lv + 1, cp * 0.1);
+      }
+    }
+    const res = total / empties;
+    if(TT){ ttGen[slot] = gen; ttA[slot] = ka; ttB[slot] = kb; ttRem[slot] = need; ttVal[slot] = res; }
+    return res;
+  }
+
+  // Best move for `rows` (4 packed rows). Iterative deepening under a wall-clock budget: the
+  // answer is always that of the last FULLY completed depth. opts.fixedDepth searches exactly
+  // that many moves with no clock (used for benchmarking heuristics independent of speed).
+  function bestMove(rows, budgetMs, opts){
+    ensureBuilt();
+    opts = opts || {};
+    STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3];
+    const legal = [];
+    for(let dir = 0; dir < 4; dir++) if(moveAt(dir, 0, 4)) legal.push(dir);
+    if(legal.length === 0) return { dir: null, depth: 0, nodes: 0, value: 0 };
+    if(legal.length === 1 && !opts.fixedDepth) return { dir: DIRN[legal[0]], depth: 0, nodes: 0, value: 0, forced: true };
+    deadline = opts.fixedDepth ? Infinity : now() + budgetMs; minNodes = 0;
+    nodes = 0; ttHits = 0; gen = (gen + 1) & 0xFFFF; if(gen === 0) gen = 1;
+    let bestDir = legal[0], bestVal = 0, reached = 0;
+    const first = opts.fixedDepth || 1, last = opts.fixedDepth || opts.maxDepth || MAXLV;
+    for(limit = first; limit <= last; limit++){
+      let lb = -1, lv = -Infinity;
+      hitLimit = false;
+      try{
+        for(let k = 0; k < legal.length; k++){
+          moveAt(legal[k], 0, 4);
+          const v = chanceNode(4, 0, 1);
+          if(v > lv){ lv = v; lb = legal[k]; }
+        }
+      } catch(e){ if(e === ABORT) break; throw e; }
+      bestDir = lb; bestVal = lv; reached = limit;
+      if(!hitLimit) break;                // whole tree resolved (pruned / terminal): deeper changes nothing
+    }
+    return { dir: DIRN[bestDir], depth: reached, nodes, value: bestVal, ttHits };
+  }
+
+
+  // Resumable search for the main-thread fallback. step(sliceMs) computes for at most sliceMs and
+  // returns null (not finished) or the final answer. `budgetMs` counts COMPUTE time only (idle gaps
+  // between slices are free), so the budget means the same thing here as in a Worker.
+  // How it resumes: an aborted iteration is simply re-run from the root next slice; every chance
+  // node that was already finished is in the transposition table and returns instantly, so the
+  // work done in earlier slices is kept (this is why slicing needs the table; without it the
+  // search just runs in one piece).
+  function searchTask(rows, budgetMs, opts){
+    ensureBuilt();
+    opts = opts || {};
+    const root = [rows[0], rows[1], rows[2], rows[3]];
+    STK[0] = root[0]; STK[1] = root[1]; STK[2] = root[2]; STK[3] = root[3];
+    const legal = [];
+    for(let dir = 0; dir < 4; dir++) if(moveAt(dir, 0, 4)) legal.push(dir);
+    let finished = null;
+    if(legal.length === 0) finished = { dir: null, depth: 0, nodes: 0, value: 0 };
+    else if(legal.length === 1 && !opts.fixedDepth) finished = { dir: DIRN[legal[0]], depth: 0, nodes: 0, value: 0, forced: true };
+    gen = (gen + 1) & 0xFFFF; if(gen === 0) gen = 1; ttHits = 0;
+    const first = opts.fixedDepth || 1, last = opts.fixedDepth || opts.maxDepth || MAXLV;
+    let lim = first, used = 0, totalNodes = 0, bestDir = legal.length ? legal[0] : 0, bestVal = 0, reached = 0, retried = false;
+    function step(sliceMs){
+      if(finished) return finished;
+      const t0 = now();
+      const remaining = opts.fixedDepth ? Infinity : budgetMs - used;
+      const until = t0 + Math.min(TT ? sliceMs : Infinity, remaining);
+      STK[0] = root[0]; STK[1] = root[1]; STK[2] = root[2]; STK[3] = root[3];
+      deadline = until;
+      minNodes = 16384;                            // every slice does real new work, however short the slice
+      while(lim <= last){
+        limit = lim; hitLimit = false; nodes = 0;
+        let lb = -1, lv = -Infinity, aborted = false;
+        try{
+          for(let k = 0; k < legal.length; k++){
+            moveAt(legal[k], 0, 4);
+            const v = chanceNode(4, 0, 1);
+            if(v > lv){ lv = v; lb = legal[k]; }
+          }
+        } catch(e){ if(e === ABORT) aborted = true; else throw e; }
+        totalNodes += nodes;
+        if(aborted){ retried = true; break; }      // this depth is retried (cheaply) next slice
+        bestDir = lb; bestVal = lv; reached = lim;
+        // 'no leaf reached the depth limit' means the tree is fully resolved -- but only believe it
+        // for a fresh pass: a resumed pass is mostly served from the cache and never reaches leaves
+        if(!hitLimit && !retried){ lim = last + 1; break; }
+        lim++; retried = false;
+        if(now() >= until) break;
+      }
+      minNodes = 0;
+      used += now() - t0;
+      if(lim > last || (!opts.fixedDepth && used >= budgetMs - 0.01)){
+        finished = { dir: DIRN[bestDir], depth: reached, nodes: totalNodes, value: bestVal, ttHits };
+        return finished;
+      }
+      return null;
+    }
+    return { step };
+  }
+
+  function canMove(rows){
+    STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3];
+    for(let dir = 0; dir < 4; dir++) if(moveAt(dir, 0, 4)) return true;
+    return false;
+  }
+
+  // test hooks
+  function _move(rows, dir){
+    STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3];
+    if(!moveAt(dir, 0, 4)) return null;
+    return [STK[4], STK[5], STK[6], STK[7]];
+  }
+  function _eval(rows){ STK[0] = rows[0]; STK[1] = rows[1]; STK[2] = rows[2]; STK[3] = rows[3]; return evalAt(0); }
+  function _heur(row){ return HEUR[row]; }
+
+  return { bestMove, searchTask, buildStep, canMove, weights: W, _move, _eval, _heur };
+}
+if(typeof module !== 'undefined') module.exports = AI2048Kit;
+
+</script>
+<script>window.__NTUPLE_WORKER_SOURCE__="/*\n * expectimax2048.js — dependency-free standard 4x4 2048 solver.\n * MIT License. Copyright (c) 2026.\n * Row heuristic and bitboard/table approach derived from nneonneo/2048-ai,\n * Copyright (c) 2014-2019 Robert Xiao and contributors (MIT; see LICENSE).\n * Direction contract: 0=up, 1=right, 2=down, 3=left. Board: 16 tile values.\n * The search is terminal on reaching its target (default 32768).\n */\n(function (root, factory) {\n  'use strict';\n  if (typeof module === 'object' && module.exports) module.exports = factory();\n  else root.Expectimax2048 = factory();\n})(typeof globalThis !== 'undefined' ? globalThis : this, function () {\n  'use strict';\n  const DIRECTIONS = Object.freeze(['up', 'right', 'down', 'left']);\n  const PROFILES = Object.freeze({\n    fast: Object.freeze({maxDepth: 5, probabilityCutoff: 0.001, nodeBudget: 100000}),\n    balanced: Object.freeze({maxDepth: 8, probabilityCutoff: 0.0001, nodeBudget: 1000000}),\n    strong: Object.freeze({maxDepth: 10, probabilityCutoff: 0.00005, nodeBudget: 8000000})\n  });\n  let ready = false;\n  let LEFT, RIGHT, UP_LO, UP_HI, DOWN_LO, DOWN_HI, HEUR, EMPTY, RANKS, MAX;\n  let outLo = 0, outHi = 0;\n  const now = () => typeof performance !== 'undefined' ? performance.now() : Date.now();\n  const ABORT = Object.freeze({budgetExceeded: true});\n  const WIN = 1000000000;\n  const LOSS = -1000000000;\n\n  function reverseRow(row) {\n    return ((row & 15) \u003c\u003c 12) | ((row & 240) \u003c\u003c 4) | ((row >>> 4) & 240) | (row >>> 12);\n  }\n  function initTables() {\n    if (ready) return;\n    LEFT = new Uint16Array(65536); RIGHT = new Uint16Array(65536);\n    UP_LO = new Uint32Array(65536); UP_HI = new Uint32Array(65536);\n    DOWN_LO = new Uint32Array(65536); DOWN_HI = new Uint32Array(65536);\n    HEUR = new Float64Array(65536); EMPTY = new Uint8Array(65536);\n    RANKS = new Uint16Array(65536); MAX = new Uint8Array(65536);\n    const pow4 = Array.from({length: 16}, (_, i) => i ** 4);\n    const pow35 = Array.from({length: 16}, (_, i) => i ** 3.5);\n    for (let row = 0; row \u003c 65536; row++) {\n      const a = [row & 15, (row >>> 4) & 15, (row >>> 8) & 15, row >>> 12];\n      let empty = 0, sum = 0, ranks = 0, max = 0, merges = 0, prev = 0, count = 0;\n      let inc = 0, dec = 0;\n      for (let i = 0; i \u003c 4; i++) {\n        const v = a[i]; sum += pow35[v]; ranks |= 1 \u003c\u003c v; max = Math.max(max, v);\n        if (!v) empty++;\n        else {\n          if (v === prev) count++;\n          else if (count) { merges += count + 1; count = 0; }\n          prev = v;\n        }\n        if (i) {\n          const delta = pow4[a[i - 1]] - pow4[v];\n          if (delta > 0) dec += delta; else inc -= delta;\n        }\n      }\n      if (count) merges += count + 1;\n      HEUR[row] = 200000 + 270 * empty + 700 * merges - 47 * Math.min(inc, dec) - 11 * sum;\n      EMPTY[row] = empty; RANKS[row] = ranks; MAX[row] = max;\n      const compact = a.filter(Boolean), result = [];\n      for (let i = 0; i \u003c compact.length; i++) {\n        // Rank 15 is search-terminal; it will never be expanded by Solver.\n        if (compact[i] === compact[i + 1] && compact[i] \u003c 15) result.push(compact[i++] + 1);\n        else result.push(compact[i]);\n      }\n      while (result.length \u003c 4) result.push(0);\n      const left = result[0] | (result[1] \u003c\u003c 4) | (result[2] \u003c\u003c 8) | (result[3] \u003c\u003c 12);\n      LEFT[row] = left;\n      RIGHT[reverseRow(row)] = reverseRow(left);\n    }\n    for (let row = 0; row \u003c 65536; row++) {\n      let delta = row ^ LEFT[row];\n      UP_LO[row] = (delta & 15) | ((delta & 240) \u003c\u003c 12);\n      UP_HI[row] = ((delta >>> 8) & 15) | ((delta & 61440) \u003c\u003c 4);\n      delta = row ^ RIGHT[row];\n      DOWN_LO[row] = (delta & 15) | ((delta & 240) \u003c\u003c 12);\n      DOWN_HI[row] = ((delta >>> 8) & 15) | ((delta & 61440) \u003c\u003c 4);\n    }\n    ready = true;\n  }\n  function validate(board) {\n    if (!Array.isArray(board) && !ArrayBuffer.isView(board)) throw new TypeError('Board must be a row-major array of 16 tile values.');\n    if (board.length !== 16) throw new RangeError('Board must contain exactly 16 cells.');\n    for (const v of board) {\n      if (!Number.isSafeInteger(v) || v \u003c 0 || (v !== 0 && (v \u003c 2 || !Number.isInteger(Math.log2(v)) || 2 ** Math.log2(v) !== v)))\n        throw new RangeError('Tiles must be zero or exact powers of two from 2 through 2^52.');\n    }\n  }\n  function directionNumber(direction) {\n    const d = typeof direction === 'string' ? DIRECTIONS.indexOf(direction.toLowerCase()) : direction;\n    if (!Number.isInteger(d) || d \u003c 0 || d > 3) throw new RangeError('Direction must be 0..3 or up/right/down/left.');\n    return d;\n  }\n  function pack(board) {\n    validate(board); let lo = 0, hi = 0;\n    for (let i = 0; i \u003c 16; i++) {\n      const rank = board[i] === 0 ? 0 : Math.log2(board[i]);\n      if (rank > 15) throw new RangeError('Packed search supports tiles through 32768; larger boards are already target-terminal.');\n      if (i \u003c 8) lo |= rank \u003c\u003c (i * 4); else hi |= rank \u003c\u003c ((i - 8) * 4);\n    }\n    return [lo >>> 0, hi >>> 0];\n  }\n  function unpack(lo, hi) {\n    const board = new Array(16);\n    for (let i = 0; i \u003c 16; i++) {\n      const rank = (i \u003c 8 ? lo >>> (i * 4) : hi >>> ((i - 8) * 4)) & 15;\n      board[i] = rank ? 2 ** rank : 0;\n    }\n    return board;\n  }\n  // Allocation-free hot path. Outputs must be copied before recursive calls.\n  function fastMove(lo, hi, d) {\n    if (d === 1 || d === 3) {\n      const t = d === 3 ? LEFT : RIGHT;\n      outLo = (t[lo & 65535] | (t[lo >>> 16] \u003c\u003c 16)) >>> 0;\n      outHi = (t[hi & 65535] | (t[hi >>> 16] \u003c\u003c 16)) >>> 0;\n    } else {\n      const c0 = (lo & 15) | ((lo >>> 12) & 240) | ((hi \u003c\u003c 8) & 3840) | ((hi >>> 4) & 61440);\n      const c1 = ((lo >>> 4) & 15) | ((lo >>> 16) & 240) | ((hi \u003c\u003c 4) & 3840) | ((hi >>> 8) & 61440);\n      const c2 = ((lo >>> 8) & 15) | ((lo >>> 20) & 240) | (hi & 3840) | ((hi >>> 12) & 61440);\n      const c3 = ((lo >>> 12) & 15) | ((lo >>> 24) & 240) | ((hi >>> 4) & 3840) | ((hi >>> 16) & 61440);\n      const tl = d === 0 ? UP_LO : DOWN_LO, th = d === 0 ? UP_HI : DOWN_HI;\n      outLo = (lo ^ tl[c0] ^ (tl[c1] \u003c\u003c 4) ^ (tl[c2] \u003c\u003c 8) ^ (tl[c3] \u003c\u003c 12)) >>> 0;\n      outHi = (hi ^ th[c0] ^ (th[c1] \u003c\u003c 4) ^ (th[c2] \u003c\u003c 8) ^ (th[c3] \u003c\u003c 12)) >>> 0;\n    }\n  }\n  function movePacked(lo, hi, d) { initTables(); fastMove(lo >>> 0, hi >>> 0, directionNumber(d)); return [outLo, outHi]; }\n  function evaluatePacked(lo, hi) {\n    const c0 = (lo & 15) | ((lo >>> 12) & 240) | ((hi \u003c\u003c 8) & 3840) | ((hi >>> 4) & 61440);\n    const c1 = ((lo >>> 4) & 15) | ((lo >>> 16) & 240) | ((hi \u003c\u003c 4) & 3840) | ((hi >>> 8) & 61440);\n    const c2 = ((lo >>> 8) & 15) | ((lo >>> 20) & 240) | (hi & 3840) | ((hi >>> 12) & 61440);\n    const c3 = ((lo >>> 12) & 15) | ((lo >>> 24) & 240) | ((hi >>> 4) & 3840) | ((hi >>> 16) & 61440);\n    return HEUR[lo & 65535] + HEUR[lo >>> 16] + HEUR[hi & 65535] + HEUR[hi >>> 16] + HEUR[c0] + HEUR[c1] + HEUR[c2] + HEUR[c3];\n  }\n  function emptyCount(lo, hi) { return EMPTY[lo & 65535] + EMPTY[lo >>> 16] + EMPTY[hi & 65535] + EMPTY[hi >>> 16]; }\n  function maxRank(lo, hi) { return Math.max(MAX[lo & 65535], MAX[lo >>> 16], MAX[hi & 65535], MAX[hi >>> 16]); }\n\n  class Solver {\n    constructor(options = {}) {\n      const profile = options.profile || 'balanced';\n      if (!PROFILES[profile]) throw new RangeError('Unknown profile: ' + profile);\n      this.options = Object.assign({profile, tableBits: 18, target: 32768, timeBudgetMs: 0, iterative: true, adaptiveDepth: true}, PROFILES[profile], options);\n      const o = this.options;\n      for (const key of ['maxDepth', 'nodeBudget', 'tableBits']) if (!Number.isInteger(o[key])) throw new RangeError(key + ' must be an integer.');\n      if (o.maxDepth \u003c 1 || o.maxDepth > 16) throw new RangeError('maxDepth must be 1..16.');\n      if (o.nodeBudget \u003c 1) throw new RangeError('nodeBudget must be positive.');\n      if (o.tableBits \u003c 0 || o.tableBits > 24) throw new RangeError('tableBits must be 0..24; zero disables caching.');\n      if (!Number.isFinite(o.probabilityCutoff) || o.probabilityCutoff \u003c 0 || o.probabilityCutoff >= 1) throw new RangeError('probabilityCutoff must be in [0,1).');\n      if (!Number.isFinite(o.timeBudgetMs) || o.timeBudgetMs \u003c 0) throw new RangeError('timeBudgetMs must be nonnegative.');\n      if (!Number.isInteger(Math.log2(o.target)) || o.target \u003c 4 || o.target > 32768) throw new RangeError('target must be a power of two from 4 through 32768.');\n      initTables(); this.targetRank = Math.log2(o.target);\n      const n = o.tableBits ? 2 ** o.tableBits : 0; this.mask = n - 1;\n      // Direct-mapped exact-key cache: collisions replace entries, never invent hits.\n      this.ttLo = new Uint32Array(n); this.ttHi = new Uint32Array(n); this.ttGeneration = new Uint32Array(n);\n      this.ttDepth = new Uint8Array(n); this.ttProbability = new Float64Array(n); this.ttValue = new Float64Array(n);\n      this.generation = 0;\n    }\n    _touch() {\n      if (++this.nodes > this.options.nodeBudget) throw ABORT;\n      if (this.deadline && (this.nodes & 2047) === 0 && now() >= this.deadline) throw ABORT;\n    }\n    _chance(lo, hi, depth, probability) {\n      this._touch();\n      if (maxRank(lo, hi) >= this.targetRank) return WIN;\n      if (depth \u003c= 0 || probability \u003c this.options.probabilityCutoff) return evaluatePacked(lo, hi);\n      // At depth one all children end at depth zero; after the cutoff check,\n      // their value is independent of path probability. This is an exact reuse.\n      const cacheProbability = depth === 1 ? 1 : probability;\n      let slot = -1;\n      if (this.mask >= 0) {\n        slot = (Math.imul(lo ^ (hi >>> 16), 0x9e3779b1) ^ Math.imul(hi ^ (lo >>> 16), 0x85ebca6b) ^ depth) & this.mask;\n        // Probability affects pruning, so it is part of the exact cache key.\n        if (this.ttGeneration[slot] === this.generation && this.ttLo[slot] === lo && this.ttHi[slot] === hi && this.ttDepth[slot] === depth && this.ttProbability[slot] === cacheProbability) {\n          this.cacheHits++; return this.ttValue[slot];\n        }\n      }\n      const count = emptyCount(lo, hi);\n      if (!count) return this._max(lo, hi, depth - 1, probability);\n      const p2 = 0.9 * probability / count, p4 = 0.1 * probability / count;\n      let sum = 0;\n      for (let i = 0; i \u003c 8; i++) {\n        const shift = i * 4;\n        if (((lo >>> shift) & 15) === 0) {\n          sum += 0.9 * this._max((lo | (1 \u003c\u003c shift)) >>> 0, hi, depth - 1, p2);\n          sum += 0.1 * this._max((lo | (2 \u003c\u003c shift)) >>> 0, hi, depth - 1, p4);\n        }\n        if (((hi >>> shift) & 15) === 0) {\n          sum += 0.9 * this._max(lo, (hi | (1 \u003c\u003c shift)) >>> 0, depth - 1, p2);\n          sum += 0.1 * this._max(lo, (hi | (2 \u003c\u003c shift)) >>> 0, depth - 1, p4);\n        }\n      }\n      const value = sum / count;\n      if (slot >= 0) {\n        this.ttLo[slot] = lo; this.ttHi[slot] = hi; this.ttDepth[slot] = depth;\n        this.ttProbability[slot] = cacheProbability; this.ttValue[slot] = value; this.ttGeneration[slot] = this.generation;\n      }\n      return value;\n    }\n    _max(lo, hi, depth, probability) {\n      this._touch(); let best = -Infinity;\n      // Even at a truncated horizon check all legal moves: a dead board has value zero.\n      for (let d = 0; d \u003c 4; d++) {\n        fastMove(lo, hi, d); const nl = outLo, nh = outHi;\n        if (nl === lo && nh === hi) continue;\n        const value = this._chance(nl, nh, depth, probability);\n        if (value > best) best = value;\n        if (best === WIN) break; // No child can exceed the terminal target utility.\n      }\n      return best === -Infinity ? LOSS : best;\n    }\n    chooseMove(board) {\n      validate(board); const start = now();\n      if (board.some(v => v >= this.options.target)) return {direction: null, name: null, value: WIN, depth: 0, nodes: 0, cacheHits: 0, elapsedMs: now() - start, complete: true, targetReached: true};\n      const [lo, hi] = pack(board);\n      this.nodes = 0; this.cacheHits = 0; this.deadline = this.options.timeBudgetMs ? start + this.options.timeBudgetMs : 0;\n      this.generation = (this.generation + 1) >>> 0;\n      if (!this.generation) { this.ttGeneration.fill(0); this.generation = 1; }\n      const candidates = [];\n      for (let d = 0; d \u003c 4; d++) {\n        fastMove(lo, hi, d); const nl = outLo, nh = outHi;\n        if (nl !== lo || nh !== hi) candidates.push({direction: d, lo: nl, hi: nh, value: maxRank(nl, nh) >= this.targetRank ? WIN : evaluatePacked(nl, nh)});\n      }\n      if (!candidates.length) return {direction: null, name: null, value: 0, depth: 0, nodes: 0, cacheHits: 0, elapsedMs: now() - start, complete: true, targetReached: false};\n      if (candidates.length === 1) {\n        const only = candidates[0];\n        return {direction: only.direction, name: DIRECTIONS[only.direction], value: only.value, depth: 0, nodes: 0, cacheHits: 0, elapsedMs: now() - start, complete: true, targetReached: false};\n      }\n      candidates.sort((a, b) => b.value - a.value || a.direction - b.direction);\n      let best = candidates[0], bestValue = best.value, completedDepth = 0, complete = true;\n      let limit = this.options.maxDepth;\n      if (this.options.adaptiveDepth) {\n        let bits = (RANKS[lo & 65535] | RANKS[lo >>> 16] | RANKS[hi & 65535] | RANKS[hi >>> 16]) >>> 1, distinct = 0;\n        while (bits) { bits &= bits - 1; distinct++; }\n        limit = Math.min(limit, Math.max(3, distinct - 2));\n      }\n      const firstDepth = this.options.iterative ? 1 : limit;\n      if (bestValue !== WIN) {\n        for (let depth = firstDepth; depth \u003c= limit; depth++) {\n          let iterationBest = null, iterationValue = -Infinity;\n          const values = [];\n          try {\n            for (const candidate of candidates) {\n              const value = this._chance(candidate.lo, candidate.hi, depth, 1);\n              values.push(value);\n              if (value > iterationValue || (value === iterationValue && candidate.direction \u003c iterationBest.direction)) {\n                iterationValue = value; iterationBest = candidate;\n              }\n            }\n          } catch (error) {\n            if (error !== ABORT) throw error;\n            complete = false; break; // Never compare differently searched roots.\n          }\n          best = iterationBest; bestValue = iterationValue; completedDepth = depth;\n          for (let i = 0; i \u003c candidates.length; i++) candidates[i].value = values[i];\n          candidates.sort((a, b) => b.value - a.value || a.direction - b.direction);\n          if (bestValue === WIN) break;\n        }\n      }\n      return {direction: best.direction, name: DIRECTIONS[best.direction], value: bestValue, depth: completedDepth, nodes: this.nodes, cacheHits: this.cacheHits, elapsedMs: now() - start, complete, targetReached: false};\n    }\n  }\n  // Public game engine: exact numeric moves, deliberately independent of packed search.\n  function move(board, direction) {\n    validate(board); const d = directionNumber(direction), result = Array.from(board); let score = 0;\n    for (let lane = 0; lane \u003c 4; lane++) {\n      const ids = [];\n      for (let k = 0; k \u003c 4; k++) ids.push(d === 0 ? k * 4 + lane : d === 1 ? lane * 4 + 3 - k : d === 2 ? (3 - k) * 4 + lane : lane * 4 + k);\n      const values = ids.map(i => board[i]).filter(Boolean), line = [];\n      for (let i = 0; i \u003c values.length; i++) {\n        if (values[i] === values[i + 1]) {\n          const merged = values[i] * 2;\n          if (!Number.isSafeInteger(merged)) throw new RangeError('Merged tile exceeds safe integer range.');\n          line.push(merged); score += merged; i++;\n        } else line.push(values[i]);\n      }\n      for (let k = 0; k \u003c 4; k++) result[ids[k]] = line[k] || 0;\n    }\n    return {board: result, moved: result.some((v, i) => v !== board[i]), score};\n  }\n  function createRng(seed) {\n    if (!Number.isInteger(seed) || seed \u003c 0 || seed > 0xffffffff) throw new RangeError('Seed must be a uint32 integer.');\n    let state = seed >>> 0;\n    return function () {\n      state = (state + 0x6D2B79F5) >>> 0;\n      let x = Math.imul(state ^ (state >>> 15), state | 1);\n      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);\n      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;\n    };\n  }\n  function spawn(board, rng = Math.random) {\n    validate(board); const empty = [];\n    for (let i = 0; i \u003c 16; i++) if (!board[i]) empty.push(i);\n    if (!empty.length) return null;\n    const rPosition = rng(), rValue = rng();\n    if (!Number.isFinite(rPosition) || rPosition \u003c 0 || rPosition >= 1 || !Number.isFinite(rValue) || rValue \u003c 0 || rValue >= 1) throw new RangeError('RNG must return numbers in [0,1).');\n    const index = empty[Math.floor(rPosition * empty.length)], value = rValue \u003c 0.9 ? 2 : 4;\n    const result = Array.from(board); result[index] = value;\n    return {board: result, index, value};\n  }\n  function emptyBoard() { return new Array(16).fill(0); }\n  function initialBoard(rng = Math.random) { return spawn(spawn(emptyBoard(), rng).board, rng).board; }\n  return Object.freeze({Solver, move, spawn, createRng, emptyBoard, initialBoard, DIRECTIONS, PROFILES,\n    _internals: Object.freeze({pack, unpack, movePacked, evaluatePacked: (lo, hi) => {initTables(); return evaluatePacked(lo, hi);}, initTables})});\n});\n\n;\n/* MIT License. N-tuple TD inference adapter for moporgic/TDL2048 baseline weights.\n * Afterstate values are learned future scores, not win probabilities.\n * Node: require('./ntuple2048.js'); browser: load Expectimax2048 game helper first.\n */\n(function(root,factory){'use strict';if(typeof module==='object'&&module.exports)module.exports=factory(require('../2048-expectimax/expectimax2048.js'),require);else root.NTuple2048=factory(root.Expectimax2048,null);})(typeof globalThis!=='undefined'?globalThis:this,function(Game,nodeRequire){\n  'use strict';\n  if(!Game)throw new Error('Load the standalone Expectimax2048 game helper before NTuple2048.');\n  const PATTERNS=Object.freeze(['012345','456789','012456','45689a']);\n  const TABLE_LENGTH=16777216, MODEL_BYTES=268435456;\n  const MODEL_CATALOG = Object.freeze({ '4x6': Object.freeze({patterns:PATTERNS, bytes:268435456, sourceSha256:'aa5f89ecadb9ff6d5a78db0e3c608826f275089ca6d8fdb71243a195b1fa08f1', sha256:'01cbe0f0cf523c75947e0c449520399068a4f4bab73ae0d894cabc95ffcfd629'}), '8x6': Object.freeze({patterns:Object.freeze(['012456','456789','012345','234569','01259a','345678','134567','01489a']),bytes:536870912,sourceSha256:'bb8678095de7b5a934be105e51f7bb13f762eeb48b42a99e0ebc0da3fcbbbe9f',sha256:'4e9342fa525ae41d5268e294f396dd066822cd9df88076b864d35f356f3f3297'}) });\n  const MODEL_SHA='01cbe0f0cf523c75947e0c449520399068a4f4bab73ae0d894cabc95ffcfd629';\n  const SOURCE_SHA='aa5f89ecadb9ff6d5a78db0e3c608826f275089ca6d8fdb71243a195b1fa08f1';\n  const TERMINAL_VALUE=1000000000;\n  const now=()=>typeof performance!=='undefined'?performance.now():Date.now();\n  // Each map says which original cell occupies a transformed-board cell.\n  const SYMMETRIES=[];let map=Array.from({length:16},(_,i)=>i);\n  for(let rotation=0;rotation\u003c4;rotation++){\n    SYMMETRIES.push(map.slice());\n    SYMMETRIES.push(Array.from({length:16},(_,i)=>map[(i&12)+3-(i&3)]));\n    map=Array.from({length:16},(_,i)=>map[(3-(i&3))*4+(i>>>2)]);\n  }\n  function featureCells(patterns){\n    const cells=new Uint8Array(patterns.length*8*6);\n    for(let p=0;p\u003cpatterns.length;p++)for(let s=0;s\u003c8;s++)for(let k=0;k\u003c6;k++)cells[(p*8+s)*6+k]=SYMMETRIES[s][parseInt(patterns[p][k],16)];\n    return cells;\n  }\n  const CELLS=featureCells(PATTERNS);\n  const POTENTIAL=new Float64Array(65536),EMPTY=new Uint8Array(65536);\n  for(let row=0;row\u003c65536;row++){let score=0,empty=0;for(let k=0;k\u003c4;k++){const rank=(row>>>(4*k))&15;if(rank)score+=(rank-1)*2**rank;else empty++;}POTENTIAL[row]=score;EMPTY[row]=empty;}\n  function rankAt(lo,hi,index){return ((index\u003c8?lo:hi)>>>((index&7)*4))&15;}\n  function potential(lo,hi){return POTENTIAL[lo&65535]+POTENTIAL[lo>>>16]+POTENTIAL[hi&65535]+POTENTIAL[hi>>>16];}\n  function countEmpty(lo,hi){return EMPTY[lo&65535]+EMPTY[lo>>>16]+EMPTY[hi&65535]+EMPTY[hi>>>16];}\n  function tupleIndices(board,patterns=PATTERNS){const[lo,hi]=Game._internals.pack(board),result=[],cells=featureCells(patterns);for(let i=0;i\u003cpatterns.length*8;i++){let index=0;for(let k=0;k\u003c6;k++)index|=rankAt(lo,hi,cells[i*6+k])\u003c\u003c(k*4);result.push(index);}return result;}\n  function validatePackedWord(word,name){\n    if(!Number.isFinite(word)||!Number.isInteger(word)||word\u003c0||word>0xffffffff)throw new RangeError(name+' must be an unsigned 32-bit integer (0..4294967295).');\n  }\n  // Private hot path: pack/movePacked/spawn already produce unsigned words.\n  // Each six-nibble index remains in 0..16^6-1, including rank 15 (32768).\n  function evaluatePackedUnchecked(model,lo,hi){\n    let sum=0;const cells=model.cells;\n    for(let i=0;i\u003cmodel.tables.length*8;i++){\n      const offset=i*6;\n      const index=rankAt(lo,hi,cells[offset])|(rankAt(lo,hi,cells[offset+1])\u003c\u003c4)|(rankAt(lo,hi,cells[offset+2])\u003c\u003c8)|(rankAt(lo,hi,cells[offset+3])\u003c\u003c12)|(rankAt(lo,hi,cells[offset+4])\u003c\u003c16)|(rankAt(lo,hi,cells[offset+5])\u003c\u003c20);\n      sum+=model.tables[i>>>3][index];\n    }\n    if(!Number.isFinite(sum))throw new Error('Model contains a non-finite weight at an evaluated feature.');\n    return sum;\n  }\n  class NTupleModel{\n    constructor(tables,patterns=PATTERNS){if(!Array.isArray(patterns)||!patterns.length||patterns.length>16||patterns.some(p=>typeof p!=='string'||!/^[0-9a-f]{6}$/i.test(p)))throw new TypeError('Expected six-cell hexadecimal pattern IDs.');if(!Array.isArray(tables)||tables.length!==patterns.length||tables.some(t=>!(t instanceof Float32Array)||t.length!==TABLE_LENGTH))throw new TypeError('Expected one Float32Array of16^6 entries per pattern.');this.tables=tables;this.patterns=Object.freeze(patterns.slice());this.cells=featureCells(patterns);}\n    evaluate(board){const[lo,hi]=Game._internals.pack(board);return evaluateTrusted(this,lo,hi);}\n    evaluatePacked(lo,hi){\n      validatePackedWord(lo,'lo');validatePackedWord(hi,'hi');\n      return evaluatePackedUnchecked(this,lo,hi);\n    }\n  }\n  const defaultEvaluatePacked=NTupleModel.prototype.evaluatePacked;\n  function evaluateTrusted(model,lo,hi){\n    // Retain caller-supplied diagnostic/custom wrappers without charging normal\n    // search leaves for the checked public boundary.\n    return model.evaluatePacked===defaultEvaluatePacked?evaluatePackedUnchecked(model,lo,hi):model.evaluatePacked(lo,hi);\n  }\n  function loadModel(manifestPath){\n    if(!nodeRequire)throw new Error('loadModel(path) is Node-only. In a browser supply Float32Array tables to NTupleModel.');\n    const fs=nodeRequire('node:fs'),path=nodeRequire('node:path'),crypto=nodeRequire('node:crypto');\n    const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));\n    const specification=Object.values(MODEL_CATALOG).find(m=>m.sourceSha256===manifest.source.sha256);\n    if(!specification||!/^tdl2048-[48]x6-f32le-v1$/.test(manifest.format)||manifest.inference.sha256!==specification.sha256||manifest.inference.bytes!==specification.bytes)throw new Error('Manifest does not describe a pinned, verified baseline model.');\n    if(new Uint8Array(new Uint32Array([0x01020304]).buffer)[0]!==4)throw new Error('This loader currently requires a little-endian host.');\n    let bytes=fs.readFileSync(path.resolve(path.dirname(manifestPath),manifest.inference.file));\n    if(bytes.byteLength!==specification.bytes||crypto.createHash('sha256').update(bytes).digest('hex')!==specification.sha256)throw new Error('Inference model size or SHA-256 mismatch.');\n    if(bytes.byteOffset%4){const aligned=new Uint8Array(bytes.byteLength);aligned.set(bytes);bytes=aligned;}\n    const tables=Array.from({length:specification.patterns.length},(_,i)=>new Float32Array(bytes.buffer,bytes.byteOffset+i*TABLE_LENGTH*4,TABLE_LENGTH));\n    const model=new NTupleModel(tables,specification.patterns);model.manifest=manifest;return model;\n  }\n  function validateBoard(board){\n    if((!Array.isArray(board)&&!ArrayBuffer.isView(board))||board.length!==16)throw new TypeError('Expected sixteen row-major tile values.');\n    for(const v of board)if(!Number.isSafeInteger(v)||v\u003c0||(v!==0&&(v\u003c2||!Number.isInteger(Math.log2(v))||2**Math.log2(v)!==v)))throw new RangeError('Tiles must be zero or exact positive powers of two.');\n  }\n  function countRank15(lo,hi){let n=0;for(let i=0;i\u003c8;i++){if(((lo>>>(i*4))&15)===15)n++;if(((hi>>>(i*4))&15)===15)n++;}return n;}\n  class NTupleSolver{\n    constructor(model,options={}){\n      if(!(model instanceof NTupleModel))throw new TypeError('Supply an NTupleModel, loaded explicitly.');\n      this.options=Object.freeze(Object.assign({ply:2,target:32768},options));\n      if(![1,2].includes(this.options.ply))throw new RangeError('ply must be 1 or 2.');\n      if(!Number.isInteger(Math.log2(this.options.target))||this.options.target\u003c4||this.options.target>65536)throw new RangeError('target must be a power of two from4 through65536.');\n      if(this.options.criticalSearch!==undefined&&typeof this.options.criticalSearch!=='boolean')throw new TypeError('criticalSearch must be boolean.');\n      const empty=this.options.criticalEmpty??1,tile=this.options.criticalTile??8192;\n      if(!Number.isInteger(empty)||empty\u003c0||empty>4||!Number.isInteger(Math.log2(tile))||tile\u003c2||tile>16384)throw new RangeError('Invalid critical-search thresholds.');\n      this.criticalEmpty=empty;this.criticalTile=tile;this.targetRank=Math.log2(this.options.target);\n      // Tiles are packed in 4 bits, so rank 15 (32768) is the largest tile the tables can hold, and the row tables never\n      // merge two of them. With target 65536 (the merge of two 32768s) the search therefore plays on after the first 32768\n      // but never expands a board holding a second one: that board is a leaf here and a handoff request at the root.\n      this.handoffPair=this.targetRank>15;\n      this.model=model;Game._internals.initTables();\n    }\n    _afterValue(lo,hi,remaining){\n      if(remaining\u003c=0)return evaluateTrusted(this.model,lo,hi);\n      // Goal states remain leaves; never expand a rank15 board toward rank16 (target 32768: any rank15 tile is a goal;\n      // target 65536: two rank15 tiles are the last board the tables can model, so they stay leaves too).\n      for(let i=0;i\u003c8;i++)if(((lo>>>(i*4))&15)>=this.targetRank||((hi>>>(i*4))&15)>=this.targetRank)return evaluateTrusted(this.model,lo,hi);\n      if(this.handoffPair&&countRank15(lo,hi)>=2)return evaluateTrusted(this.model,lo,hi);\n      return this._expectation(lo,hi,remaining);\n    }\n    _bestAfterSpawn(lo,hi,remaining){\n      this.nodes++;let best=0;const before=potential(lo,hi);\n      for(let d=0;d\u003c4;d++){\n        const[nl,nh]=Game._internals.movePacked(lo,hi,d);if(nl===lo&&nh===hi)continue;\n        this.nodes++;const reward=potential(nl,nh)-before;\n        // Reproduce native inner search semantics: reward + max(afterstateV,0) +1.\n        const value=reward+Math.max(this._afterValue(nl,nh,remaining-1),0)+1;\n        if(value>best)best=value;\n      }\n      return best;\n    }\n    _expectation(lo,hi,remaining){\n      const empty=countEmpty(lo,hi);if(!empty)throw new Error('A changed nonterminal move must leave a spawn cell.');\n      let sum=0;\n      for(let i=0;i\u003c8;i++){\n        const shift=i*4;\n        if(((lo>>>shift)&15)===0){sum+=0.9*this._bestAfterSpawn((lo|(1\u003c\u003cshift))>>>0,hi,remaining);sum+=0.1*this._bestAfterSpawn((lo|(2\u003c\u003cshift))>>>0,hi,remaining);}\n        if(((hi>>>shift)&15)===0){sum+=0.9*this._bestAfterSpawn(lo,(hi|(1\u003c\u003cshift))>>>0,remaining);sum+=0.1*this._bestAfterSpawn(lo,(hi|(2\u003c\u003cshift))>>>0,remaining);}\n      }\n      return sum/empty;\n    }\n    chooseMove(board){\n      const start=now();\n      validateBoard(board);this.nodes=0;\n      const actualPly=this.options.criticalSearch&&Array.from(board).filter(v=>v===0).length\u003c=this.criticalEmpty&&Math.max(...board)>=this.criticalTile?3:this.options.ply;\n      if(Array.from(board).some(v=>v>=this.options.target))return{direction:null,name:null,value:TERMINAL_VALUE,ply:this.options.ply,actualPly,nodes:0,elapsedMs:now()-start,complete:true,targetReached:true};\n      if(this.handoffPair&&Array.from(board).filter(v=>v===32768).length>=2)return{direction:null,name:null,value:0,ply:this.options.ply,actualPly,nodes:0,elapsedMs:now()-start,complete:true,targetReached:false,handoff:true};\n      const[lo,hi]=Game._internals.pack(board),before=potential(lo,hi),candidates=[];\n      for(let d=0;d\u003c4;d++){\n        const[nl,nh]=Game._internals.movePacked(lo,hi,d);if(nl===lo&&nh===hi)continue;\n        const after=Game._internals.unpack(nl,nh);\n        if(after.some(v=>v>=this.options.target))return{direction:d,name:Game.DIRECTIONS[d],value:TERMINAL_VALUE,ply:this.options.ply,actualPly,nodes:0,elapsedMs:now()-start,complete:true,targetReached:false};\n        candidates.push({d,lo:nl,hi:nh,reward:potential(nl,nh)-before});\n      }\n      if(!candidates.length)return{direction:null,name:null,value:0,ply:this.options.ply,actualPly,nodes:0,elapsedMs:now()-start,complete:true,targetReached:false};\n      let best=null,value=-Infinity;\n      for(const c of candidates){\n        const q=c.reward+this._afterValue(c.lo,c.hi,actualPly-1);\n        if(q>value){best=c;value=q;}\n      }\n      return{direction:best.d,name:Game.DIRECTIONS[best.d],value,ply:this.options.ply,actualPly,nodes:this.nodes,elapsedMs:now()-start,complete:true,targetReached:false};\n    }\n  }\n  return Object.freeze({NTupleModel,NTupleSolver,loadModel,tupleIndices,PATTERNS,MODEL_BYTES,MODEL_SHA,SOURCE_SHA,MODEL_CATALOG,_internals:Object.freeze({SYMMETRIES,CELLS,potential})});\n});\n\n;\n/* MIT. Incremental SHA-256 for local model verification without a second 512 MiB copy. */\n(function(root, factory) {\n  'use strict';\n  if (typeof module === 'object' && module.exports) module.exports = factory();\n  else root.ModelSHA256 = factory();\n})(typeof globalThis !== 'undefined' ? globalThis : this, function() {\n  'use strict';\n  const K = new Uint32Array([\n    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,\n    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,\n    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,\n    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,\n    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,\n    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,\n    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,\n    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2\n  ]);\n  const rotr = (n, b) => (n >>> b) | (n \u003c\u003c (32 - b));\n  class SHA256 {\n    constructor() {\n      this.h = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);\n      this.tail = new Uint8Array(64); this.used = 0; this.bytes = 0; this.w = new Uint32Array(64); this.finished = false;\n    }\n    block(bytes, offset) {\n      const w = this.w, h = this.h;\n      for (let i = 0; i \u003c 16; i++) { const j = offset + i * 4; w[i] = (bytes[j] \u003c\u003c 24) | (bytes[j+1] \u003c\u003c 16) | (bytes[j+2] \u003c\u003c 8) | bytes[j+3]; }\n      for (let i = 16; i \u003c 64; i++) { const a = w[i-15], b = w[i-2]; w[i] = w[i-16] + (rotr(a,7) ^ rotr(a,18) ^ (a>>>3)) + w[i-7] + (rotr(b,17) ^ rotr(b,19) ^ (b>>>10)); }\n      let a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],j=h[7];\n      for (let i=0;i\u003c64;i++) {\n        const t1 = (j + (rotr(e,6)^rotr(e,11)^rotr(e,25)) + ((e&f)^(~e&g)) + K[i] + w[i]) | 0;\n        const t2 = ((rotr(a,2)^rotr(a,13)^rotr(a,22)) + ((a&b)^(a&c)^(b&c))) | 0;\n        j=g;g=f;f=e;e=(d+t1)|0;d=c;c=b;b=a;a=(t1+t2)|0;\n      }\n      h[0]+=a;h[1]+=b;h[2]+=c;h[3]+=d;h[4]+=e;h[5]+=f;h[6]+=g;h[7]+=j;\n    }\n    update(bytes) {\n      if (this.finished) throw new Error('SHA-256 already finalized.');\n      if (!(bytes instanceof Uint8Array)) throw new TypeError('Expected Uint8Array.');\n      this.bytes += bytes.length; let offset = 0;\n      if (this.used) {\n        const n = Math.min(64-this.used,bytes.length); this.tail.set(bytes.subarray(0,n),this.used); this.used+=n;offset=n;\n        if(this.used===64){this.block(this.tail,0);this.used=0;}\n      }\n      while(offset+64\u003c=bytes.length){this.block(bytes,offset);offset+=64;}\n      if(offset\u003cbytes.length){this.tail.set(bytes.subarray(offset),0);this.used=bytes.length-offset;}\n      return this;\n    }\n    hex() {\n      if(this.finished) throw new Error('SHA-256 already finalized.');\n      const length=this.bytes, padding=new Uint8Array(this.used\u003c56?64-this.used:128-this.used);\n      padding[0]=0x80;\n      const view=new DataView(padding.buffer);view.setUint32(padding.length-8,Math.floor(length/0x20000000));view.setUint32(padding.length-4,(length*8)>>>0);\n      this.update(padding);this.finished=true;\n      return Array.from(this.h,n=>n.toString(16).padStart(8,'0')).join('');\n    }\n  }\n  return SHA256;\n});\n\n;\n/* MIT. The File is read only in this Worker; weights never leave the user's browser. */\n'use strict';\n/* modules above are bundled into this Worker */\nlet solver = null;\nself.onmessage = async function(event) {\n  const msg = event.data;\n  try {\n    if (msg.type === 'load') {\n      solver = null;\n      const spec = NTuple2048.MODEL_CATALOG['8x6'], file = msg.file;\n      if (!(file instanceof Blob) || file.size !== spec.bytes) throw new Error('请选择转换后的 8x6patt.f32（512 MiB），不能直接加载原始 .w 或 JSON 文件。');\n      if (new Uint8Array(new Uint32Array([0x01020304]).buffer)[0] !== 4) throw new Error('当前设备不支持小端 Float32 权重。');\n      // One final model buffer plus a small rolling read chunk, not File.arrayBuffer()+a full copy.\n      const buffer = new ArrayBuffer(spec.bytes), output = new Uint8Array(buffer), hash = new ModelSHA256();\n      const chunkSize = 4 * 1024 * 1024;\n      for (let offset = 0; offset \u003c spec.bytes; offset += chunkSize) {\n        const bytes = new Uint8Array(await file.slice(offset, Math.min(offset+chunkSize, spec.bytes)).arrayBuffer());\n        output.set(bytes, offset); hash.update(bytes);\n        self.postMessage({type:'progress', id:msg.id, progress:(offset+bytes.length)/spec.bytes});\n      }\n      if (hash.hex() !== spec.sha256) throw new Error('权重 SHA-256 不匹配。文件可能损坏或不是固定版本，请重新下载 Release 中的 8x6patt.f32。');\n      const tables = spec.patterns.map((_,i)=>new Float32Array(buffer, i*16777216*4, 16777216));\n      const model = new NTuple2048.NTupleModel(tables, spec.patterns);\n      // Target 65536 = the merge of two 32768s. The solver plays on after the first 32768 and answers {handoff:true}\n      // for a board holding a second one; the page then lets the original heuristic move (see drafting-games-1.html).\n      solver = new NTuple2048.NTupleSolver(model, {ply:2,target:65536,criticalSearch:true,criticalEmpty:1,criticalTile:8192});\n      self.postMessage({type:'ready', id:msg.id, bytes:spec.bytes, sha256:spec.sha256});\n    } else if (msg.type === 'ping') {\n      self.postMessage({type:'pong', id:msg.id});     // environment probe: can this page run the Worker at all?\n    } else if (msg.type === 'move') {\n      if (!solver) throw new Error('权重尚未加载。');\n      // Only the current board crosses this boundary. No seed or future spawn/RNG state.\n      self.postMessage({type:'move', id:msg.id, result:solver.chooseMove(msg.board)});\n    }\n  } catch(error) {\n    self.postMessage({type:'error', id:msg.id, message:error && error.message ? error.message : String(error)});\n  }\n};\n";</script>
+<script>
+/* MIT. Browser file/Worker lifecycle plus the drafting game's exponent-tile adapter. */
+(function(root, factory) {
+  'use strict';
+  if(typeof module==='object' && module.exports) module.exports=factory();
+  else root.NTupleBrowser=factory();
+})(typeof globalThis!=='undefined'?globalThis:this,function(){
+  'use strict';
+  const DIRECTIONS=Object.freeze(['up','right','down','left']);
+  const scriptURL=typeof document!=='undefined' && document.currentScript ? document.currentScript.src : null;
+  function boardFromTiles(tiles) {
+    const board=new Array(16).fill(0), occupied=new Set();
+    for(const t of tiles){
+      if(!Number.isInteger(t.r)||!Number.isInteger(t.c)||t.r<0||t.r>3||t.c<0||t.c>3||!Number.isInteger(t.exp)||t.exp<1||t.exp>52)throw new RangeError('Invalid on-screen tile.');
+      const i=t.r*4+t.c;if(occupied.has(i))throw new Error('Duplicate tile position.');occupied.add(i);board[i]=2**t.exp;
+    }
+    return board;
+  }
+  function directionName(direction){
+    if(direction===null)return null;
+    if(!Number.isInteger(direction)||direction<0||direction>3)throw new RangeError('Invalid solver direction.');
+    return DIRECTIONS[direction];
+  }
+  function defaultCreateWorker(){return new Worker(URL.createObjectURL(new Blob([window.__NTUPLE_WORKER_SOURCE__],{type:'text/javascript'})));}
+  // Environment probe: starts the same Worker the client would use and waits for its pong. onResult({ok:true}) on success,
+  // onResult({ok:false,reason}) if the Worker cannot be created, errors, or stays silent for timeoutMs (a late pong then
+  // reports {ok:true} again). The File picker cannot be probed; previews that block Workers block it too.
+  function probe(onResult,options={}) {
+    const create=options.createWorker||defaultCreateWorker,timeoutMs=options.timeoutMs??3000;
+    let w=null,timer=null,last=null;
+    const report=r=>{if(last!==r.ok){last=r.ok;onResult(r);}};
+    const cleanup=()=>{clearTimeout(timer);timer=null;if(w){try{w.terminate();}catch(error){}w=null;}};
+    try{w=create();}catch(error){report({ok:false,reason:'create'});return cleanup;}
+    w.onmessage=event=>{if(event&&event.data&&event.data.type==='pong'){report({ok:true});cleanup();}};
+    w.onerror=event=>{if(event&&event.preventDefault)event.preventDefault();report({ok:false,reason:'error'});cleanup();};
+    timer=setTimeout(()=>report({ok:false,reason:'timeout'}),timeoutMs);
+    try{w.postMessage({type:'ping'});}catch(error){report({ok:false,reason:'post'});cleanup();}
+    return cleanup;
+  }
+  function createClient(options={}) {
+    const createWorker=options.createWorker || defaultCreateWorker;
+    const notify=options.onState || (()=>{});
+    let worker=null, sequence=0, pending=null, loadId=0, timer=null;
+    let state={status:'empty',progress:0,message:'未加载权重'};
+    function publish(next){state=Object.assign({},state,next);notify(Object.assign({},state));}
+    function clearTimer(){clearTimeout(timer);timer=null;}
+    function cancel(){if(pending){pending.resolve({cancelled:true});pending=null;clearTimer();}}
+    function kill(){cancel();clearTimer();if(worker)worker.terminate();worker=null;loadId=0;}
+    function fail(message){kill();publish({status:'error',message,progress:0});}
+    function watchdog(){clearTimer();timer=setTimeout(()=>fail('后台线程长时间无响应；请重新加载权重，或切换原有启发式。'),60000);}
+    function load(file){
+      kill();
+      if(!file || file.size!==536870912){publish({status:'error',message:'请选择转换后的 8x6patt.f32（512 MiB）；原始 .w 和 JSON 不能直接加载。',progress:0});return;}
+      publish({status:'loading',progress:0,message:'正在本地读取并校验权重…'});
+      let w;
+      try{w=createWorker();worker=w;}catch(error){fail('无法启动后台线程（浏览器可能禁止了 Blob Worker）；仍可使用原有启发式。');return;}
+      loadId=++sequence;
+      w.onmessage=event=>{
+        if(worker!==w)return;
+        const m=event.data;
+        if(m.type==='progress' && m.id===loadId){publish({progress:m.progress});watchdog();}
+        else if(m.type==='ready' && m.id===loadId){clearTimer();publish({status:'ready',progress:1,message:'8x6 权重已就绪 · SHA-256 已验证'});}
+        else if(m.type==='move' && pending && m.id===pending.id){
+          const req=pending;pending=null;clearTimer();
+          try{req.resolve(Object.assign({},m.result,{dir:directionName(m.result.direction),depth:m.result.actualPly,mode:'worker',engine:'td8'}));}
+          catch(error){req.resolve({cancelled:true});fail(error.message);}
+        } else if(m.type==='error' && (m.id===loadId || (pending && m.id===pending.id)))fail(m.message);
+      };
+      w.onerror=event=>{if(event.preventDefault)event.preventDefault();if(worker===w)fail('权重线程启动或运行失败。请确认浏览器允许后台线程，并留出足够内存。');};
+      w.onmessageerror=()=>{if(worker===w)fail('后台线程消息读取失败，请重新选择权重。');};
+      watchdog();
+      try{w.postMessage({type:'load',id:loadId,file});}catch(error){fail(error.message);}
+    }
+    function ask(board){
+      cancel();
+      if(state.status!=='ready'||!worker)return Promise.resolve({cancelled:true});
+      return new Promise(resolve=>{pending={id:++sequence,resolve};watchdog();try{worker.postMessage({type:'move',id:pending.id,board:board.slice()});}catch(error){fail(error.message);}});
+    }
+    function unload(){kill();publish({status:'empty',progress:0,message:'未加载权重'});}
+    return {load,ask,cancel,unload,get state(){return Object.assign({},state);}};
+  }
+  return Object.freeze({boardFromTiles,directionName,createClient,probe,DIRECTIONS});
+});
+
+</script>
+<script>
+(function(){
+  const SIZE = 4;
+  const boardEl = document.getElementById('board2048');
+  const tilesLayer = document.getElementById('tiles2048');
+  const scoreEl = document.getElementById('score2048');
+  const bestEl = document.getElementById('best2048');
+  const overlayEl = document.getElementById('overlay2048');
+  const overlayTitleEl = document.getElementById('overlayTitle2048');
+  const overlaySubEl = document.getElementById('overlaySub2048');
+  const milestoneEl = document.getElementById('milestone2048');
+  const milestoneTextEl = document.getElementById('milestoneText2048');
+  const playBtn = document.getElementById('playBtn2048');
+  const turboBtn = document.getElementById('turboBtn2048');
+  const dynBtn = document.getElementById('dynBtn2048');
+  const batchBtn = document.getElementById('batchBtn2048');
+  const tallyEl = document.getElementById('tally2048');
+  const newGameBtn = document.getElementById('newGameBtn2048');
+  const speedSliderHost = document.getElementById('speedHost2048');
+  const engineEl = document.getElementById('engine2048');
+  const modelFileEl = document.getElementById('modelFile2048');
+  const modelStatusEl = document.getElementById('modelStatus2048');
+  const modelProgressEl = document.getElementById('modelProgress2048');
+  const unloadModelBtn = document.getElementById('unloadModel2048');
+  let tdClient = null;
+  function usingTD(){ return engineEl.value === 'td8'; }
+  function tdBoard(){ return NTupleBrowser.boardFromTiles(tiles); }
+  // The TD tables hold a tile in 4 bits, so 32768 (exponent 15) is the largest tile they can represent, and their row
+  // tables never merge two of them. TD therefore keeps playing after the first 32768, but the moment a second 32768 is on
+  // the board the original heuristic (5-bit tiles) takes over, so TD never sees the merge. 65536 is the TD goal.
+  const TD_PAIR_EXP = 15, TD_GOAL_EXP = 16, HANDOFF_MIN_BUDGET_MS = 200;
+  function tdNeedsHandoff(){ let n = 0; for(const t of tiles){ if(t.exp > TD_PAIR_EXP || (t.exp === TD_PAIR_EXP && ++n >= 2)) return true; } return false; }
+  function tdGoalReached(){ return tiles.some(t=>t.exp >= TD_GOAL_EXP); }
+  // tdEnv.ok === false: this page cannot start a Worker (some previews/sandboxes), so TD cannot work and the picker is inert.
+  const ENV_BLOCKED_MESSAGE = '当前环境不支持后台线程或本地文件读取，TD 不可用。请下载此页面，用桌面浏览器打开；仍可使用原有启发式。';
+  let tdEnv = {ok:null};
+  function syncModelUI(){
+    const blocked = tdEnv.ok === false;
+    const state = blocked ? {status:'error',message:ENV_BLOCKED_MESSAGE,progress:0}
+      : tdClient ? tdClient.state : {status:'error',message:'权重接口脚本未加载；仍可使用原有启发式。',progress:0};
+    modelFileEl.disabled = blocked;
+    modelStatusEl.dataset.state = state.status;
+    modelStatusEl.textContent = state.message + (state.status === 'loading' ? ' ' + Math.floor(state.progress*100) + '%' : '');
+    modelProgressEl.hidden = state.status !== 'loading'; modelProgressEl.value = state.progress;
+    unloadModelBtn.disabled = blocked || state.status === 'empty';
+    unloadModelBtn.textContent = state.status === 'loading' ? '取消加载' : '释放权重';
+    dynBtn.disabled = usingTD();
+    dynBtn.title = usingTD() ? 'TD 使用经过验证的固定层数，不使用墙钟预算' : '实验:棋盘拥挤时多想,安全时少想';
+    playBtn.disabled = usingTD() && (state.status !== 'ready' || tdGoalReached());
+  }
+  GameShared.buildSlots(document.getElementById('slots2048'), SIZE);
+
+  GameShared.attachSwipe(boardEl, (dir)=>{ if(!autoPlaying) handleMove(dir); });
+
+  // Pack the on-screen tiles into the AI's board format: 4 rows, 5 bits per cell (exponent).
+  function boardFromTiles(list){
+    const out = [0,0,0,0];
+    for(const t of list) out[t.r] |= (t.exp << (t.c * 5));
+    return out;
+  }
+
+  // ---------------------------------------------------------------
+  // AI runner. The search engine lives in ai2048.js (AI2048Kit); this only decides WHERE it
+  // runs: a Web Worker when possible (then the think budget can be large without touching the
+  // UI thread), otherwise the same kit on the main thread with the budget capped so the page
+  // stays responsive. The switch is automatic (no Worker / can't construct it / it errors /
+  // it stays silent for 2.5s), and a request in flight is simply re-asked on the main thread.
+  // ---------------------------------------------------------------
+  // Main-thread fallback: the search runs in short slices (SLICE_MS of compute, then yield to the
+  // event loop), so the time budget means the same thing as in a Worker -- the slider is no longer
+  // capped -- while the page stays responsive. MessageChannel is used to yield because setTimeout(0)
+  // is clamped to >=4ms once nested, which would eat most of a 5-10ms budget.
+  const SLICE_MS = 8;
+  const yieldQ = []; let yieldCh = null;
+  if(typeof MessageChannel !== 'undefined'){ yieldCh = new MessageChannel(); yieldCh.port1.onmessage = ()=>{ const f = yieldQ.shift(); if(f) f(); }; }
+  function yieldTask(fn){ if(yieldCh){ yieldQ.push(fn); yieldCh.port2.postMessage(0); } else setTimeout(fn, 0); }
+  let mainKit = null;                                   // created on first use, only if the fallback is really needed
+
+  function createAIRunner(){
+    let worker = null, watchdog = null, heard = false, nextId = 1, pending = null;
+    const api = { mode: 'worker' };
+    function workerSource(){
+      return 'const AI2048Kit = ' + AI2048Kit.toString() + ';\n' + [
+        'self.postMessage({type:"alive"});',           // before the tables are built, so the page knows it started
+        'const kit = AI2048Kit();',
+        'self.onmessage = function(e){',
+        '  const m = e.data; if(m.cmd !== "move") return;',
+        '  const r = kit.bestMove(m.rows, m.budgetMs);',
+        '  self.postMessage({type:"move", id:m.id, dir:r.dir, depth:r.depth, nodes:r.nodes});',
+        '};'
+      ].join('\n');
+    }
+    function finish(req, r){
+      if(pending !== req) return;
+      pending = null;
+      req.resolve({ dir: r.dir, depth: r.depth, nodes: r.nodes, mode: api.mode });
+    }
+    function runMain(req){
+      yieldTask(()=>{
+        if(pending !== req) return;
+        if(!mainKit) mainKit = AI2048Kit({lazyBuild: true});
+        (function build(){                            // first use only: lookup tables are built in small slices too
+          if(pending !== req) return;
+          if(!mainKit.buildStep(5)){ yieldTask(build); return; }
+          const task = mainKit.searchTask(req.rows, req.budgetMs);
+          (function pump(){
+            if(pending !== req) return;               // cancelled / replaced while we were yielding
+            const r = task.step(SLICE_MS);
+            if(r) finish(req, r); else yieldTask(pump);
+          })();
+        })();
+      });
+    }
+    function toMain(){
+      api.mode = 'main'; clearTimeout(watchdog);
+      if(worker){ try{ worker.terminate(); }catch(e){} worker = null; }
+      if(pending) runMain(pending);
+    }
+    function startWorker(){
+      if(typeof Worker === 'undefined') return false;
+      let w;
+      try{ w = new Worker(URL.createObjectURL(new Blob([workerSource()], {type:'application/javascript'}))); }
+      catch(err){ return false; }                     // e.g. CSP / sandbox refuses blob workers
+      worker = w;
+      w.onmessage = e=>{
+        heard = true; clearTimeout(watchdog);
+        if(e.data.type === 'move' && pending && pending.id === e.data.id) finish(pending, e.data);
+      };
+      w.onerror = ev=>{ if(ev && ev.preventDefault) ev.preventDefault(); if(worker === w) toMain(); };
+      watchdog = setTimeout(()=>{ if(!heard && worker === w) toMain(); }, 2500);
+      return true;
+    }
+    if(!startWorker()) api.mode = 'main';
+    api.ask = (rows, budgetMs)=> new Promise(resolve=>{
+      const req = { id: nextId++, rows, budgetMs, resolve };
+      pending = req;
+      if(api.mode === 'worker' && worker) worker.postMessage({cmd:'move', id:req.id, rows, budgetMs});
+      else runMain(req);
+    });
+    api.dispose = ()=>{ pending = null; clearTimeout(watchdog); if(worker){ try{ worker.terminate(); }catch(e){} worker = null; } };
+    return api;
+  }
+
+  // ---------------------------------------------------------------
+  // Identity-tracking move (for the ONE move actually applied, so the
+  // renderer can animate real DOM elements sliding/merging instead of
+  // rebuilding everything from scratch every turn).
+  // ---------------------------------------------------------------
+  function linesFor(dir){
+    const lines=[];
+    if(dir==='left'){ for(let r=0;r<4;r++) lines.push([[r,0],[r,1],[r,2],[r,3]]); }
+    else if(dir==='right'){ for(let r=0;r<4;r++) lines.push([[r,3],[r,2],[r,1],[r,0]]); }
+    else if(dir==='up'){ for(let c=0;c<4;c++) lines.push([[0,c],[1,c],[2,c],[3,c]]); }
+    else { for(let c=0;c<4;c++) lines.push([[3,c],[2,c],[1,c],[0,c]]); }
+    return lines;
+  }
+  function applyRealMove(tiles, dir, idGen){
+    const lines = linesFor(dir);
+    const byPos = new Map();
+    for(const t of tiles) byPos.set(t.r+','+t.c, t);
+    const slides = [];   // {id, toR, toC}
+    const merges = [];   // {sourceIds:[a,b], r, c, newExp}
+    const surviving = [];
+    let gained = 0, moved = false;
+    for(const line of lines){
+      const lineTiles = [];
+      for(const [r,c] of line){ const t = byPos.get(r+','+c); if(t) lineTiles.push(t); }
+      let destSlot = 0, i = 0;
+      while(i < lineTiles.length){
+        const cur = lineTiles[i], next = lineTiles[i+1];
+        const [dr,dc] = line[destSlot];
+        if(next && next.exp === cur.exp){
+          merges.push({sourceIds:[cur.id,next.id], r:dr, c:dc, newExp:cur.exp+1});
+          slides.push({id:cur.id, toR:dr, toC:dc});
+          slides.push({id:next.id, toR:dr, toC:dc});
+          gained += Math.pow(2, cur.exp+1);
+          if(cur.r!==dr||cur.c!==dc) moved=true;
+          if(next.r!==dr||next.c!==dc) moved=true;
+          i+=2;
+        } else {
+          slides.push({id:cur.id, toR:dr, toC:dc});
+          if(cur.r!==dr||cur.c!==dc) moved=true;
+          surviving.push({id:cur.id, r:dr, c:dc, exp:cur.exp});
+          i+=1;
+        }
+        destSlot++;
+      }
+    }
+    const resultTiles = surviving.slice();
+    for(const m of merges) resultTiles.push({id: idGen(), r:m.r, c:m.c, exp:m.newExp});
+    return {resultTiles, slides, merges, gained, moved};
+  }
+
+  // ---------------------------------------------------------------
+  // Game state + rendering
+  // ---------------------------------------------------------------
+  const COLORS = [ // index = exponent-1 (exponent 1 == value 2)
+    {bg:'#DCE6EE', fg:'#1D2B3A'}, {bg:'#C7D8E5', fg:'#1D2B3A'}, {bg:'#A9C4D8', fg:'#1D2B3A'},
+    {bg:'#8AB0CB', fg:'#1D2B3A'}, {bg:'#6B9BBE', fg:'#F5F2E8'}, {bg:'#4C86B1', fg:'#F5F2E8'},
+    {bg:'#B5651D', fg:'#F5F2E8'}, {bg:'#9C5518', fg:'#F5F2E8'}, {bg:'#844610', fg:'#F5F2E8'},
+    {bg:'#6C380C', fg:'#F5F2E8'}, {bg:'#1D2B3A', fg:'#D9A441'}, {bg:'#14424A', fg:'#F0C463'},                    // 4096   deep teal
+    {bg:'#1E4B38', fg:'#F2CC72'},                    // 8192   deep green
+    {bg:'#4B2C5E', fg:'#F5D584'},                    // 16384  plum
+    {bg:'#7A2536', fg:'#FBE0A0'},                    // 32768  crimson
+    {bg:'#111820', fg:'#FFD24A', ring:'#FFD24A'},    // 65536  ink + gold ring
+    {bg:'#000000', fg:'#FFE680', ring:'#FFE680'}     // 131072 black gold (17 tiers total)
+  ];
+  function colorFor(exp){ return COLORS[Math.min(exp-1, COLORS.length-1)]; }
+
+  const MILESTONES = [11,12,13,14,15,16,17]; // exponents for 2048,4096,...,131072
+  let tiles = [];
+  let tileEls = new Map();
+  let nextTileId = 1;
+  let score = 0, best = 0;
+  let over = false;
+  let celebratedThisGame = new Set();
+  let pendingMilestone = false;
+  let autoPlaying = false;
+  let autoTimer = null;
+  let autoSpeedMs = 400;
+  let turbo = false, dynBudget = false, batch = false, turboBudgetMs = 20;
+  let stepsPlayed = 0, dirty = false, rafPending = false, autoPlayedThisGame = false, milestoneAt = 0;
+  const TRANSITION_MS = 140;
+  let boardVersion = 0, gameVersion = 0, moveTimer = null, moveCompletion = null, batchTimer = null;
+  function finishPendingMove(){
+    if(!moveCompletion) return;
+    clearTimeout(moveTimer); moveTimer = null;
+    const finish = moveCompletion; moveCompletion = null; finish();
+  }
+
+  let lastLayout = {size:100, gap:12};
+  function cellLayout(){
+    // layout() is null while the tab is hidden; keep using the last good one.
+    const l = GameShared.layout(boardEl, SIZE);
+    if(l) lastLayout = l;
+    return lastLayout;
+  }
+  function posFor(r,c,layout){ return {left:c*(layout.size+layout.gap), top:r*(layout.size+layout.gap)}; }
+
+  function makeTileEl(exp, r, c, layout, extraClass){
+    const el = document.createElement('div');
+    el.className = 'tile2048' + (extraClass ? ' '+extraClass : '');
+    const col = colorFor(exp);
+    el.style.background = col.bg; el.style.color = col.fg;
+    if(col.ring) el.style.boxShadow = 'inset 0 0 0 2px ' + col.ring;
+    const p = posFor(r,c,layout);
+    el.style.left = p.left+'px'; el.style.top = p.top+'px';
+    el.style.width = layout.size+'px'; el.style.height = layout.size+'px';
+    const val = Math.pow(2, exp);
+    const digits = String(val).length;
+    const k = [0, .44, .44, .36, .30, .25, .20][digits] || .18;
+    el.innerHTML = '<span style="font-size:'+Math.round(layout.size*k)+'px">'+val+'</span>';
+    return el;
+  }
+
+  function fullRender(){
+    tilesLayer.innerHTML = '';
+    tileEls = new Map();
+    const layout = cellLayout();
+    for(const t of tiles){
+      const el = makeTileEl(t.exp, t.r, t.c, layout);
+      tilesLayer.appendChild(el);
+      tileEls.set(t.id, el);
+    }
+    scoreEl.textContent = score;
+    bestEl.textContent = best;
+  }
+
+  function emptyCells(){
+    const occupied = new Set(tiles.map(t=>t.r+','+t.c));
+    const out=[];
+    for(let r=0;r<4;r++) for(let c=0;c<4;c++) if(!occupied.has(r+','+c)) out.push([r,c]);
+    return out;
+  }
+  // logic only: put a 2 (90%) or 4 (10%) on a random empty cell
+  function spawnLogic(){
+    const empties = emptyCells();
+    if(empties.length===0) return null;
+    const [r,c] = empties[Math.floor(Math.random()*empties.length)];
+    const exp = Math.random()<0.9 ? 1 : 2;
+    const t = {id: nextTileId++, r, c, exp};
+    tiles.push(t);
+    return t;
+  }
+  function spawnRandomTile(){
+    const t = spawnLogic();
+    if(!t) return;
+    const el = makeTileEl(t.exp, t.r, t.c, cellLayout(), 'spawn');
+    tilesLayer.appendChild(el);
+    tileEls.set(t.id, el);
+  }
+
+  function canMoveAnywhere(){
+    if(tiles.length < SIZE*SIZE) return true;              // an empty cell exists
+    const g = new Array(SIZE*SIZE).fill(0);
+    for(const t of tiles) g[t.r*SIZE + t.c] = t.exp;
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+      const i = r*SIZE + c;
+      if(c < SIZE-1 && g[i] === g[i+1]) return true;
+      if(r < SIZE-1 && g[i] === g[i+SIZE]) return true;
+    }
+    return false;
+  }
+
+  function showMilestone(exp){
+    milestoneTextEl.textContent = '达成 ' + Math.pow(2,exp) + '!';
+    const t = tiles.find(t=>t.exp===exp);
+    const onTop = !t || t.r >= 2;
+    milestoneEl.style.top = onTop ? '10px' : 'auto';
+    milestoneEl.style.bottom = onTop ? 'auto' : '10px';
+    milestoneEl.classList.add('show');
+    pendingMilestone = true; milestoneAt = performance.now();
+  }
+  function dismissMilestone(){
+    milestoneEl.classList.remove('show');
+    pendingMilestone = false;
+  }
+
+  function checkMilestonesAndGameOver(){
+    for(const exp of MILESTONES){
+      if(!celebratedThisGame.has(exp) && tiles.some(t=>t.exp===exp)){
+        celebratedThisGame.add(exp);
+        showMilestone(exp);
+        break; // one at a time
+      }
+    }
+    if(!canMoveAnywhere()){
+      over = true;
+      overlayTitleEl.textContent = '游戏结束';
+      overlaySubEl.textContent = '已无可行移动 · 得分 ' + score;
+      const wasAuto = autoPlaying;
+      if(wasAuto) recordGame();
+      stopAuto();
+      setTimeout(()=>{ if(over) overlayEl.classList.add('show'); }, 380);
+      if(wasAuto && batch) scheduleNextGame();
+    } else if(autoPlaying && usingTD() && tdGoalReached()){
+      recordGame(); stopAuto(); syncModelUI();
+      hint2048.textContent = '已达成 TD 目标 65536（两个 32768 已合成）· 可手动继续或切换原有启发式';
+      if(batch) scheduleNextGame();
+    }
+  }
+
+  function handleMove(dir){
+    if(!['up','right','down','left'].includes(dir)) return false;
+    finishPendingMove();
+    if(over) return false;
+    if(pendingMilestone) dismissMilestone();
+    const {resultTiles, slides, merges, gained, moved} = applyRealMove(tiles, dir, ()=>nextTileId++);
+    if(!moved) return false;
+    const version = ++boardVersion;
+    stepsPlayed++;
+    const layout = cellLayout();
+    for(const slide of slides){
+      const el = tileEls.get(slide.id); if(!el) continue;
+      const p = posFor(slide.toR,slide.toC,layout); el.style.left=p.left+'px'; el.style.top=p.top+'px';
+    }
+    score+=gained; if(score>best) best=score;
+    scoreEl.textContent=score; bestEl.textContent=best;
+    // Finish the real random spawn immediately, before another request can inspect the board.
+    // The delayed callback is visual only and cannot spawn into a restarted/changed game.
+    tiles=resultTiles;
+    const spawned=spawnLogic();
+    moveCompletion=()=>{
+      if(version!==boardVersion) return;
+      fullRender();
+      for(const merge of merges){const tile=tiles.find(t=>t.r===merge.r&&t.c===merge.c);if(tile&&tileEls.has(tile.id))tileEls.get(tile.id).classList.add('pop');}
+      if(spawned&&tileEls.has(spawned.id))tileEls.get(spawned.id).classList.add('spawn');
+      checkMilestonesAndGameOver(); syncModelUI();
+    };
+    moveTimer=setTimeout(finishPendingMove,TRANSITION_MS);
+    return true;
+  }
+
+  function scheduleNextGame(){
+    const version=gameVersion, token=autoToken;
+    clearTimeout(batchTimer);
+    batchTimer=setTimeout(()=>{
+      batchTimer=null;
+      if(batch && !autoPlaying && version===gameVersion && token===autoToken){newGame();startAuto();}
+    },1500);
+  }
+
+  function newGame(){
+    stopAuto();
+    boardVersion++; gameVersion++;
+    clearTimeout(moveTimer); moveTimer=null; moveCompletion=null;
+    tiles = []; nextTileId = 1; score = 0; over = false;
+    stepsPlayed = 0; dirty = false; autoPlayedThisGame = false;
+    celebratedThisGame = new Set();
+    dismissMilestone();
+    overlayEl.classList.remove('show');
+    tilesLayer.innerHTML = ''; tileEls = new Map();
+    spawnRandomTile(); spawnRandomTile();
+    scoreEl.textContent = score; bestEl.textContent = best;
+    syncModelUI();
+  }
+
+  // ---- instant (turbo) path: game logic only; the DOM is redrawn at most once per frame ----
+  function markDirty(){
+    dirty = true;
+    if(!rafPending){ rafPending = true; requestAnimationFrame(()=>{ rafPending = false; flushRender(); }); }
+  }
+  function flushRender(){ if(dirty){ dirty = false; fullRender(); } }
+  function moveInstant(dir){
+    if(over) return false;
+    const {resultTiles, gained, moved} = applyRealMove(tiles, dir, ()=>nextTileId++);
+    if(!moved) return false;
+    tiles = resultTiles; boardVersion++;
+    score += gained; if(score > best) best = score;
+    spawnLogic();
+    stepsPlayed++;
+    checkMilestonesAndGameOver();
+    markDirty();
+    return true;
+  }
+
+  // ---- results of unattended games (只统计自动游玩打完的局) ----
+  const tally = { games: 0, best: 0, sumSteps: 0, sumScore: 0, reach: {4096:0, 8192:0, 16384:0, 32768:0, 65536:0}, last: null };
+  function recordGame(){
+    let me = 0; for(const t of tiles) if(t.exp > me) me = t.exp;
+    const maxTile = Math.pow(2, me);
+    tally.games++; tally.sumSteps += stepsPlayed; tally.sumScore += score; if(score > tally.best) tally.best = score;
+    for(const k of Object.keys(tally.reach)) if(maxTile >= +k) tally.reach[k]++;
+    tally.last = { maxTile, score, steps: stepsPlayed };
+    renderTally();
+  }
+  function renderTally(){
+    if(!tally.games){ tallyEl.hidden = true; return; }
+    tallyEl.hidden = false;
+    const n = tally.games, pct = k => tally.reach[k] + '/' + n;
+    tallyEl.textContent = '自动对局 ' + n + ' 局 · 最高分 ' + tally.best.toLocaleString() + ' · 平均 ' + Math.round(tally.sumSteps/n).toLocaleString() + ' 步\n' +
+      '≥4096 ' + pct(4096) + ' · ≥8192 ' + pct(8192) + ' · ≥16384 ' + pct(16384) + ' · ≥32768 ' + pct(32768) + ' · ≥65536 ' + pct(65536) +
+      (tally.last ? '\n上一局 最大块 ' + tally.last.maxTile + ' · 得分 ' + tally.last.score.toLocaleString() + ' · ' + tally.last.steps.toLocaleString() + ' 步' : '');
+  }
+
+  // ---- time budget for one move ----
+  // Dynamic budget (experimental, off by default): spend more where the board is crowded (many
+  // different tile values) and less where it is safe. Measured at 1ms/move with equal mean time:
+  // reaching 8192 went 40% -> 74%. The weights are normalised for the distribution seen in those
+  // games; the mean is NOT guaranteed in general, so the real average is shown while it runs.
+  const DYN_SLOPE = 1.0, DYN_NORM = 0.6017, DYN_MIN_W = 0.25, DYN_MAX_W = 6, DYN_CAP_MS = 10000;
+  function moveBudget(base){
+    if(!dynBudget) return base;
+    const d = new Set(tiles.map(t=>t.exp)).size;
+    const w = Math.min(DYN_MAX_W, Math.max(DYN_MIN_W, Math.pow(2, (d - 8) * DYN_SLOPE)));
+    return Math.max(2, Math.min(DYN_CAP_MS, base * DYN_NORM * w));
+  }
+
+  // ---- auto-play: ask the AI runner, apply its move, repeat ----
+  const hint2048 = document.getElementById('hint2048');
+  const DEFAULT_HINT = hint2048.textContent;
+  let aiRunner = null, autoToken = 0, hintAt = 0, rateAt = 0, rateSteps = 0, rate = 0, spentMs = 0, spentN = 0;
+  function stopAuto(){
+    autoPlaying = false; autoToken++;
+    if(autoTimer){ clearTimeout(autoTimer); autoTimer = null; }
+    clearTimeout(batchTimer); batchTimer=null;
+    if(tdClient) tdClient.cancel();
+    if(aiRunner){ aiRunner.dispose(); aiRunner = null; }
+    boardEl.classList.remove('turbo');
+    flushRender();                                     // make the board show the true final state
+    playBtn.textContent = '自动游玩';
+    turboBtn.disabled = false;
+    hint2048.textContent = DEFAULT_HINT;
+    syncModelUI();
+  }
+  function startAuto(){
+    finishPendingMove();
+    if(over || (usingTD() && (!tdClient || tdClient.state.status!=='ready' || tdGoalReached()))){syncModelUI();return;}
+    clearTimeout(batchTimer); batchTimer=null;
+    autoPlaying = true; autoPlayedThisGame = true;
+    playBtn.textContent = '停止';
+    turboBtn.disabled = true;                          // switching mode mid-run would change what the slider means
+    if(turbo) boardEl.classList.add('turbo');          // CSS: no slide/pop animations while it runs
+    rateAt = performance.now(); rateSteps = 0; rate = 0; spentMs = 0; spentN = 0;
+    if(!usingTD()) aiRunner = createAIRunner();
+    autoTick();
+  }
+  function showStatus(res, budget, handoff){
+    const now = performance.now();
+    spentMs += budget; spentN++; rateSteps++;
+    if(now - rateAt >= 1000){ rate = rateSteps * 1000 / (now - rateAt); rateAt = now; rateSteps = 0; }
+    if(turbo && now - hintAt < 250) return;            // keep DOM work off the hot path
+    hintAt = now;
+    if(res.engine === 'td8'){
+      hint2048.textContent = (turbo ? '极速 · 第 ' + stepsPlayed.toLocaleString() + ' 步' : '自动游玩') +
+        ' · TD 8×6 · ' + res.depth + '-ply · 实际计算 ' + res.elapsedMs.toFixed(1) + 'ms · 后台线程';
+      return;
+    }
+    const depth = res.depth ? '搜索 ' + res.depth + ' 步深' : '唯一可走';
+    const where = res.mode === 'worker' ? '后台线程' : '主线程分片';
+    hint2048.textContent = (turbo ? '极速 · 第 ' + stepsPlayed.toLocaleString() + ' 步 · ' + Math.round(rate) + ' 步/秒' : '自动游玩') +
+      (handoff ? ' · 已交接：场上有 2 个 32768，原有启发式接手' : '') +
+      ' · ' + depth + ' · 预算 ' + (budget < 10 ? budget.toFixed(1) : Math.round(budget)) + 'ms' +
+      (dynBudget && !handoff ? '（动态，均值 ' + (spentMs/spentN).toFixed(spentMs/spentN < 10 ? 1 : 0) + 'ms）' : '') + ' · ' + where;
+  }
+  function autoTick(){
+    if(!autoPlaying) return;
+    if(over){ stopAuto(); return; }
+    if(pendingMilestone && (!turbo || performance.now() - milestoneAt > 1500)) dismissMilestone();
+    // TD moves until a second 32768 appears; from then on the original heuristic moves (created on first need), until
+    // the game ends or the two 32768s merge into 65536. Once handed off there is no way back: tiles never un-merge.
+    const handoff = usingTD() && tdNeedsHandoff(), useTD = usingTD() && !handoff;
+    if(handoff && !aiRunner) aiRunner = createAIRunner();
+    const token = autoToken, version = boardVersion, boardKey = useTD ? tdBoard().join(',') : null, startedAt = performance.now();
+    // normal mode: the slider is "time per move" INCLUDING the slide animation, so what is left is think time.
+    // turbo mode: no animation, the slider IS the think time.
+    const base = turbo ? turboBudgetMs : Math.max(20, autoSpeedMs - TRANSITION_MS - 10);
+    const budget = handoff ? Math.max(base, HANDOFF_MIN_BUDGET_MS) : moveBudget(base);   // few, critical moves: never rush them
+    const request = useTD ? tdClient.ask(tdBoard()) : aiRunner.ask(boardFromTiles(tiles), budget);
+    request.then(res=>{
+      if(res.cancelled || !autoPlaying || token !== autoToken || version !== boardVersion || (boardKey !== null && boardKey !== tdBoard().join(','))) return;     // stopped / new game while thinking
+      if(!res.dir){ stopAuto(); if(res.handoff) hint2048.textContent = 'TD 求解器要求交接但页面没有交接，已停止自动游玩'; return; }
+      if(turbo){
+        moveInstant(res.dir);
+        if(!autoPlaying) return;                          // that move ended the game
+        showStatus(res, budget, handoff);
+        autoTick();
+      } else {
+        handleMove(res.dir);
+        showStatus(res, budget, handoff);
+        autoTimer = setTimeout(autoTick, useTD ? Math.max(TRANSITION_MS + 10, autoSpeedMs - (performance.now()-startedAt)) : TRANSITION_MS + 10);
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e)=>{
+    if(!document.getElementById('panel2048').classList.contains('active')) return;
+    if(e.target && (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable)) return;
+    const map = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
+      w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+    if(map[e.key]){ e.preventDefault(); if(!autoPlaying) handleMove(map[e.key]); }
+  });
+
+  newGameBtn.addEventListener('click', newGame);
+  document.getElementById('retryBtn2048').addEventListener('click', newGame);
+  document.getElementById('milestoneContinue2048').addEventListener('click', dismissMilestone);
+  document.getElementById('milestoneRestart2048').addEventListener('click', newGame);
+  playBtn.addEventListener('click', ()=>{ if(autoPlaying) stopAuto(); else startAuto(); });
+
+  const TURBO_VALUES = [1, 2, 5, 10, 20, 50, 100, 250, 500, 1000, 2000];
+  const slider = GameShared.createSpeedSlider(speedSliderHost, {
+    label:'每步用时', min:160, max:2000, step:20, value:autoSpeedMs,
+    format:(v)=> v + 'ms',
+    onChange:(v)=>{ autoSpeedMs = v; }
+  });
+  function configureSlider(){
+    speedSliderHost.hidden = usingTD() && turbo;
+    if(usingTD()) slider.configure({label:'每步间隔（至少动画时长）',min:160,max:2000,step:20,value:autoSpeedMs,
+      format:v=>v+'ms',onChange:v=>{autoSpeedMs=v;}});
+    else if(turbo) slider.configure({ label:'每步计算预算', values:TURBO_VALUES, value:turboBudgetMs,
+      format:(v)=> v + 'ms', onChange:(v)=>{ turboBudgetMs = v; } });
+    else slider.configure({ label:'每步用时', min:160, max:2000, step:20, value:autoSpeedMs,
+      format:(v)=> v + 'ms · 计算≈' + Math.max(20, v - TRANSITION_MS - 10) + 'ms', onChange:(v)=>{ autoSpeedMs = v; } });
+  }
+  function setPressed(btn, on){ btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  turboBtn.addEventListener('click', ()=>{ if(autoPlaying) return; turbo = !turbo; setPressed(turboBtn, turbo); configureSlider(); });
+  dynBtn.addEventListener('click', ()=>{ dynBudget = !dynBudget; setPressed(dynBtn, dynBudget); spentMs = 0; spentN = 0; });
+  batchBtn.addEventListener('click', ()=>{ batch = !batch; setPressed(batchBtn, batch); });
+  if(typeof NTupleBrowser !== 'undefined'){
+    tdClient=NTupleBrowser.createClient({onState:state=>{
+      if(state.status==='error') stopAuto();
+      syncModelUI();
+    }});
+  }
+  if(tdClient && typeof NTupleBrowser.probe === 'function') NTupleBrowser.probe(result=>{ tdEnv = result; syncModelUI(); });
+  engineEl.addEventListener('change',()=>{stopAuto();configureSlider();syncModelUI();});
+  modelFileEl.addEventListener('change',()=>{
+    const file=modelFileEl.files[0]; if(!file)return;
+    stopAuto(); engineEl.value='td8'; configureSlider();
+    if(tdClient)tdClient.load(file); else syncModelUI();
+    modelFileEl.value=''; // choosing the same file again must fire change after an error
+  });
+  unloadModelBtn.addEventListener('click',()=>{stopAuto();if(tdClient)tdClient.unload();syncModelUI();});
+  window.addEventListener('pagehide',()=>{stopAuto();if(tdClient)tdClient.unload();});
+  configureSlider();
+
+  // Small, explicit integration API. State is a copy; no RNG or future spawn information is exposed.
+  window.Drafting2048=Object.freeze({
+    getState:()=>({board:tiles.reduce((b,t)=>(b[t.r*4+t.c]=2**t.exp,b),new Array(16).fill(0)),score,steps:stepsPlayed,over,autoPlaying,engine:engineEl.value,version:boardVersion}),
+    move:dir=>{stopAuto();return handleMove(dir);},
+    newGame,stop:stopAuto,start:startAuto
+  });
+  GameShared.onWidthChange(boardEl, fullRender);
+  document.addEventListener('panelchange', (e)=>{ if(e.detail !== 'panel2048') stopAuto(); });
+
+  newGame();
+})();
+
+</script>
+<script>
+(function(){
+  const boardEl = document.getElementById('board15');
+  const tilesLayer = document.getElementById('tiles15');
+  const movesEl = document.getElementById('moves15');
+  const timeEl = document.getElementById('time15');
+  const overlayEl = document.getElementById('overlay15');
+  const overlaySubEl = document.getElementById('overlaySub15');
+  const hintEl = document.getElementById('hint15');
+  const solveBtn = document.getElementById('solveBtn15');
+  const shuffleBtn = document.getElementById('shuffleBtn15');
+  const applyBtn = document.getElementById('applyBtn15');
+  const speedSliderHost = document.getElementById('speedHost15');
+  const slotsEl = document.getElementById('slots15');
+  const sizeButtons = document.querySelectorAll('#sizeSwitch15 button');
+
+  let N = 4;
+  let grid, blankR, blankC;
+  let moves = 0, seconds = 0, timerHandle = null, started = false, solved = false;
+  // ready  = board is showing the solved arrangement of the chosen size, waiting for 打乱
+  // phase  = 'idle' | 'search' | 'play'  (auto-solve is a two-stage thing: find a path, then demo it)
+  // paused = applies to whichever stage is active;  solving is derived from phase in syncUI()
+  let ready = false, phase = 'idle', paused = false, solving = false;
+  const DEFAULT_HINT = '滑动棋盘或点击方块移动，方向键同理';
+  let tileEls = new Map();
+  let voidEl = null;
+  let playbackSpeedMs = 220;
+
+  // Blank-movement directions (dr,dc applied to the blank's own position).
+  // Kept separate from the UI-facing "gesture" directions below -- solver
+  // paths are always expressed in this convention.
+  const BLANK_DIRS = [
+    {dr:-1,dc:0,name:'up'}, {dr:1,dc:0,name:'down'},
+    {dr:0,dc:-1,name:'left'}, {dr:0,dc:1,name:'right'}
+  ];
+  const OPP = {up:'down',down:'up',left:'right',right:'left'};
+
+  // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  // Board state
+  // ---------------------------------------------------------------
+  function solvedGrid(){
+    const g=[]; let v=1;
+    for(let r=0;r<N;r++){ const row=[]; for(let c=0;c<N;c++){ row.push(r===N-1&&c===N-1 ? 0 : v++); } g.push(row); }
+    return g;
+  }
+  function isSolved(){ return JSON.stringify(grid)===JSON.stringify(solvedGrid()); }
+  function flatten(){ const out=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++) out.push(grid[r][c]); return out; }
+
+  let lastLayout = {size:100, gap:12};
+  function cellLayout(){
+    const l = GameShared.layout(boardEl, N);
+    if(l) lastLayout = l;
+    return lastLayout;
+  }
+  function posFor(r,c,layout){ return {left:c*(layout.size+layout.gap), top:r*(layout.size+layout.gap)}; }
+
+  function positionEl(el, r, c, layout){
+    const p = posFor(r,c,layout);
+    el.style.left=p.left+'px'; el.style.top=p.top+'px';
+    el.style.width=layout.size+'px'; el.style.height=layout.size+'px';
+  }
+
+  function buildTiles(){
+    tilesLayer.innerHTML = '';
+    tileEls = new Map();
+    GameShared.buildSlots(slotsEl, N);
+    const layout = cellLayout();
+    for(let r=0;r<N;r++){
+      for(let c=0;c<N;c++){
+        const v = grid[r][c];
+        if(v===0){
+          voidEl = document.createElement('div');
+          voidEl.className = 'void15';
+          positionEl(voidEl, r, c, layout);
+          tilesLayer.appendChild(voidEl);
+          continue;
+        }
+        const el = document.createElement('div');
+        el.className = 'tile15';
+        const isMovable = !ready && (Math.abs(r-blankR)+Math.abs(c-blankC))===1;
+        if(isMovable) el.classList.add('movable15');
+        positionEl(el, r, c, layout);
+        if(v === r*N + c + 1) el.classList.add('placed15');
+        el.textContent = v;
+        el.style.fontSize = Math.round(layout.size*0.38)+'px';
+        el.addEventListener('click', ()=>{ if(!guardInput()) attemptMove(r,c); });
+        tilesLayer.appendChild(el);
+        tileEls.set(v, el);
+      }
+    }
+    movesEl.textContent = moves;
+  }
+
+  function shuffle(){
+    grid = solvedGrid();
+    blankR = N-1; blankC = N-1;
+    let lastDir = null;
+    let count = 0;
+    const steps = N===3 ? 60 : N===4 ? 160 : 400;
+    while(count < steps){
+      const opts = BLANK_DIRS.filter(d=>{
+        const nr=blankR+d.dr, nc=blankC+d.dc;
+        return nr>=0&&nr<N&&nc>=0&&nc<N && (!lastDir || d.name!==OPP[lastDir]);
+      });
+      const pick = opts[Math.floor(Math.random()*opts.length)];
+      const nr=blankR+pick.dr, nc=blankC+pick.dc;
+      grid[blankR][blankC]=grid[nr][nc]; grid[nr][nc]=0;
+      blankR=nr; blankC=nc; lastDir=pick.name;
+      count++;
+    }
+    if(isSolved()) shuffle(); // vanishingly rare, but a pre-solved board would look broken
+  }
+
+  function stopTimer(){ if(timerHandle){ clearInterval(timerHandle); timerHandle=null; } }
+  function formatTime(s){ const m=Math.floor(s/60).toString().padStart(2,'0'); const ss=(s%60).toString().padStart(2,'0'); return m+':'+ss; }
+  function startTimerIfNeeded(){
+    if(started) return; started=true;
+    timerHandle = setInterval(()=>{ seconds++; timeEl.textContent=formatTime(seconds); }, 1000);
+  }
+
+  function attemptMove(r,c){
+    if(solved) return;
+    const isAdjacent = (Math.abs(r-blankR)+Math.abs(c-blankC))===1;
+    if(!isAdjacent) return;
+    startTimerIfNeeded();
+    const layout = cellLayout();
+    const movedValue = grid[r][c];
+    grid[blankR][blankC] = movedValue;
+    grid[r][c] = 0;
+    const oldBlankR=blankR, oldBlankC=blankC;
+    blankR=r; blankC=c;
+    moves++;
+
+    const tileEl = tileEls.get(movedValue);
+    if(tileEl){
+      positionEl(tileEl, oldBlankR, oldBlankC, layout);
+      tileEl.classList.toggle('placed15', movedValue === oldBlankR*N + oldBlankC + 1);
+    }
+    if(voidEl) positionEl(voidEl, r, c, layout);
+
+    // refresh which tiles show the "movable" highlight ring
+    for(const [v, el] of tileEls){
+      el.classList.remove('movable15');
+    }
+    const neighbors = [[blankR-1,blankC],[blankR+1,blankC],[blankR,blankC-1],[blankR,blankC+1]];
+    for(const [nr,nc] of neighbors){
+      if(nr<0||nr>=N||nc<0||nc>=N) continue;
+      const v = grid[nr][nc];
+      if(v!==0){ const el = tileEls.get(v); if(el) el.classList.add('movable15'); }
+    }
+    movesEl.textContent = moves;
+
+    if(isSolved()){
+      solved = true;
+      stopTimer();
+      syncUI();
+      overlaySubEl.textContent = moves + ' 步 · ' + formatTime(seconds);
+      setTimeout(()=>{ if(solved) overlayEl.classList.add('show'); }, 340);
+    }
+  }
+  function moveBlankByDelta(dr,dc){
+    if(solved) return false;
+    const nr=blankR+dr, nc=blankC+dc;
+    if(nr<0||nr>=N||nc<0||nc>=N) return false;
+    attemptMove(nr,nc);
+    return true;
+  }
+  // brief "can't go that way" feedback so a rejected swipe never feels like a dropped input.
+  // The class MUST be removed once the animation finishes -- otherwise it lingers on the
+  // element, and toggling the panel's display:none/block (switching tabs) makes the browser
+  // replay the animation on an element that still carries its animation-name class.
+  boardEl.addEventListener('animationend', (e)=>{ if(e.animationName==='shake') boardEl.classList.remove('shake'); });
+  function nudge(){
+    boardEl.classList.remove('shake'); void boardEl.offsetWidth; boardEl.classList.add('shake');
+    setTimeout(()=>boardEl.classList.remove('shake'), 250); // fallback for prefers-reduced-motion (animation:none never fires animationend)
+  }
+
+  // ---- gesture input (swipe + arrow keys): named by the direction a TILE
+  // moves, which is the more intuitive convention for touch/drag input and
+  // is the opposite sign of BLANK_DIRS above. ----
+  const GESTURE_DELTA = {up:[1,0], down:[-1,0], left:[0,1], right:[0,-1]};
+  // true = ignore this input. While solving the board belongs to the solver; while it is
+  // still in the solved arrangement, moves are refused and the hint says how to start.
+  function guardInput(){
+    if(solving) return true;
+    if(ready){ hintEl.textContent = N+'×'+N+' 还原状态 · 点击「打乱」开始'; nudge(); return true; }
+    return false;
+  }
+  function handleGesture(name){
+    if(guardInput()) return;
+    const [dr,dc] = GESTURE_DELTA[name];
+    if(!moveBlankByDelta(dr,dc) && !solved) nudge();
+  }
+  GameShared.attachSwipe(boardEl, handleGesture);
+  document.addEventListener('keydown', (e)=>{
+    if(!document.getElementById('panel15').classList.contains('active')) return;
+    if(e.target && e.target.type === 'range') return;
+    const map = {ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right'};
+    if(map[e.key]){ e.preventDefault(); handleGesture(map[e.key]); }
+  });
+
+  // newGame(false): shuffle the current size.   newGame(true): show that size's solved
+  // arrangement (size buttons) -- choosing a size and shuffling are separate actions.
+  function newGame(ordered){
+    abortSolve();
+    stopTimer();
+    moves=0; seconds=0; started=false; solved=false;
+    timeEl.textContent='00:00';
+    overlayEl.classList.remove('show');
+    boardEl.dataset.n = N;
+    if(ordered){
+      grid = solvedGrid(); blankR = N-1; blankC = N-1; ready = true;
+      hintEl.textContent = N+'×'+N+' 还原状态 · 点击「打乱」开始';
+    } else {
+      ready = false; shuffle();
+      hintEl.textContent = DEFAULT_HINT;
+    }
+    buildTiles();
+    syncUI();
+  }
+
+  // ---------------------------------------------------------------
+  // Auto-solve: tries the optimal IDA* solver first (bounded by a node
+  // budget so a hard 4x4 scramble can't hang the page), and transparently
+  // falls back to the fast, non-optimal greedy solver for 5x5 (always) or
+  // whenever the optimal search runs out of budget.
+  // ---------------------------------------------------------------
+  let runner = null;
+  let solveAnimTimer = null;
+  let lastBest = null;       // {path, len, lb} -- most recent verified solution, updated live
+  let jobStartT = 0, pauseStart = 0;
+  let modeNote = '', heurNote = '';      // heurNote: which table the current solve is using (3x3 exact / 4x4 pattern database)
+
+  // Numeric move encoding used by solver.js: 0=up 1=down 2=left 3=right (delta applied
+  // to the BLANK). Same convention as BLANK_DIRS above, just indexed instead of named.
+  const SOLVER_DELTA = [[-1,0],[1,0],[0,-1],[0,1]];
+
+  // Per-size search budgets, deliberately unequal: 3x3 (181,440 positions) is solved in
+  // milliseconds; 4x4 usually resolves in well under a second but a hard scramble can
+  // need real time; 5x5 can never be proven optimal in a browser and simply keeps getting
+  // shorter the longer the anytime search runs, so it gets the most time. Pause and
+  // "use current" mean nobody is ever stuck waiting.
+  function budgetFor(n){ return n===3 ? 4000 : n===4 ? 8000 : 20000; }
+
+  // ---------------------------------------------------------------
+  // 4x4 acceleration table: an additive pattern database (see SolverKit). It is built ONCE, in a background Worker (or in
+  // small main-thread slices where Workers are unavailable), the first time the 4x4 puzzle is on screen, and is then handed
+  // to every solve. A solve never waits for it: until it is ready, or if building fails, the search runs on Manhattan +
+  // linear conflict exactly as before. installPdb() is also the plug-in point for an externally supplied table set
+  // (for example a larger, downloaded one); SolverKit.pdbOk validates it.
+  // ---------------------------------------------------------------
+  const panel15El = document.getElementById('panel15');
+  const pdbStore = { status: 'idle', db: null, source: null };   // status: idle | building | ready | failed
+  function pdbFor(n){ return n === 4 && pdbStore.status === 'ready' ? pdbStore.db : null; }
+  function installPdb(db, source){
+    if(!SolverKit().pdbOk(db)) return false;
+    pdbStore.db = db; pdbStore.source = source; pdbStore.status = 'ready';
+    return true;
+  }
+  function pdbWorkerSource(){
+    return 'const SolverKit = ' + SolverKit.toString() + ';\n' + [
+      'self.postMessage({type:"alive"});',
+      'self.onmessage = function(e){',
+      '  let b;',
+      '  try{ b = SolverKit().pdbBuilder(e.data.parts); }catch(err){ self.postMessage({type:"failed"}); return; }',
+      '  (function loop(){',
+      '    let done;',
+      '    try{ done = b.step(performance.now() + 50); }catch(err){ self.postMessage({type:"failed"}); return; }',
+      '    if(!done){ setTimeout(loop, 0); return; }',
+      '    self.postMessage({type:"done", tables:b.tables}, b.tables.map(function(t){ return t.buffer; }));',
+      '  })();',
+      '};'
+    ].join('\n');
+  }
+  function ensurePdb(){
+    if(pdbStore.status !== 'idle') return;
+    pdbStore.status = 'building';
+    const parts = SolverKit().defaultPdbParts;
+    let finished = false, worker = null, timer = null, watchdog = null;
+    function stop(){ clearTimeout(timer); clearTimeout(watchdog); if(worker){ try{ worker.terminate(); }catch(e){} worker = null; } }
+    function fail(){ if(finished) return; finished = true; stop(); pdbStore.status = 'failed'; }
+    function done(tables){ if(finished) return; finished = true; stop(); if(!installPdb({ parts, tables }, 'local')) pdbStore.status = 'failed'; }
+    function viaMain(){                                   // Worker missing/blocked/silent: same builder, short slices
+      if(finished) return;
+      stop();
+      let builder;
+      try{ builder = SolverKit().pdbBuilder(parts); }catch(e){ fail(); return; }
+      (function tick(){
+        if(finished) return;
+        let ok;
+        try{ ok = builder.step(performance.now() + 8); }catch(e){ fail(); return; }
+        if(ok) done(builder.tables); else timer = setTimeout(tick, 0);
+      })();
+    }
+    let w = null;
+    try{
+      if(typeof Worker === 'undefined') throw new Error('no Worker');
+      w = new Worker(URL.createObjectURL(new Blob([pdbWorkerSource()], {type:'application/javascript'})));
+    }catch(e){ viaMain(); return; }
+    worker = w;
+    w.onmessage = ev=>{
+      clearTimeout(watchdog);
+      if(ev.data.type === 'done') done(ev.data.tables.map(t=>t instanceof Uint8Array ? t : new Uint8Array(t)));
+      else if(ev.data.type === 'failed') fail();
+    };
+    w.onerror = ev=>{ if(ev && ev.preventDefault) ev.preventDefault(); if(worker === w) viaMain(); };
+    watchdog = setTimeout(()=>{ if(worker === w) viaMain(); }, 2500);
+    w.postMessage({ parts });
+  }
+  function maybeEnsurePdb(){ if(N === 4 && panel15El.classList.contains('active')) ensurePdb(); }
+
+  // ---------------------------------------------------------------
+  // Solver runner. Same SolverKit job either way; only WHERE it runs differs:
+  //   1) a Web Worker (preferred: search never touches the UI thread), or
+  //   2) time-sliced on the main thread when a Worker can't be used.
+  // The switch happens automatically if Worker is missing, can't be constructed (CSP,
+  // sandboxing), errors out, or stays silent for 2.5s. Pause/resume/cancel behave
+  // identically in both modes because both just decide whether to schedule another slice.
+  // ---------------------------------------------------------------
+  function workerSource(){
+    return 'const SolverKit = ' + SolverKit.toString() + ';\n' + [
+      'self.postMessage({type:"alive"});',          // lets the page tell "started fine" from "dead worker"
+      'let job = null, cancelled = false, paused = false;',
+      'self.onmessage = function(e){',
+      '  const msg = e.data;',
+      '  if(msg.cmd === "start"){',
+      '    cancelled = false; paused = false;',
+      '    job = SolverKit().createJob(msg.flat, msg.n, msg.budgetMs, ev => self.postMessage(ev), { pdb: msg.pdb });',
+      '    loop();',
+      '  } else if(msg.cmd === "pause"){ paused = true; }',
+      '  else if(msg.cmd === "resume"){ if(paused){ paused = false; loop(); } }',
+      '  else if(msg.cmd === "cancel"){ cancelled = true; paused = true; job = null; }',
+      '};',
+      // the only place another slice is ever scheduled: once `paused` is set the chain
+      // stops, and the job (all its search state) sits untouched until "resume"
+      'function loop(){',
+      '  if(cancelled || paused || !job) return;',
+      '  const done = job.run(50);',
+      '  if(done || cancelled || paused) return;',
+      '  setTimeout(loop, 0);',
+      '}'
+    ].join('\n');
+  }
+
+  function createRunner(onEvent){
+    let worker = null, job = null, timer = null, watchdog = null;
+    let paused = false, cancelled = false, heard = false, payload = null;
+    const api = { mode: 'worker' };
+
+    function tickMain(){
+      timer = null;
+      if(cancelled || paused || !job) return;
+      const done = job.run(8);                       // short slices keep the page responsive
+      if(done || cancelled || paused) return;
+      timer = setTimeout(tickMain, 0);
+    }
+    function startMain(reason){
+      if(cancelled) return;
+      api.mode = 'main';
+      clearTimeout(watchdog);
+      if(worker){ try{ worker.terminate(); }catch(e){} worker = null; }
+      job = SolverKit().createJob(payload.flat, payload.n, payload.budgetMs, ev=>{ if(!cancelled) onEvent(ev); }, { pdb: payload.pdb });
+      onEvent({type:'mode', mode:'main', reason});
+      if(!paused) tickMain();
+    }
+    function startWorker(){
+      if(typeof Worker === 'undefined') return false;
+      let w;
+      try{
+        w = new Worker(URL.createObjectURL(new Blob([workerSource()], {type:'application/javascript'})));
+      }catch(err){ return false; }                  // e.g. CSP / sandbox refuses blob workers
+      worker = w;
+      w.onmessage = e=>{
+        heard = true; clearTimeout(watchdog);
+        if(e.data.type !== 'alive' && !cancelled) onEvent(e.data);
+      };
+      w.onerror = ev=>{                              // async failure (script blocked, crash...)
+        if(ev && ev.preventDefault) ev.preventDefault();
+        if(worker === w) startMain('error');
+      };
+      watchdog = setTimeout(()=>{ if(!heard && worker === w) startMain('silent'); }, 2500);
+      w.postMessage({cmd:'start', flat: payload.flat, n: payload.n, budgetMs: payload.budgetMs, pdb: payload.pdb});
+      return true;
+    }
+
+    api.start = p=>{ payload = p; cancelled = false; paused = false; heard = false; if(!startWorker()) startMain('unavailable'); };
+    api.pause = ()=>{ paused = true; if(worker) worker.postMessage({cmd:'pause'}); };
+    api.resume = ()=>{ paused = false; if(worker) worker.postMessage({cmd:'resume'}); else if(job) tickMain(); };
+    api.cancel = ()=>{
+      cancelled = true; clearTimeout(timer); clearTimeout(watchdog); job = null;
+      if(worker){ try{ worker.postMessage({cmd:'cancel'}); worker.terminate(); }catch(e){} worker = null; }
+    };
+    return api;
+  }
+
+  // ---------------------------------------------------------------
+  // Solve UI state machine:  idle -> search -> play -> idle   (paused applies to the
+  // active stage). Every label / enabled state / "结束搜索" visibility is DERIVED here from
+  // (phase, paused, ready, solved, lastBest), so a button can never offer something the
+  // running stage cannot do.
+  // ---------------------------------------------------------------
+  function syncUI(){
+    solving = phase !== 'idle';
+    solveBtn.textContent = phase === 'idle' ? '自动求解'
+      : phase === 'search' ? (paused ? '继续搜索' : '暂停搜索')
+      : (paused ? '继续演示' : '暂停演示');
+    solveBtn.disabled = phase === 'idle' && (ready || solved);
+    // "结束搜索" only makes sense while searching, once there is a solution to demo, and
+    // only when the search is long enough that skipping the wait is worth offering.
+    applyBtn.hidden = !(phase === 'search' && lastBest && (paused || performance.now()-jobStartT >= 1200));
+    const lock = solving && !paused;        // a paused solve may be abandoned via 打乱 / size
+    shuffleBtn.disabled = lock;
+    sizeButtons.forEach(b=> b.disabled = lock);
+  }
+  function fmtSec(ms){ return (ms/1000).toFixed(1)+'s'; }
+  function updateHint(){
+    if(phase === 'search'){
+      if(!lastBest){ hintEl.textContent = (paused ? '已暂停 · ' : '') + '求解中…' + modeNote + heurNote; }
+      else {
+        const provenOptimal = lastBest.lb !== null && lastBest.lb >= lastBest.len;
+        const tag = provenOptimal ? '已确认最优' : ('当前最短 ' + lastBest.len + ' 步，下界 ' + lastBest.lb);
+        hintEl.textContent = (paused ? '已暂停 · ' : '搜索中 · ') + tag + ' · 已用时 ' + fmtSec(performance.now()-jobStartT) + modeNote + heurNote;
+      }
+    } else if(phase === 'play'){
+      hintEl.textContent = (paused ? '已暂停演示 · ' : '演示中 · ') + (playOptimal ? '最优解' : '非最优解') + ' · ' + playIdx + '/' + playPath.length + ' 步';
+    }
+    syncUI();
+  }
+
+  function abortSolve(){
+    if(solveAnimTimer){ clearTimeout(solveAnimTimer); solveAnimTimer = null; }
+    if(runner){ runner.cancel(); runner = null; }
+    phase = 'idle'; paused = false; lastBest = null; modeNote = ''; heurNote = '';
+    syncUI();
+  }
+
+  // ---- stage 2: demo the path on the board (pausable) ----
+  let playPath = null, playIdx = 0, playOptimal = false, playNote = '';
+  function startPlay(path, optimal, note, startPaused){
+    phase = 'play'; paused = !!startPaused;
+    playPath = path; playIdx = 0; playOptimal = optimal; playNote = note || '';
+    lastBest = null; modeNote = ''; heurNote = '';
+    if(!path.length){ finishPlay(); return; }
+    updateHint();
+    if(!paused) stepPlay();
+  }
+  function stepPlay(){
+    solveAnimTimer = null;
+    if(phase !== 'play' || paused) return;
+    const d = SOLVER_DELTA[playPath[playIdx]];
+    moveBlankByDelta(d[0], d[1]);
+    playIdx++;
+    if(playIdx >= playPath.length || solved){ finishPlay(); return; }
+    updateHint();
+    solveAnimTimer = setTimeout(stepPlay, playbackSpeedMs);
+  }
+  function finishPlay(){
+    phase = 'idle'; paused = false; syncUI();
+    hintEl.textContent = (playOptimal ? '已找到最优解' : '已求解（非最优）') + ' · ' + playPath.length + ' 步' + playNote;
+  }
+
+  // ---- stage 1: search events from the runner ----
+  function handleSolverEvent(ev){
+    if(phase !== 'search') return;            // stale event from a run that was already ended
+    if(ev.type === 'mode'){
+      modeNote = ' · 后台线程不可用，已改用主线程分片求解';
+      updateHint();
+    } else if(ev.type === 'info'){
+      heurNote = ev.heuristic === 'exact3' ? ' · 3×3 精确表' : ev.heuristic === 'pdb' ? ' · 4×4 加速表' : '';
+      updateHint();
+    } else if(ev.type === 'best'){
+      lastBest = { path: ev.path, len: ev.len, lb: ev.lb };
+      updateHint();
+    } else if(ev.type === 'progress'){
+      if(lastBest) lastBest.lb = ev.lb;
+      updateHint();
+    } else if(ev.type === 'done'){
+      const note = ev.optimal ? '' : (ev.timedOut ? '（搜索超时已回退到当前最优结果）' : '（该尺寸不追求最短路径）');
+      if(runner){ runner.cancel(); runner = null; }
+      startPlay(ev.path, ev.optimal, note, paused);   // finished while paused -> stay paused
+    } else if(ev.type === 'failed'){
+      if(runner){ runner.cancel(); runner = null; }
+      phase = 'idle'; paused = false; modeNote = ''; heurNote = ''; syncUI();
+      hintEl.textContent = '未能求解，可重试或重新打乱';
+    }
+  }
+
+  setInterval(()=>{ if(phase === 'search' && !paused) updateHint(); }, 500);
+
+  solveBtn.addEventListener('click', ()=>{
+    if(phase === 'idle'){
+      if(ready || solved) return;
+      if(N === 4) ensurePdb();
+      const pdb = pdbFor(N);
+      phase = 'search'; paused = false; lastBest = null; modeNote = ''; jobStartT = performance.now();
+      heurNote = (N === 4 && !pdb) ? (pdbStore.status === 'building' ? ' · 加速表生成中，本次使用基础启发式' : pdbStore.status === 'failed' ? ' · 加速表不可用，使用基础启发式' : '') : '';
+      hintEl.textContent = '求解中…';
+      syncUI();
+      runner = createRunner(handleSolverEvent);
+      runner.start({ flat: flatten(), n: N, budgetMs: budgetFor(N), pdb });
+    } else if(phase === 'search'){
+      if(!paused){ paused = true; pauseStart = performance.now(); if(runner) runner.pause(); }
+      else { paused = false; jobStartT += performance.now() - pauseStart; if(runner) runner.resume(); }
+      updateHint();
+    } else {                                    // phase === 'play'
+      if(!paused){ paused = true; if(solveAnimTimer){ clearTimeout(solveAnimTimer); solveAnimTimer = null; } }
+      else { paused = false; stepPlay(); }
+      updateHint();
+    }
+  });
+
+  applyBtn.addEventListener('click', ()=>{
+    if(phase !== 'search' || !lastBest) return;
+    const path = lastBest.path, optimal = lastBest.lb !== null && lastBest.lb >= lastBest.len;
+    if(runner){ runner.cancel(); runner = null; }
+    startPlay(path, optimal, optimal ? '' : '（已提前结束搜索）', false);
+  });
+
+  shuffleBtn.addEventListener('click', ()=>newGame(false));
+  document.getElementById('retryBtn15').addEventListener('click', ()=>newGame(false));
+
+  // Size buttons only choose the size (board shows that size, solved); 打乱 starts a game.
+  sizeButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.disabled) return;
+      sizeButtons.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      N = parseInt(btn.dataset.size, 10);
+      newGame(true);
+      maybeEnsurePdb();
+    });
+  });
+
+  GameShared.createSpeedSlider(speedSliderHost, {
+    label:'演示速度', min:150, max:800, step:25, value:playbackSpeedMs,
+    format:(v)=> v + 'ms/步',
+    onChange:(v)=>{ playbackSpeedMs = v; }
+  });
+
+  GameShared.onWidthChange(boardEl, buildTiles);
+  document.addEventListener('panelchange', (e)=>{ if(e.detail !== 'panel15') abortSolve(); else maybeEnsurePdb(); });
+
+  newGame(false);
+})();
+
+</script>
+<script>
+(function(){
+  const btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      btns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.game-panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById(btn.dataset.panel).classList.add('active');
+      document.dispatchEvent(new CustomEvent('panelchange', {detail: btn.dataset.panel}));
+    });
+  });
+})();
+</script>
+</body>
+</html>
+
