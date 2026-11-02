@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pair: [td1-em1, td1-em6, td5-em1, td5-em6, td1-td5, em1-em6, td5-em5, em5-em6]
+        pair: [td1-em1, td1-em6, td5-em1, td5-em6, td1-td5, td4-td5, em1-em6, em5-em6]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

@@ -8,7 +8,7 @@ const PAIRS={
  'td1-em1':[['gnubg',1],['emm',1]],'td1-em6':[['gnubg',1],['emm',6]],
  'td5-em1':[['gnubg',5],['emm',1]],'td5-em6':[['gnubg',5],['emm',6]],
  'td1-td5':[['gnubg',1],['gnubg',5]],'em1-em6':[['emm',1],['emm',6]],
- 'td5-em5':[['gnubg',5],['emm',5]],'em5-em6':[['emm',5],['emm',6]]
+ 'td4-td5':[['gnubg',4],['gnubg',5]],'em5-em6':[['emm',5],['emm',6]]
 };
 function arg(k,d){const i=process.argv.indexOf('--'+k);return i<0?d:process.argv[i+1];}
 function num(k,d,max){const n=Number(arg(k,d));if(!Number.isSafeInteger(n)||n<0||n>max)throw Error('Invalid '+k);return n;}
