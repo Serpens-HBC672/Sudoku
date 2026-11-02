@@ -5,19 +5,30 @@ const {performance}=require('node:perf_hooks');
 const htmlPath=path.resolve(__dirname,'../../Backgammon(Single File Ver) - Built by Claude.html');
 const resultDir=path.join(__dirname,'results');
 const PAIRS={
- 'td1-em1':[['gnubg',1],['emm',1]],'td1-em6':[['gnubg',1],['emm',6]],
- 'td5-em1':[['gnubg',5],['emm',1]],'td5-em6':[['gnubg',5],['emm',6]],
- 'td1-td5':[['gnubg',1],['gnubg',5]],'em1-em6':[['emm',1],['emm',6]],
- 'td4-td5':[['gnubg',4],['gnubg',5]],'em5-em6':[['emm',5],['emm',6]]
+ 'td1-em1':[['gnubg',1],['emm',1]],
+ 'td1-em6':[['gnubg',1],['emm',6]],
+ 'td5-em1':[['gnubg',5],['emm',1]],
+ 'td5-em6':[['gnubg',5],['emm',6]],
+ 'td1-td5':[['gnubg',1],['gnubg',5]],
+ 'td4-td5':[['gnubg',4],['gnubg',5]],
+ 'em1-em6':[['emm',1],['emm',6]],
+ 'em5-em6':[['emm',5],['emm',6]],
+ 'td1-td2':[['gnubg',1],['gnubg',2]],
+ 'td2-td3':[['gnubg',2],['gnubg',3]],
+ 'td3-td4':[['gnubg',3],['gnubg',4]],
+ 'em1-em2':[['emm',1],['emm',2]],
+ 'em2-em3':[['emm',2],['emm',3]],
+ 'em3-em4':[['emm',3],['emm',4]],
+ 'em4-em5':[['emm',4],['emm',5]]
 };
 function arg(k,d){const i=process.argv.indexOf('--'+k);return i<0?d:process.argv[i+1];}
 function num(k,d,max){const n=Number(arg(k,d));if(!Number.isSafeInteger(n)||n<0||n>max)throw Error('Invalid '+k);return n;}
-const pair=arg('pair','td1-em1'),mode=arg('mode','games'),games=num('games',100,100000),
+const pair=arg('pair','td1-em1'),mode=arg('mode','games'),games=num('games',600,100000),
  seed0=num('seed',910001,2140000000),budget=num('budget-seconds',0,21600);
 if(!PAIRS[pair]||!['games','probe','summarize'].includes(mode)||games<1)throw Error('Bad config');
 fs.mkdirSync(resultDir,{recursive:true});
 const recordsFile=path.join(resultDir,pair+'.jsonl'),summaryFile=path.join(resultDir,pair+'.summary.json');
-const read=()=>fs.existsSync(recordsFile)?fs.readFileSync(recordsFile,'utf8').split(/\r?\n/).filter(Boolean).map(JSON.parse):[];
+const read=()=>fs.existsSync(recordsFile)?fs.readFileSync(recordsFile,'utf8').split(/\\r?\\n/).filter(Boolean).map(JSON.parse):[];
 function summary(){
  const records=read(),done=records.filter(x=>x.winner!==null),wins={A:done.filter(x=>x.winner==='A').length,B:done.filter(x=>x.winner==='B').length};
  const o={pair,configuration:PAIRS[pair],requestedGames:games,recordedGames:records.length,completedGames:done.length,wins,
@@ -25,15 +36,15 @@ function summary(){
   avgThinkSeconds:records.length?records.reduce((a,x)=>a+x.thinkSeconds,0)/records.length:null,
   maxMoveSeconds:Math.max(0,...records.map(x=>x.maxMoveSeconds)),sourceSha256:[...new Set(records.map(x=>x.sourceSha256))],
   protocol:'Seed 910001+floor(i/2); swap colors on odd games; original Rules, SEARCH and WASM evaluation; cube and take copied from original UI'};
- fs.writeFileSync(summaryFile,JSON.stringify(o,null,2)+'\n');console.log('SUMMARY '+JSON.stringify(o));return o;
+ fs.writeFileSync(summaryFile,JSON.stringify(o,null,2)+'\\n');console.log('SUMMARY '+JSON.stringify(o));return o;
 }
 function rngFor(seed){return()=>{let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 function dice(rng){return[1+Math.floor(rng()*6),1+Math.floor(rng()*6)];}
 function init(){
  const html=fs.readFileSync(htmlPath,'utf8'),hash=crypto.createHash('sha256').update(html).digest('hex');
- const embedded=id=>{const marker=new RegExp('<script[^>]*\\bid=["\x27]'+id+'["\x27][^>]*>([\\s\\S]*?)<\\/script>','i'),m=html.match(marker);
+ const embedded=id=>{const marker=new RegExp('<script[^>]*\\\\bid=["\\x27]'+id+'["\\x27][^>]*>([\\s\\S]*?)<\\\\/script>','i'),m=html.match(marker);
   if(!m)throw Error('Missing embedded '+id);return m[1].trim();};
- const api=new Function(embedded('engine')+'\nreturn {Rules,SEARCH,loadBG,nnOut,bearP,winP,BG};')();
+ const api=new Function(embedded('engine')+'\\nreturn {Rules,SEARCH,loadBG,nnOut,bearP,winP,BG};')();
  return {api,assets:id=>embedded(id.slice(1)),hash};
 }
 function choose(api,id,level,b,side,roll,stats){
@@ -93,7 +104,7 @@ function game(api,hash,index){
  for(let i=0;i<games;i++){
   if(existing.has(i))continue;
   if(budget&&(performance.now()-start)/1000>=budget){console.log('BUDGET_EXCEEDED');break;}
-  const r=game(api,hash,i);fs.appendFileSync(recordsFile,JSON.stringify(r)+'\n');
+  const r=game(api,hash,i);fs.appendFileSync(recordsFile,JSON.stringify(r)+'\\n');
   console.log('GAME '+(i+1)+'/'+games+' '+r.winner+' '+r.reason+' '+r.thinkSeconds.toFixed(2)+'s');
  }
  summary();
