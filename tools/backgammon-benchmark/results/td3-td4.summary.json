@@ -11,16 +11,18 @@
     ]
   ],
   "requestedGames": 600,
-  "recordedGames": 0,
-  "completedGames": 0,
+  "recordedGames": 600,
+  "completedGames": 600,
   "wins": {
-    "A": 0,
-    "B": 0
+    "A": 293,
+    "B": 307
   },
   "incomplete": 0,
-  "winRateA": null,
-  "avgThinkSeconds": null,
-  "maxMoveSeconds": 0,
-  "sourceSha256": [],
+  "winRateA": 0.48833333333333334,
+  "avgThinkSeconds": 0.7332030648549978,
+  "maxMoveSeconds": 0.1281535080000176,
+  "sourceSha256": [
+    "25cf4ff14c35f64067da71fcdac295dde68fb6ceb2ab52962dc7e5f8cd0eacb6"
+  ],
   "protocol": "Seed 910001+floor(i/2); swap colors on odd games; original Rules, SEARCH and WASM evaluation; cube and take copied from original UI"
 }

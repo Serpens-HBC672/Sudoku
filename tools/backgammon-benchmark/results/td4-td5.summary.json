@@ -10,17 +10,17 @@
       5
     ]
   ],
-  "requestedGames": 100,
-  "recordedGames": 100,
-  "completedGames": 100,
+  "requestedGames": 600,
+  "recordedGames": 600,
+  "completedGames": 600,
   "wins": {
-    "A": 49,
-    "B": 51
+    "A": 298,
+    "B": 302
   },
   "incomplete": 0,
-  "winRateA": 0.49,
-  "avgThinkSeconds": 0.6740869903899994,
-  "maxMoveSeconds": 0.12046783100000175,
+  "winRateA": 0.49666666666666665,
+  "avgThinkSeconds": 1.136297834838335,
+  "maxMoveSeconds": 0.2585063650000084,
   "sourceSha256": [
     "25cf4ff14c35f64067da71fcdac295dde68fb6ceb2ab52962dc7e5f8cd0eacb6"
   ],
