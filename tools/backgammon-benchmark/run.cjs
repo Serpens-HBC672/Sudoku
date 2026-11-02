@@ -42,7 +42,7 @@ function rngFor(seed){return()=>{let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1
 function dice(rng){return[1+Math.floor(rng()*6),1+Math.floor(rng()*6)];}
 function init(){
  const html=fs.readFileSync(htmlPath,'utf8'),hash=crypto.createHash('sha256').update(html).digest('hex');
- const embedded=id=>{const marker=new RegExp('<script[^>]*\\\\bid=["\\x27]'+id+'["\\x27][^>]*>([\\s\\S]*?)<\\\\/script>','i'),m=html.match(marker);
+ const embedded=id=>{const marker=new RegExp('<script[^>]*\\bid=["\x27]'+id+'["\x27][^>]*>([\s\S]*?)<\/script>','i'),m=html.match(marker);
   if(!m)throw Error('Missing embedded '+id);return m[1].trim();};
  const api=new Function(embedded('engine')+'\\nreturn {Rules,SEARCH,loadBG,nnOut,bearP,winP,BG};')();
  return {api,assets:id=>embedded(id.slice(1)),hash};
