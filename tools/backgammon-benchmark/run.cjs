@@ -28,7 +28,7 @@ const pair=arg('pair','td1-em1'),mode=arg('mode','games'),games=num('games',600,
 if(!PAIRS[pair]||!['games','probe','summarize'].includes(mode)||games<1)throw Error('Bad config');
 fs.mkdirSync(resultDir,{recursive:true});
 const recordsFile=path.join(resultDir,pair+'.jsonl'),summaryFile=path.join(resultDir,pair+'.summary.json');
-const read=()=>fs.existsSync(recordsFile)?fs.readFileSync(recordsFile,'utf8').split(/\\r?\\n/).filter(Boolean).map(JSON.parse):[];
+const read=()=>fs.existsSync(recordsFile)?fs.readFileSync(recordsFile,'utf8').split(/\r?\n/).filter(Boolean).map(JSON.parse):[];
 function summary(){
  const records=read(),done=records.filter(x=>x.winner!==null),wins={A:done.filter(x=>x.winner==='A').length,B:done.filter(x=>x.winner==='B').length};
  const o={pair,configuration:PAIRS[pair],requestedGames:games,recordedGames:records.length,completedGames:done.length,wins,
@@ -36,7 +36,7 @@ function summary(){
   avgThinkSeconds:records.length?records.reduce((a,x)=>a+x.thinkSeconds,0)/records.length:null,
   maxMoveSeconds:Math.max(0,...records.map(x=>x.maxMoveSeconds)),sourceSha256:[...new Set(records.map(x=>x.sourceSha256))],
   protocol:'Seed 910001+floor(i/2); swap colors on odd games; original Rules, SEARCH and WASM evaluation; cube and take copied from original UI'};
- fs.writeFileSync(summaryFile,JSON.stringify(o,null,2)+'\\n');console.log('SUMMARY '+JSON.stringify(o));return o;
+ fs.writeFileSync(summaryFile,JSON.stringify(o,null,2)+'\n');console.log('SUMMARY '+JSON.stringify(o));return o;
 }
 function rngFor(seed){return()=>{let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 function dice(rng){return[1+Math.floor(rng()*6),1+Math.floor(rng()*6)];}
@@ -104,7 +104,7 @@ function game(api,hash,index){
  for(let i=0;i<games;i++){
   if(existing.has(i))continue;
   if(budget&&(performance.now()-start)/1000>=budget){console.log('BUDGET_EXCEEDED');break;}
-  const r=game(api,hash,i);fs.appendFileSync(recordsFile,JSON.stringify(r)+'\\n');
+  const r=game(api,hash,i);fs.appendFileSync(recordsFile,JSON.stringify(r)+'\n');
   console.log('GAME '+(i+1)+'/'+games+' '+r.winner+' '+r.reason+' '+r.thinkSeconds.toFixed(2)+'s');
  }
  summary();
