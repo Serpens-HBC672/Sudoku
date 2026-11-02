@@ -1,0 +1,70 @@
+name: Backgammon TD-vs-EM feasibility pilot
+on:
+  push:
+    branches: [Backgammon-TD-Testing]
+    paths:
+      - .github/workflows/backgammon-pilot.yml
+      - tools/backgammon-benchmark/run.cjs
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pilot:
+    strategy:
+      fail-fast: false
+      matrix:
+        pair: [td1-em1, td1-em6, td5-em1, td5-em6]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: Backgammon-TD-Testing
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify engine and probe both configurations
+        shell: bash
+        run: |
+          set +e
+          timeout -k 10s 180s node tools/backgammon-benchmark/run.cjs --mode probe --pair "${{ matrix.pair }}"
+          code=$?
+          echo "PROBE_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "PROBE_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+      - name: Bounded two-game feasibility run
+        if: env.PROBE_EXIT == '0'
+        shell: bash
+        run: |
+          set +e
+          timeout -k 10s 900s node tools/backgammon-benchmark/run.cjs --mode games --pair "${{ matrix.pair }}" --games 2 --seed 910001 --budget-seconds 840
+          code=$?
+          echo "GAME_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 0
+      - name: Summarize finished games
+        if: always()
+        run: node tools/backgammon-benchmark/run.cjs --mode summarize --pair "${{ matrix.pair }}" --games 2
+      - name: Save completed records to testing branch
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/backgammon-benchmark/results/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test(backgammon): store bounded pilot ${{ matrix.pair }}"
+          for attempt in 1 2 3 4 5 6; do
+            git fetch origin Backgammon-TD-Testing
+            git rebase origin/Backgammon-TD-Testing
+            if git push origin HEAD:Backgammon-TD-Testing; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backgammon-pilot-${{ matrix.pair }}
+          path: tools/backgammon-benchmark/results/${{ matrix.pair }}.*
+          if-no-files-found: warn
