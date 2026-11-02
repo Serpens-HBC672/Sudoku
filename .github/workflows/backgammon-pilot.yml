@@ -1,4 +1,4 @@
-name: Backgammon TD-vs-EM 100-game comparisons
+name: Backgammon TD-vs-EM 600-game comparisons
 on:
   push:
     branches: [Backgammon-TD-Testing]
@@ -13,9 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pair: [td1-em1, td1-em6, td5-em1, td5-em6, td1-td5, td4-td5, em1-em6, em5-em6]
+        pair: [td1-em1, td1-em6, td5-em1, td5-em6, td1-td5, td4-td5, em1-em6, em5-em6, td1-td2, td2-td3, td3-td4, em1-em2, em2-em3, em3-em4, em4-em5]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,18 +33,44 @@ jobs:
           echo "PROBE_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "PROBE_EXIT=$code" >> "$GITHUB_ENV"
           exit 0
-      - name: Bounded 100-game batch
+      - name: Bounded 600-game batch
         if: env.PROBE_EXIT == '0'
         shell: bash
         run: |
           set +e
-          timeout -k 15s 2400s node tools/backgammon-benchmark/run.cjs --mode games --pair "${{ matrix.pair }}" --games 100 --seed 910001 --budget-seconds 2350
+          timeout -k 15s 3450s node tools/backgammon-benchmark/run.cjs --mode games --pair "${{ matrix.pair }}" --games 600 --seed 910001 --budget-seconds 3300
           code=$?
           echo "GAME_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "GAME_EXIT=$code" >> "$GITHUB_ENV"
           exit 0
       - name: Summarize finished games
         if: always()
-        run: node tools/backgammon-benchmark/run.cjs --mode summarize --pair "${{ matrix.pair }}" --games 100
+        run: node tools/backgammon-benchmark/run.cjs --mode summarize --pair "${{ matrix.pair }}" --games 600
+      - name: Validate complete 600-game batch
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          test "${PROBE_EXIT:-}" = "0"
+          test "${GAME_EXIT:-}" = "0"
+          jq -e '
+            .requestedGames == 600 and
+            .recordedGames == 600 and
+            .completedGames == 600 and
+            .incomplete == 0 and
+            (.sourceSha256 | length == 1)
+          ' "tools/backgammon-benchmark/results/${{ matrix.pair }}.summary.json" > /dev/null
+          node -e '
+            const fs = require("node:fs");
+            const file = "tools/backgammon-benchmark/results/${{ matrix.pair }}.jsonl";
+            const rows = fs.readFileSync(file, "utf8").trim().split(/\\r?\\n/).map(JSON.parse);
+            if (rows.length !== 600 || rows.some((r, i) => r.index !== i || r.winner === null)) {
+              throw new Error("Expected 600 contiguous completed game records");
+            }
+            if (new Set(rows.map(r => r.sourceSha256)).size !== 1) {
+              throw new Error("Mixed source hashes in result records");
+            }
+          '
       - name: Save completed records to testing branch
         if: always()
         shell: bash
@@ -54,7 +80,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tools/backgammon-benchmark/results/
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "test(backgammon): store 100-game batch ${{ matrix.pair }}"
+          git commit -m "test(backgammon): store 600-game batch ${{ matrix.pair }} [skip ci]"
           for attempt in 1 2 3 4 5 6; do
             git fetch origin Backgammon-TD-Testing
             git rebase origin/Backgammon-TD-Testing
@@ -65,6 +91,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backgammon-100games-${{ matrix.pair }}
+          name: backgammon-600games-${{ matrix.pair }}
           path: tools/backgammon-benchmark/results/${{ matrix.pair }}.*
           if-no-files-found: warn
