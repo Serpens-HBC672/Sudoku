@@ -63,7 +63,7 @@ jobs:
           node -e '
             const fs = require("node:fs");
             const file = "tools/backgammon-benchmark/results/${{ matrix.pair }}.jsonl";
-            const rows = fs.readFileSync(file, "utf8").trim().split(/\\r?\\n/).map(JSON.parse);
+            const rows = fs.readFileSync(file, "utf8").trim().split(/\r?\n/).map(JSON.parse);
             if (rows.length !== 600 || rows.some((r, i) => r.index !== i || r.winner === null)) {
               throw new Error("Expected 600 contiguous completed game records");
             }
