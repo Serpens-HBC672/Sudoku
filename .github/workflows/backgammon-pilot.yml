@@ -71,23 +71,6 @@ jobs:
               throw new Error("Mixed source hashes in result records");
             }
           '
-      - name: Save completed records to testing branch
-        if: always()
-        shell: bash
-        run: |
-          set -e
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tools/backgammon-benchmark/results/
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "test(backgammon): store 600-game batch ${{ matrix.pair }} [skip ci]"
-          for attempt in 1 2 3 4 5 6; do
-            git fetch origin Backgammon-TD-Testing
-            git rebase origin/Backgammon-TD-Testing
-            if git push origin HEAD:Backgammon-TD-Testing; then exit 0; fi
-            sleep $((attempt * 2))
-          done
-          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -95,3 +78,33 @@ jobs:
           path: tools/backgammon-benchmark/results/${{ matrix.pair }}.*
           if-no-files-found: warn
 # Manual start: 15 matchups x 600 games
+  collect-results:
+    needs: pilot
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: Backgammon-TD-Testing
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: backgammon-600games-*
+          path: benchmark-artifacts
+          merge-multiple: false
+      - name: Collect available result files
+        shell: bash
+        run: |
+          set -e
+          mkdir -p tools/backgammon-benchmark/results
+          find benchmark-artifacts -type f \\( -name '*.jsonl' -o -name '*.summary.json' \\) -exec cp -f {} tools/backgammon-benchmark/results/ \\;
+      - name: Save results once
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/backgammon-benchmark/results/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test(backgammon): collect 600-game campaign results [skip ci]"
+          git push origin HEAD:Backgammon-TD-Testing
