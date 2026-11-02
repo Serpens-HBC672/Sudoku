@@ -94,3 +94,4 @@ jobs:
           name: backgammon-600games-${{ matrix.pair }}
           path: tools/backgammon-benchmark/results/${{ matrix.pair }}.*
           if-no-files-found: warn
+# Manual start: 15 matchups x 600 games
