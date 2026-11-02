@@ -97,7 +97,7 @@ jobs:
         run: |
           set -e
           mkdir -p tools/backgammon-benchmark/results
-          find benchmark-artifacts -type f \\( -name '*.jsonl' -o -name '*.summary.json' \\) -exec cp -f {} tools/backgammon-benchmark/results/ \\;
+          find benchmark-artifacts -type f \( -name '*.jsonl' -o -name '*.summary.json' \) -exec cp -f {} tools/backgammon-benchmark/results/ \;
       - name: Save results once
         shell: bash
         run: |
@@ -108,3 +108,4 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "test(backgammon): collect 600-game campaign results [skip ci]"
           git push origin HEAD:Backgammon-TD-Testing
+# Trigger corrected benchmark workflow
