@@ -33,7 +33,7 @@ function init(){
  const html=fs.readFileSync(htmlPath,'utf8'),hash=crypto.createHash('sha256').update(html).digest('hex');
  const embedded=id=>{const marker=new RegExp('<script[^>]*\\bid=["\x27]'+id+'["\x27][^>]*>([\\s\\S]*?)<\\/script>','i'),m=html.match(marker);
   if(!m)throw Error('Missing embedded '+id);return m[1].trim();};
- const api=new Function(embedded('engine')+'\nreturn {Rules,SEARCH,loadBG,nnOut,bearP,winP};')();
+ const api=new Function(embedded('engine')+'\nreturn {Rules,SEARCH,loadBG,nnOut,bearP,winP,BG};')();
  return {api,assets:id=>embedded(id.slice(1)),hash};
 }
 function choose(api,id,level,b,side,roll,stats){
@@ -79,7 +79,8 @@ function game(api,hash,index){
  if(mode==='summarize'){summary();return;}
  const {api,assets,hash}=init();await api.loadBG(assets);
  const p=api.nnOut(api.Rules.init()[0],api.Rules.init()[1])[0];
- if(!Number.isFinite(p)||p<0||p>1)throw Error('GNUBG WASM failed');
+ if(!Number.isFinite(p)||p<0||p>1||!api.BG.bo)throw Error('GNUBG WASM / bearoff database did not load');
+ console.log('BACKEND '+JSON.stringify({wasmLoaded:!!api.BG.x,bearoffLoaded:!!api.BG.bo,simd:!!api.BG.simd,node:process.version}));
  if(mode==='probe'){
   for(let i=0;i<2;i++){const st={moves:0,thinkSeconds:0,maxMoveSeconds:0},[id,level]=PAIRS[pair][i];
    choose(api,id,level,api.Rules.init(),i,[3,1],st);
