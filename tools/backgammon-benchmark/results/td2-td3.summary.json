@@ -1,0 +1,28 @@
+{
+  "pair": "td2-td3",
+  "configuration": [
+    [
+      "gnubg",
+      2
+    ],
+    [
+      "gnubg",
+      3
+    ]
+  ],
+  "requestedGames": 1100,
+  "recordedGames": 1100,
+  "completedGames": 1100,
+  "wins": {
+    "A": 533,
+    "B": 567
+  },
+  "incomplete": 0,
+  "winRateA": 0.48454545454545456,
+  "avgThinkSeconds": 0.39530024639091077,
+  "maxMoveSeconds": 0.12157168999998248,
+  "sourceSha256": [
+    "25cf4ff14c35f64067da71fcdac295dde68fb6ceb2ab52962dc7e5f8cd0eacb6"
+  ],
+  "protocol": "Seed 910001+floor(i/2); swap colors on odd games; original Rules, SEARCH and WASM evaluation; cube and take copied from original UI"
+}

@@ -1,0 +1,111 @@
+name: Backgammon TD-vs-EM 1,100-game comparisons
+on:
+  push:
+    branches: [Backgammon-TD-Testing]
+    paths:
+      - .github/workflows/backgammon-pilot.yml
+      - tools/backgammon-benchmark/run.cjs
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pilot:
+    strategy:
+      fail-fast: false
+      matrix:
+        pair: [td1-em1, td1-em6, td5-em1, td5-em6, td1-td5, td4-td5, em1-em6, em5-em6, td1-td2, td2-td3, td3-td4, em1-em2, em2-em3, em3-em4, em4-em5]
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: Backgammon-TD-Testing
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify engine and probe both configurations
+        shell: bash
+        run: |
+          set +e
+          timeout -k 10s 180s node tools/backgammon-benchmark/run.cjs --mode probe --pair "${{ matrix.pair }}"
+          code=$?
+          echo "PROBE_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "PROBE_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+      - name: Bounded 1,100-game batch
+        if: env.PROBE_EXIT == '0'
+        shell: bash
+        run: |
+          set +e
+          timeout -k 15s 3450s node tools/backgammon-benchmark/run.cjs --mode games --pair "${{ matrix.pair }}" --games 1100 --seed 910001 --budget-seconds 3300
+          code=$?
+          echo "GAME_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "GAME_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+      - name: Summarize finished games
+        if: always()
+        run: node tools/backgammon-benchmark/run.cjs --mode summarize --pair "${{ matrix.pair }}" --games 1100
+      - name: Validate complete 1,100-game batch
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          test "${PROBE_EXIT:-}" = "0"
+          test "${GAME_EXIT:-}" = "0"
+          jq -e '
+            .requestedGames == 1100 and
+            .recordedGames == 1100 and
+            .completedGames == 1100 and
+            .incomplete == 0 and
+            (.sourceSha256 | length == 1)
+          ' "tools/backgammon-benchmark/results/${{ matrix.pair }}.summary.json" > /dev/null
+          node -e '
+            const fs = require("node:fs");
+            const file = "tools/backgammon-benchmark/results/${{ matrix.pair }}.jsonl";
+            const rows = fs.readFileSync(file, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+            if (rows.length !== 1100 || rows.some((r, i) => r.index !== i || r.winner === null)) {
+              throw new Error("Expected 1100 contiguous completed game records");
+            }
+            if (new Set(rows.map(r => r.sourceSha256)).size !== 1) {
+              throw new Error("Mixed source hashes in result records");
+            }
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backgammon-1100games-${{ matrix.pair }}
+          path: tools/backgammon-benchmark/results/${{ matrix.pair }}.*
+          if-no-files-found: warn
+# Manual start: 15 matchups x 1,100 games
+  collect-results:
+    needs: pilot
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: Backgammon-TD-Testing
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: backgammon-1100games-*
+          path: benchmark-artifacts
+          merge-multiple: false
+      - name: Collect available result files
+        shell: bash
+        run: |
+          set -e
+          mkdir -p tools/backgammon-benchmark/results
+          find benchmark-artifacts -type f \( -name '*.jsonl' -o -name '*.summary.json' \) -exec cp -f {} tools/backgammon-benchmark/results/ \;
+      - name: Save results once
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/backgammon-benchmark/results/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test(backgammon): collect 1,100-game campaign results [skip ci]"
+          git push origin HEAD:Backgammon-TD-Testing
+# Trigger corrected benchmark workflow

@@ -1,0 +1,28 @@
+{
+  "pair": "em3-em4",
+  "configuration": [
+    [
+      "emm",
+      3
+    ],
+    [
+      "emm",
+      4
+    ]
+  ],
+  "requestedGames": 1100,
+  "recordedGames": 1100,
+  "completedGames": 1100,
+  "wins": {
+    "A": 509,
+    "B": 591
+  },
+  "incomplete": 0,
+  "winRateA": 0.4627272727272727,
+  "avgThinkSeconds": 0.16384554908727217,
+  "maxMoveSeconds": 0.046967605000005276,
+  "sourceSha256": [
+    "25cf4ff14c35f64067da71fcdac295dde68fb6ceb2ab52962dc7e5f8cd0eacb6"
+  ],
+  "protocol": "Seed 910001+floor(i/2); swap colors on odd games; original Rules, SEARCH and WASM evaluation; cube and take copied from original UI"
+}
