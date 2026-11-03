@@ -23,7 +23,7 @@ const PAIRS={
 };
 function arg(k,d){const i=process.argv.indexOf('--'+k);return i<0?d:process.argv[i+1];}
 function num(k,d,max){const n=Number(arg(k,d));if(!Number.isSafeInteger(n)||n<0||n>max)throw Error('Invalid '+k);return n;}
-const pair=arg('pair','td1-em1'),mode=arg('mode','games'),games=num('games',600,100000),
+const pair=arg('pair','td1-em1'),mode=arg('mode','games'),games=num('games',1100,100000),
  seed0=num('seed',910001,2140000000),budget=num('budget-seconds',0,21600);
 if(!PAIRS[pair]||!['games','probe','summarize'].includes(mode)||games<1)throw Error('Bad config');
 fs.mkdirSync(resultDir,{recursive:true});

@@ -1,4 +1,4 @@
-name: Backgammon TD-vs-EM 600-game comparisons
+name: Backgammon TD-vs-EM 1,100-game comparisons
 on:
   push:
     branches: [Backgammon-TD-Testing]
@@ -33,20 +33,20 @@ jobs:
           echo "PROBE_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "PROBE_EXIT=$code" >> "$GITHUB_ENV"
           exit 0
-      - name: Bounded 600-game batch
+      - name: Bounded 1,100-game batch
         if: env.PROBE_EXIT == '0'
         shell: bash
         run: |
           set +e
-          timeout -k 15s 3450s node tools/backgammon-benchmark/run.cjs --mode games --pair "${{ matrix.pair }}" --games 600 --seed 910001 --budget-seconds 3300
+          timeout -k 15s 3450s node tools/backgammon-benchmark/run.cjs --mode games --pair "${{ matrix.pair }}" --games 1100 --seed 910001 --budget-seconds 3300
           code=$?
           echo "GAME_EXIT=$code" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "GAME_EXIT=$code" >> "$GITHUB_ENV"
           exit 0
       - name: Summarize finished games
         if: always()
-        run: node tools/backgammon-benchmark/run.cjs --mode summarize --pair "${{ matrix.pair }}" --games 600
-      - name: Validate complete 600-game batch
+        run: node tools/backgammon-benchmark/run.cjs --mode summarize --pair "${{ matrix.pair }}" --games 1100
+      - name: Validate complete 1,100-game batch
         if: always()
         shell: bash
         run: |
@@ -54,9 +54,9 @@ jobs:
           test "${PROBE_EXIT:-}" = "0"
           test "${GAME_EXIT:-}" = "0"
           jq -e '
-            .requestedGames == 600 and
-            .recordedGames == 600 and
-            .completedGames == 600 and
+            .requestedGames == 1100 and
+            .recordedGames == 1100 and
+            .completedGames == 1100 and
             .incomplete == 0 and
             (.sourceSha256 | length == 1)
           ' "tools/backgammon-benchmark/results/${{ matrix.pair }}.summary.json" > /dev/null
@@ -64,8 +64,8 @@ jobs:
             const fs = require("node:fs");
             const file = "tools/backgammon-benchmark/results/${{ matrix.pair }}.jsonl";
             const rows = fs.readFileSync(file, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-            if (rows.length !== 600 || rows.some((r, i) => r.index !== i || r.winner === null)) {
-              throw new Error("Expected 600 contiguous completed game records");
+            if (rows.length !== 1100 || rows.some((r, i) => r.index !== i || r.winner === null)) {
+              throw new Error("Expected 1100 contiguous completed game records");
             }
             if (new Set(rows.map(r => r.sourceSha256)).size !== 1) {
               throw new Error("Mixed source hashes in result records");
@@ -74,10 +74,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backgammon-600games-${{ matrix.pair }}
+          name: backgammon-1100games-${{ matrix.pair }}
           path: tools/backgammon-benchmark/results/${{ matrix.pair }}.*
           if-no-files-found: warn
-# Manual start: 15 matchups x 600 games
+# Manual start: 15 matchups x 1,100 games
   collect-results:
     needs: pilot
     if: always()
@@ -89,7 +89,7 @@ jobs:
           ref: Backgammon-TD-Testing
       - uses: actions/download-artifact@v4
         with:
-          pattern: backgammon-600games-*
+          pattern: backgammon-1100games-*
           path: benchmark-artifacts
           merge-multiple: false
       - name: Collect available result files
@@ -106,6 +106,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tools/backgammon-benchmark/results/
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "test(backgammon): collect 600-game campaign results [skip ci]"
+          git commit -m "test(backgammon): collect 1,100-game campaign results [skip ci]"
           git push origin HEAD:Backgammon-TD-Testing
 # Trigger corrected benchmark workflow
